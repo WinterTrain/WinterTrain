@@ -1,5 +1,5 @@
-#!/usr/bin/php
 <?php
+print "inc";
   include "PT1.php";
   include "TrainData.php"
 ?>

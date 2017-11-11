@@ -16,8 +16,8 @@ $RBCIL_CONFIG = "RBCILconf.php";
 #$PT1_DATA = "data/RBCIL_PT1.php";
 #$TRAIN_DATA = "data/RBCIL_TRAIN.php";
 $DATA_FILE = "../SiteData/W57/W57.php";
-$ERRLOG = "log/RBCIL_ErrLog.txt";
-$MSGLOG = "log/RBCIL.log";
+$ERRLOG = "Log/RBCIL_ErrLog.txt";
+$MSGLOG = "Log/RBCIL.log";
 
 // ------------------------------------------------------------------------ To be moved to conf. file
 $radioLinkAddr = 150;
@@ -845,7 +845,7 @@ function lockRoute($s1, $s2) {
 // End of addition of new helpers
 function initRBCIL() {
 global $trainData, $trainIndex, $DATA_FILE, $SHallowed, $FSallowed, $ATOallowed;
-  require($DATA_FILE);
+//  require($DATA_FILE);
   foreach ($trainData as $index => &$train) {
     $train["SRallowed"] = 0;
     $train["SHallowed"] = $SHallowed;
