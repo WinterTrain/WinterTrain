@@ -157,24 +157,24 @@ do {
 //  print "$now: ";
     $pollTimeout = $now;
   
-  foreach ($EC as $addr => $ec) {
-    if ($now > $ec["validTimer"]) { // EC not providing status
-    // EC offline
-      foreach ($ec["index"] as $name) {
-        $PT1[$name]["status"] = S_UNSUPERVISED; // barrier and road signal status to be set to unsupervised as well  FIXME
-        HMIindicationAll("signalState $name ".S_UNSUPERVISED." ".$PT1[$name]["trackState"]."\n");
-      }
-      if ($addr == $radioLinkAddr) {
-        // position report UDEF------------------------------------- FIXME
+    foreach ($EC as $addr => $ec) {
+      if ($now > $ec["validTimer"]) { // EC not providing status
+      // EC offline
+        foreach ($ec["index"] as $name) {
+          $PT1[$name]["status"] = S_UNSUPERVISED; // barrier and road signal status to be set to unsupervised as well  FIXME
+          HMIindicationAll("signalState $name ".S_UNSUPERVISED." ".$PT1[$name]["trackState"]."\n");
+        }
+        if ($addr == $radioLinkAddr) {
+          // position report UDEF------------------------------------- FIXME
+        }
       }
     }
-  }
-  foreach ($trainData as $index => &$train) {
-    if ($now > $train["validTimer"]) { // Train not sending position reports
-      $train["dataValid"] = "VOID";
-      updateTrainDataHMI($index);
+    foreach ($trainData as $index => &$train) {
+      if ($now > $train["validTimer"]) { // Train not sending position reports
+        $train["dataValid"] = "VOID";
+        updateTrainDataHMI($index);
+      }
     }
-  }
 //  print " a";
     processLX();
 //  print " b";
@@ -453,6 +453,7 @@ function pollRadioLink() {
 global $trainData;
   foreach ($trainData as $index => $train) {
     sendMA($train["ID"], $train["authMode"], $train["MAbalise"], $train["MAdist"], $train["maxSpeed"]);
+    $train["MAbalise"] = array(0,0,0,0,0); // Clear balise so manually commanded MA is issued only once. MA generation to be redesigned!!!
   }
 }
 
@@ -542,8 +543,8 @@ global $PT1, $EC;
   foreach ($EC as $addr => $ec) {
     requestElementStatusEC($addr);
     foreach ($ec["index"] as $index => $name) {
-      if ($PT1[$name]["state"] == E_OPEN)  { // O_PROCEED_EXTENDED to be add for next version FIXME
-        orderEC($addr, $index, O_PROCEED);
+      if ($PT1[$name]["state"] == E_OPEN)  { // ... and $name is a signal .... FIXME
+        orderEC($addr, $index, O_PROCEED);// O_PROCEED_EXTENDED to be add for next version FIXME
       }
     }
   }
@@ -615,7 +616,7 @@ global $EC, $PT1;
 //    print_r($data);
     foreach ($EC[$addr]["index"] as $index => $name) {
       $element = &$PT1[$name];
-    $status = $index % 2 ? ((int)$data[$index/2 +4] & 0xF0) >> 4 : (int)$data[$index/2 +4] & 0x0F ;
+      $status = $index % 2 ? ((int)$data[$index/2 +4] & 0xF0) >> 4 : (int)$data[$index/2 +4] & 0x0F ;
       switch ($element["element"]) {
         case "SD":
         case "SU":

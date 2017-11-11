@@ -1,7 +1,7 @@
 <?php
 // PT1 data for Test Train at W57
 
-$PT1_VERSION = "02P01"; 
+$PT1_VERSION = "02P03"; 
 $PT1 = [
 
 "E" => [ // Bufferstop; begin of direction up
@@ -97,7 +97,7 @@ $PT1 = [
     "type" => 0,
     "device1" => 0,
     ],
-  "U" => ["name" => "04", "dist" => 0],
+  "U" => ["name" => "LX1", "dist" => 0],
   "D" => ["name" => "03", "dist" => 0],
   "HMI" => [
     "x" => 6,
@@ -105,12 +105,33 @@ $PT1 = [
     ],
   ],  
 
+"LX1" => [ // LX
+  "element" => "LX",
+  "ECsignal" => [
+    "addr" => 152,
+    "type" => 31,
+    "device1" => 1,
+    "device2" => 0,
+    ],
+  "ECbarrier" => [
+    "addr" => 152,
+    "type" => 32,
+    "device1" => 4,
+    "device2" => 0,
+    ],
+  "U" => ["name" => "04", "dist" => 20],
+  "D" => ["name" => "A", "dist" => 20],
+  "HMI" => [
+    "x" => 8,
+    "y" => 1,
+    ],
+  ],
 
  "04" => [ // Balises
   "element" => "BL",
   "ID" => "74:00:15:55:26",
   "U" => ["name" => "G", "dist" => 106],
-  "D" => ["name" => "A", "dist" => 77],
+  "D" => ["name" => "LX1", "dist" => 77],
   ],   
 "G" => [ // Signal
   "element" => "SU",
@@ -268,9 +289,9 @@ $HMI = [ //------------------------------------------------------------------ HM
     "tr3" => [
       "balises" => ["04"
               ],
-      "x" => 8,
+      "x" => 9,
       "y" => 2,
-      "l" => 4,
+      "l" => 3,
     ],
     "tr4" => [
       "balises" => ["06"
