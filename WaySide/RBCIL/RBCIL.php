@@ -5,7 +5,7 @@ $arduino = 0x33; // CBU Master, I2C addresse
 $ABUS = "";
 
 //--------------------------------------- Default Configuration
-$VERSION = "02P02";
+$VERSION = "02P02";  // What does this mean with git??
 $HMIport = 9900;
 $HMIaddress = "0.0.0.0";
 $ABUS_GATEWAYaddress = "10.0.0.201";
@@ -1751,6 +1751,10 @@ global $debug, $background, $RBCIL_CONFIG, $DATA_FILE, $SYSTEM_NAME, $VERSION, $
       list(,$p) = each($argv);
       if ($p) {
         $DATA_FILE = $p;
+        if (!is_readable($DATA_FILE)) {
+          fwrite(STDERR,"Error: option -f: Cannot read $DATA_FILE \n");
+          exit(1); // If a data file is specified at the cmd line, it has to exist
+        }
       } else {
         fwrite(STDERR,"Error: option -D: File name is missing \n");
         exit(1);
