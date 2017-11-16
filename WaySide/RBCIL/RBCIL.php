@@ -869,10 +869,96 @@ function lockRoute($s1, $s2) {
   $dummy = array();
   trackRecTraverse("acceptAll", $isTerminal, "lockingPayload", $s1,"", $direction, $dummy);
 }
+
+
+// New train position detection function
+
+function recUpdateTrainPosition($train, $dir, $a, $eltName, $trackState, $depth) {
+  global $PT1;
+#  print $depth." : ".$eltName."\n";
+  if ($depth > 100) {return;}
+  $elt = &$PT1[$eltName];
+  switch ($elt["element"]) {
+      case "PF":
+      case "PT":
+        $b = $a + $elt["T"]["dist"];
+        if ($elt["latestLie"] == E_RIGHT) {
+          $b += $elt["R"]["dist"];
+        } else {
+          $b += $elt["L"]["dist"];
+        }
+        break;
+      default:
+        $b = $a + $elt["D"]["dist"] + $elt["U"]["dist"];
+  }
+  if ($dir == "D") {$tmp = $a - ($b-$a); $b = $a; $a = $tmp;} //Reverse $a and $b if going down
+#  print "a: ".$a."   b:".$b."\n";
+#  print "x: ".$train["upFront"]."   y:".$train["backFront"]."\n";
+  if (($a <= $train["upFront"]) and ($b >= $train["backFront"])) {
+#    print $eltName." occupied ".$trackState." \n";
+    //Occupation
+    //TODO add segment to train if this is the "further one up or down"
+    if (FALSE !== ($key = array_search($train["ID"], $elt["trainIDs"]))) {
+      unset($elt["trainIDs"][$key]);
+    }
+    $elt["trackState"] = $trackState;
+    if ($trackState !== T_CLEAR) {
+      $elt["trainIDs"][] = $train["ID"];
+    }
+  }
+
+    //Try to continue
+    if (($dir == "U") and ($a <= $train["upFront"])) {
+      //keep looking up unless it was facing point
+      switch ($elt["element"]) {
+        case "PF":
+          //stop and invalidate position
+          $train["positionUnambiguous"] = False;
+          return;
+        case "PT":
+          recUpdateTrainPosition($train, $dir, $b, $elt["T"]["name"], $trackState, $depth +1 );
+          return;
+        case "BSE":
+          return; //Reached end of track... Train derailed?
+        default:
+          recUpdateTrainPosition($train, $dir, $b, $elt["U"]["name"], $trackState, $depth + 1);
+      }
+    } elseif (($dir == "D") and ($b >= $train["backFront"])) {
+      //keep looking up unless it was facing point
+      switch ($elt["element"]) {
+        case "PT":
+          //stop and invalidate position
+          $train["positionUnambiguous"] = False;
+          return;
+        case "PF":
+          recUpdateTrainPosition($train, $dir, $a, $elt["T"]["name"], $trackState, $depth + 1);
+          return;
+        case "BSB":
+          return; //Reached end of track... Train derailed?
+        default:
+          recUpdateTrainPosition($train, $dir, $a, $elt["D"]["name"], $trackState, $depth + 1);
+      }
+    }
+}
+
+function updateTrainPosition($train, $balise, $dist, $trackState) {
+  global $PT1;
+  #TODO Add uncertainty margin here??
+  if ($train["front"] == D_UP ) {
+    $train["upFront"] = $dist + $train["lengthFront"];
+    $train["backFront"] = $dist - $train["lengthBehind"];
+  } else {
+    $train["upFront"] = $dist + $train["lengthBehind"];
+    $train["backFront"] = $dist - $train["lengthFront"];
+  }
+  $train["positionUnambiguous"] = True;
+  recUpdateTrainPosition($train, "U", 0, $balise, $trackState, 0);
+  recUpdateTrainPosition($train, "D", 0, $PT1[$balise]["D"]["name"], $trackState, 0);
+}
 // End of addition of new helpers
 function initRBCIL() {
 global $trainData, $trainIndex, $DATA_FILE, $SHallowed, $FSallowed, $ATOallowed;
-//  require($DATA_FILE);
+  //require($DATA_FILE);
   foreach ($trainData as $index => &$train) {
     $train["SRallowed"] = 0;
     $train["SHallowed"] = $SHallowed;
@@ -923,15 +1009,17 @@ global $trainIndex, $trainData, $balisesID, $SR_MAX_SPEED, $SH_MAX_SPEED, $ATO_M
       if (isset($balisesID[$train["balise"]])) {
         $train["baliseName"] = $balisesID[$train["balise"]];
         if ($train["prevBaliseName"] != "00:00:00:00:00") {
-          trackOccupation(T_CLEAR, $train["prevBaliseName"], $train["prevDistance"],
-            ($train["front"] == D_UP ? $train["lengthFront"] : $train["lengthBehind"]),
-            ($train["front"] == D_UP ? $train["lengthBehind"] : $train["lengthFront"]),
-            $train["ID"]); //>>JP:TRAIN_ID
+          updateTrainPosition($train, $train["prevBaliseName"], $train["prevDistance"], T_CLEAR);
+         // trackOccupation(T_CLEAR, $train["prevBaliseName"], $train["prevDistance"],
+           // ($train["front"] == D_UP ? $train["lengthFront"] : $train["lengthBehind"]),
+            //($train["front"] == D_UP ? $train["lengthBehind"] : $train["lengthFront"]),
+            //$train["ID"]); //>>JP:TRAIN_ID
         }
-        trackOccupation($train["nomDir"], $train["baliseName"], $train["distance"],
-          ($train["front"] == D_UP ? $train["lengthFront"] : $train["lengthBehind"]),
-          ($train["front"] == D_UP ? $train["lengthBehind"] : $train["lengthFront"]),
-           $train["ID"]); //>>JP:TRAIN_ID
+        updateTrainPosition($train, $train["baliseName"], $train["distance"], $train["nomDir"]);
+        //trackOccupation($train["nomDir"], $train["baliseName"], $train["distance"],
+         // ($train["front"] == D_UP ? $train["lengthFront"] : $train["lengthBehind"]),
+          //($train["front"] == D_UP ? $train["lengthBehind"] : $train["lengthFront"]),
+          // $train["ID"]); //>>JP:TRAIN_ID
           $train["prevBaliseName"] = $train["baliseName"];
           $train["prevDistance"] = $train["distance"];
       } else {
@@ -980,7 +1068,8 @@ global $PT1;
     $element = &$PT1[$baliseName];
 //>>JP:TRAIN_ID
     #first remove the train from the occupying train list. If we needed to clear the track, the it is done, else it will be re-added below (and we avoid duplication)
-    if ($key = array_search($trainID, $element["trainIDs"])) {
+    #!The type sensitive check against FALSE covers the scenario where key is 0 which would be interpreted as FALSE by the if.
+    if (FALSE !== ($key = array_search($trainID, $element["trainIDs"]))) {
       unset($element["trainIDs"][$key]);
     }
 //<<JP:TRAIN_ID
@@ -1029,7 +1118,8 @@ global $PT1;
     $element = &$PT1[$name];
 //>>JP:TRAIN_ID
     #first remove the train from the occupying train list. If we needed to clear the track, the it is done, else it will be re-added below (and we avoid duplication)
-    if ($key = array_search($trainID, $element["trainIDs"])) {
+    #!The type sensitive check against FALSE covers the scenario where key is 0 which would be interpreted as FALSE by the if.
+    if (FALSE !== ($key = array_search($trainID, $element["trainIDs"]))) {
       unset($element["trainIDs"][$key]);
     }
 //<<JP:TRAIN_ID
@@ -1109,7 +1199,8 @@ global $PT1;
   $element = &$PT1[$name];
 //>>JP:TRAIN_ID
   #first remove the train from the occupying train list. If we needed to clear the track, the it is done, else it will be re-added below (and we avoid duplication)
-  if ($key = array_search($trainID, $element["trainIDs"])) {
+  #!The type sensitive check against FALSE covers the scenario where key is 0 which would be interpreted as FALSE by the if.
+  if (FALSE !== ($key = array_search($trainID, $element["trainIDs"]))) {
     unset($element["trainIDs"][$key]);
   }
 //<<JP:TRAIN_ID
