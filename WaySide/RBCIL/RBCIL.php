@@ -846,7 +846,7 @@ function lockRoute($s1, $s2) {
 // End of addition of new helpers
 function initRBCIL() {
 global $trainData, $trainIndex, $DATA_FILE, $SHallowed, $FSallowed, $ATOallowed;
-//  require($DATA_FILE);
+  //require($DATA_FILE);
   foreach ($trainData as $index => &$train) {
     $train["SRallowed"] = 0;
     $train["SHallowed"] = $SHallowed;
@@ -954,7 +954,8 @@ global $PT1;
     $element = &$PT1[$baliseName];
 //>>JP:TRAIN_ID
     #first remove the train from the occupying train list. If we needed to clear the track, the it is done, else it will be re-added below (and we avoid duplication)
-    if ($key = array_search($trainID, $element["trainIDs"])) {
+    #!The type sensitive check against FALSE covers the scenario where key is 0 which would be interpreted as FALSE by the if.
+    if (FALSE !== ($key = array_search($trainID, $element["trainIDs"]))) {
       unset($element["trainIDs"][$key]);
     }
 //<<JP:TRAIN_ID
@@ -1003,7 +1004,8 @@ global $PT1;
     $element = &$PT1[$name];
 //>>JP:TRAIN_ID
     #first remove the train from the occupying train list. If we needed to clear the track, the it is done, else it will be re-added below (and we avoid duplication)
-    if ($key = array_search($trainID, $element["trainIDs"])) {
+    #!The type sensitive check against FALSE covers the scenario where key is 0 which would be interpreted as FALSE by the if.
+    if (FALSE !== ($key = array_search($trainID, $element["trainIDs"]))) {
       unset($element["trainIDs"][$key]);
     }
 //<<JP:TRAIN_ID
@@ -1083,7 +1085,8 @@ global $PT1;
   $element = &$PT1[$name];
 //>>JP:TRAIN_ID
   #first remove the train from the occupying train list. If we needed to clear the track, the it is done, else it will be re-added below (and we avoid duplication)
-  if ($key = array_search($trainID, $element["trainIDs"])) {
+  #!The type sensitive check against FALSE covers the scenario where key is 0 which would be interpreted as FALSE by the if.
+  if (FALSE !== ($key = array_search($trainID, $element["trainIDs"]))) {
     unset($element["trainIDs"][$key]);
   }
 //<<JP:TRAIN_ID
