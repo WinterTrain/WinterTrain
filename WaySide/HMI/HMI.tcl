@@ -76,12 +76,14 @@ proc bufferStop {name x y layout {length 1}} {
       dLabel $x $y 0.5 0.1 $name "$name label"
       dTrack $x $y 0 0.5 $length 0.5 "$name track"
       dTrack $x $y 0 0.3 0 0.7 
+      dTrainIDLabel  $x $y 0.5 0.2 "TEST" "$name trainIdLabel"
       dButton $x $y 0.3 0.5 0.4 $name selectBufferStop
     }
     e {
       dLabel $x $y [expr $length - 0.6] 0.1 $name "$name label"
       dTrack $x $y 0 0.5 $length 0.5 "$name track"
       dTrack $x $y $length 0.3 $length 0.7 
+      dTrainIDLabel  $x $y 0.5 0.2 "TEST" "$name trainIdLabel"
       dButton $x $y 0.7 0.5 0.4 $name selectBufferStop
     }
   }
@@ -92,6 +94,7 @@ proc signal {name x y layout} {
     f {
       dLabel $x $y 0.4 1.6 $name "$name label"
       dTrack $x $y 0 0.5 2 0.5 "$name track"
+      dTrainIDLabel  $x $y 0.7 0.2 "TEST" "$name trainIdLabel"
       dLine $x $y 0.4 0.5 0.4 1.2 $name
       dLine $x $y 0.4 1.2 1 1.2 $name
       dArcL $x $y 1.2 1.2 0.2 "$name aspect"
@@ -102,6 +105,7 @@ proc signal {name x y layout} {
     r {
       dLabel $x $y 1.5 0.4 $name "$name label"
       dTrack $x $y 0 1.5 2 1.5 "$name track"
+      dTrainIDLabel  $x $y 0.5 1.2 "TEST" "$name trainIdLabel"
       dLine $x $y 1.6 1.5 1.6 0.8 $name
       dLine $x $y 1 0.8 1.6 0.8 $name
       dArcR $x $y 0.8 0.8 0.2 "$name aspect"
@@ -116,6 +120,7 @@ proc point {name x y layout} {
   switch $layout {
     fr { ;# facing, right branch is diverging
       dLabel $x $y 1 0.1 $name "$name label"
+      dTrainIDLabel  $x $y 0.5 0.2 "TEST" "$name trainIdLabel"
       dTrack $x $y 0 0.5 1 0.5 "$name track"
       dTrack $x $y 1 0.5 1.5 0.5 "$name left"
       dTrack $x $y 1.5 0.5 2 0.5 "$name trackleft"
@@ -125,6 +130,7 @@ proc point {name x y layout} {
     }
     tl { ;# trailing, left branch is diverging
       dLabel $x $y 1 0.1 $name "$name label"
+      dTrainIDLabel  $x $y 1.5 0.2 "TEST" "$name trainIdLabel"
       dTrack $x $y 0 0.5 0.5 0.5 "$name trackright"
       dTrack $x $y 0.5 0.5 1 0.5 "$name right"
       dTrack $x $y 1 0.5 2 0.5 "$name track"
@@ -251,11 +257,11 @@ global xOffset yOffset scale cHeight cWidth showGrid
 proc pointState {name state trackState {trainID ""}} {
 global fColor tColor toColor tcColor
   switch $state {
-    6 { ;# left
+    20 { ;# left
     .f.canvas itemconfigure "$name&&right" -state hidden
     .f.canvas itemconfigure "$name&&left" -state normal
     }
-    5 { ;# right
+    21 { ;# right
     .f.canvas itemconfigure "$name&&right" -state normal
     .f.canvas itemconfigure "$name&&left" -state hidden
     }
@@ -267,18 +273,22 @@ global fColor tColor toColor tcColor
   switch $trackState {
     0 { ;# Unsupervised
       .f.canvas itemconfigure "$name&&(track||trackleft||trackright||left||right)" -fill $fColor
+      .f.canvas itemconfigure "$name&&trainIdLabel" -state hidden
     }
     5 { ;# Clear
       .f.canvas itemconfigure "$name&&(track||trackleft||trackright||left||right)" -fill $tColor
+      .f.canvas itemconfigure "$name&&trainIdLabel" -state hidden
     }
     1 -
     2 -
     3 { ;# Occupied
+      .f.canvas itemconfigure "$name&&trainIdLabel" -text $trainID
+      .f.canvas itemconfigure "$name&&trainIdLabel" -state normal
       switch $state {
-        6 {
+        20 {
           .f.canvas itemconfigure "$name&&(track||trackleft||left)" -fill $toColor
         }
-        5 {
+        21 {
           .f.canvas itemconfigure "$name&&(track||trackright||right)" -fill $toColor
         }
       }
@@ -352,14 +362,18 @@ global fColor oColor cColor toColor tcColor tColor
   switch $trackState {
     0 { ;# Unsupervised
       .f.canvas itemconfigure "$name&&track" -fill $fColor
+      .f.canvas itemconfigure "$name&&trainIdLabel" -state hidden
     }
     5 { ;# Clear
       .f.canvas itemconfigure "$name&&track" -fill $tColor
+      .f.canvas itemconfigure "$name&&trainIdLabel" -state hidden
     }
     1 -
     2 -
     3 { ;# Occupied
       .f.canvas itemconfigure "$name&&track" -fill $toColor
+      .f.canvas itemconfigure "$name&&trainIdLabel" -text $trainID
+      .f.canvas itemconfigure "$name&&trainIdLabel" -state normal
     }
   }
 }
@@ -369,14 +383,18 @@ global fColor tColor tcColor toColor
   switch $trackState {
     0 { ;# Unsupervised
       .f.canvas itemconfigure "$name&&track" -fill $fColor
+      .f.canvas itemconfigure "$name&&trainIdLabel" -state hidden
     }
     5 { ;# Clear
       .f.canvas itemconfigure "$name&&track" -fill $tColor
+      .f.canvas itemconfigure "$name&&trainIdLabel" -state hidden
     }
     1 -
     2 -
     3 { ;# Occupied
       .f.canvas itemconfigure "$name&&track" -fill $toColor
+      .f.canvas itemconfigure "$name&&trainIdLabel" -text $trainID
+      .f.canvas itemconfigure "$name&&trainIdLabel" -state normal
     }
   }
 }

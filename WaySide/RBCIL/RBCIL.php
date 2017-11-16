@@ -34,15 +34,20 @@ define("LX_WARNING_TIME",2);
 // Route
 define("R_IDLE", 0);
 // Interlocking Element state
-define("E_UNSUPERVISED",0);
-define("E_OPEN",10); // Signal
+define("E_UNSUPERVISED",0); // All
+define("E_OPEN",10);        // Signal
 define("E_CLOSED",11);
-define("E_LEFT",20); // point
-define("E_RIGHT",21);
+define("E_LEFT",20);        // Point, supervised left
+define("E_RIGHT",21);       // supervised right
+define("E_MOVING",22);      //   point is (supposed to be) moving
 define("E_LX_DEACTIVATED",50); // Normal state
 define("E_LX_WARNING",51); // Warning signals flashing
 define("E_LX_ACTIVATED",52); // 
 define("E_LX_OPENING",53); // Deaktiveret, opening
+// Interlocking Element commands
+define("C_TOGGLE",10); // Points
+define("C_LEFT",20);
+define("C_RIGHT",21);
 // Direction
 define("D_UDEF",0);
 define("D_DOWN",1);
@@ -87,15 +92,15 @@ define("O_RIGHT_HOLD",13);
 define("O_LEFT_HOLD",14);
 define("O_RELEASE",19);
 
-// Status
+// Physical status
 define("S_UNSUPERVISED",0);
 define("S_CLOSED",1);
 define("S_PROCEED",2);
 define("S_PROCEEDPROCEED",3);
 define("S_BARRIER_CLOSED",1);
 define("S_BARRIER_OPEN",2);
-define("S_U_RIGHT",5);
-define("S_U_LEFT",6);
+define("S_U_RIGHT",5); // Point, unsupervised, previous command was throw right
+define("S_U_LEFT",6);  // Point, unsupervised, previous command was throw left
 
 //Track traversal feedback
 define("TRACK_TRAVERSALE_REJECT", 0);
@@ -162,6 +167,7 @@ do {
       // EC offline
         foreach ($ec["index"] as $name) {
           $PT1[$name]["status"] = S_UNSUPERVISED; // barrier and road signal status to be set to unsupervised as well  FIXME
+          // status or state to be set unsupervised FIXME
           HMIindicationAll("signalState $name ".S_UNSUPERVISED." ".$PT1[$name]["trackState"]."\n");
         }
         if ($addr == $radioLinkAddr) {
@@ -188,6 +194,7 @@ do {
 //  print " f";
     updateHMI();
 //  print " g\n";
+
   }
   if ($ABUS == "cbu" and $timeoutUr <= $now) {
     $urTimeout = $now + 60;
@@ -199,7 +206,7 @@ msgLog("Exitting...");
 
 //--------------------------------------------------------------------------------------  RBCIL
 function processPT1() {
-global $DATA_FILE, $PT1_VERSION, $PT1, $HMI, $errorFound, $totalElement, $points, $signals, $levelCrossings,
+global $DATA_FILE, $trainData, $PT1_VERSION, $PT1, $HMI, $errorFound, $totalElement, $points, $signals, $levelCrossings,
   $balises, $balisesID, $bufferstops, $triggers, $tracks;
 
   function inspect($this, $prevName, $up) { // check each edge in the graph
@@ -382,8 +389,8 @@ global $DATA_FILE, $PT1_VERSION, $PT1, $HMI, $errorFound, $totalElement, $points
       case "PF":
       case "PT":
         $points[] = $name;
-        $element["state"] = E_LEFT; // logical state, initial state to reflect physical state FIXME
-        $element["status"] = S_UNSUPERVISED; // physical state from EC
+        $element["state"] = E_UNSUPERVISED;
+        $element["latestLie"] = E_RIGHT; // Just to start somewhere
       break;
       case "SU":
       case "SD":
@@ -451,8 +458,13 @@ global $DATA_FILE, $PT1_VERSION, $PT1, $HMI, $errorFound, $totalElement, $points
 
 function pollRadioLink() {
 global $trainData;
-  foreach ($trainData as $index => $train) {
+  foreach ($trainData as $index => &$train) {
     sendMA($train["ID"], $train["authMode"], $train["MAbalise"], $train["MAdist"], $train["maxSpeed"]);
+    if ($train["MAbalise"][0]) {
+      print_r($train["MAbalise"]);
+      print "Dist: ".$train["MAdist"]." Max: ".$train["maxSpeed"]."
+      ";
+    }
     $train["MAbalise"] = array(0,0,0,0,0); // Clear balise so manually commanded MA is issued only once. MA generation to be redesigned!!!
   }
 }
@@ -618,10 +630,24 @@ global $EC, $PT1;
       $element = &$PT1[$name];
       $status = $index % 2 ? ((int)$data[$index/2 +4] & 0xF0) >> 4 : (int)$data[$index/2 +4] & 0x0F ;
       switch ($element["element"]) {
-        case "SD":
-        case "SU":
         case "PT":
         case "PF":
+          switch ($element["EC"]["type"]) {
+            case 10: // point machine without feedback
+              if ($status == S_U_RIGHT) {
+                $element["state"] = $element["latestLie"] = E_RIGHT;
+              } else if ($status == S_U_LEFT) {
+                $element["state"] = $element["latestLie"] = E_LEFT;
+              } else {
+                $element["state"] = E_UNSUPERVISED;
+              }
+              break;
+            default:
+            $element["state"] = E_UNSUPERVISED;
+          }
+        break;
+        case "SD":
+        case "SU":
           $element["status"] = $status;
         break;
         case "LX":
@@ -1154,6 +1180,23 @@ global $PT1;
   }
 }
 
+function pointThrow(&$element, $lie) {
+  if ($element["trackState"] == T_CLEAR ) { // point may be thrown
+    $order = ($lie == C_TOGGLE ? ($element["latestLie"] == E_LEFT ? O_RIGHT : O_LEFT) : ($lie == C_RIGHT ? O_RIGHT : O_LEFT));
+    $element["state"] = E_MOVING;
+    switch ($element["EC"]["type"]) {
+      case 10: // point without feedback; no hold
+        orderEC($element["EC"]["addr"], $element["EC"]["index"], $order);
+        return true;
+      break;
+      default: // type of point machine not assigned or not implemented
+        return false;
+    }
+  } else {
+    return false;
+  }
+}
+
 function processCommand($command, $from) { // process HMI command
 global $PT1, $clients, $clientsData, $inCharge, $trainData, $EC, $now, $balises;
 print ">$command< \n";
@@ -1190,16 +1233,11 @@ print ">$command< \n";
   break;
   case "pt": // point order
     if ($from == $inCharge) {
-      $element = &$PT1[$param[1]];
-      $state = ($element["state"] == E_LEFT ? E_RIGHT : E_LEFT); // toggle state
-      $element["state"] = $state;
-      if ($element["EC"]["type"] != 0 ) {
-        orderEC($element["EC"]["addr"], $element["EC"]["index"],$state == E_RIGHT ? O_RIGHT : O_LEFT);
+      if (pointThrow($PT1[$param[1]], C_TOGGLE)) {
+        HMIindication($from, "displayResponse {OK}\n");
       } else {
-        $element["status"] = $state == E_LEFT ? S_U_LEFT : S_U_RIGHT;
+        HMIindication($from, "displayResponse {Point Throw Rejected}\n"); // to be detailed FIXME
       }
-      HMIindication($from, "displayResponse {OK}\n");
-//      HMIindicationAll("pointState ".$param[1]." $state ".$element["trackState"]."\n");
     } else {
       HMIindication($from, "displayResponse {Rejected}\n");
     }
@@ -1282,10 +1320,11 @@ print ">$command< \n";
     }
   break;
   case "test":
+  pointThrow($PT1["N101"],C_RIGHT);
 //$PT1["S9"]["trackState"] = T_OCCUPIED; 
 //>>JP:TRAIN_ID
-$PT1["04"]["trackState"] = T_OCCUPIED_STOP;
-$PT1["04"]["trainIDs"] = ["CIRCUS", "CARGO"];
+//$PT1["04"]["trackState"] = T_OCCUPIED_STOP;
+//$PT1["04"]["trainIDs"] = ["CIRCUS", "CARGO"];
 //<<JP:TRAIN_ID
 //$PT1["S8"]["trackState"] = T_OCCUPIED; 
 //$PT1["BG022"]["trackState"] = T_OCCUPIED; 
@@ -1472,7 +1511,7 @@ global $PT1, $HMI, $trainData, $VERSION, $PT1_VERSION;
     case "PF":
     case "PT":
       HMIindication($client,"point $name ".$element["HMI"]["x"]." ".$element["HMI"]["y"]." ".$element["HMI"]["or"]."\n");
-      HMIindication($client,"pointState $name ".$element["state"]." ".$element["trackState"]."\n"); // Physical state to be used FIXME
+      HMIindication($client,"pointState $name ".$element["state"]." ".$element["trackState"]."\n");
     break;
     case "SU":
       HMIindication($client,"signal $name ".$element["HMI"]["x"]." ".$element["HMI"]["y"]." f\n");
@@ -1505,7 +1544,7 @@ global $PT1, $HMI, $trainData, $VERSION, $PT1_VERSION;
 // train data
   foreach ($trainData as $index => &$train) { // train data
     HMIindication($client, "trainFrame ".$index."\n");
-    HMIindication($client, "trainDataS ".$index." ".$train["name"]." ".$train["lengthFront"]."+".$train["lengthBehind"]."\n");
+    HMIindication($client, "trainDataS ".$index." {".$train["name"]." (".$train["ID"].")} ".$train["lengthFront"]."+".$train["lengthBehind"]."\n");
     HMIindication($client, "SRmode ".$index." ".$train["SRallowed"]."\n");
     HMIindication($client, "SHmode ".$index." ".$train["SHallowed"]."\n");
     HMIindication($client, "FSmode ".$index." ".$train["FSallowed"]."\n");
@@ -1557,7 +1596,7 @@ global $HMI, $PT1;
       break;
       case "PF":
       case "PT":
-        HMIindicationAll("pointState $name ".$element["status"]." ".$element["trackState"]." ".$displayedTrainID."\n");
+        HMIindicationAll("pointState $name ".$element["state"]." ".$element["trackState"]." ".$displayedTrainID."\n");
       break;
       case "BSB":
       case "BSE":
