@@ -135,6 +135,7 @@ $bufferstops = array();
 $levelCrossings = array();
 $triggers = array();
 $EC = array();
+$lockedRoutes = array();
 
 $errorFound = false;
 $totalElement = 0;
@@ -786,8 +787,9 @@ global $PT1;
     $pos = $next["position"];
   }
   print "Locking $element in position $pos\n";
+  //TODO Move points
   //Set point in position
-  $PT1[$element]["trackState"] = T_LOCKED;
+  lock($element);
   return TRACK_TRAVERSALE_ACCEPT_ACTIVATE_PAYLOAD; #Lock all elments in route
 }
 
@@ -842,7 +844,7 @@ function lockRoute($s1, $s2) {
   $direction = getSignalDirection($s1);
   if ($direction != getSignalDirection($s2)) {
     print "$s1 and $s2 are not in the same direction. Route does not exist\n";
-    return;
+    return false;
   }
   $isTerminal = function($elt, $dir) use ($s1, $s2) {
     global $PT1;
@@ -870,8 +872,17 @@ function lockRoute($s1, $s2) {
       }
     }
   };
+
+  $canBeLocked = function($element, $direction) use ($s1){
+      if ($element == $s1) {return True;} //Train is allowed to already occupy it and it can be locked in ptrevious route or clear
+      return (!isLocked($element) and isClear($element));
+  };
   $dummy = array();
-  trackRecTraverse("acceptAll", $isTerminal, "lockingPayload", $s1,"", $direction, $dummy);
+  if (trackRecTraverse($canBeLocked, $isTerminal, "lockingPayload", $s1,"", $direction, $dummy) == TRACK_TRAVERSALE_ACCEPT_ACTIVATE_PAYLOAD ) {
+    return True;
+  } else {
+    return False;
+  }
 }
 
 
@@ -1028,8 +1039,10 @@ function getNextEltName($eltName, $dir) {
   }
 }
 
-function getMA($train, $signal) {
-  global $PT1;
+function getMA($trainID, $signal) {
+  global $PT1, $trainData;
+  $train = $trainData[$trainID]; //FIXME: trainID is not the index
+  print "Trying to build MA for train $trainID until signal $signal\n";
   $MA = ["bg" => $train["baliseName"], "dist" => $train["distance"]]; //default MA (position of the train)
   if ($train["positionUnambiguous"]) {
     $dir = getSignalDirection($signal);
@@ -1048,6 +1061,7 @@ function getMA($train, $signal) {
       $dist += ($train["front"] == D_UP  ? $train["lengthBehind"] : $train["lengthFront"]);
     }
     $MA["dist"] = $dist;
+    print "Built MA ".$MA["bg"]." : ".$MA["dist"]." for train $trainID\n";
     return $MA;
   } else {
     print "Cannot compute MA for ".$train["ID"]." : Position is ambiguous\n";
@@ -1055,7 +1069,7 @@ function getMA($train, $signal) {
   }
 }
 
-function associateTrainToRoute($routeDestinationSignal) {
+function searchTrainForRoute($routeDestinationSignal) {
 global $PT1;
   $dir = getSignalDirection($routeDestinationSignal);
   $searchDir = ($dir == "U" ? "D" : "U"); //reverse direction
@@ -1067,13 +1081,13 @@ global $PT1;
       If ($num > 1) {
         //Ambiguous situation. Need precise train position to solve the matter. For now reject
         print "Cannot associate route to signal ".$routeDestinationSignal." : ".$num." trains found in ".$eltName."\n";
-        return;
+        return "";
       } else {
         //check facing point in approach area are correctly set (this was not done by getNextEltName that looked in the other direction
         for ($i = 0; $i<(count($approachArea)-1); $i++) {
           if ($approachArea[$i] !== getNextEltName($approachArea[$i+1], $dir)) {
             print "Point ".$approachArea[$i+1]." not set in correct position to allocate route to signal ".$routeDestinationSignal." to a train\n";
-            return;
+            return "";
           }
         }
         //If element is occupied by train, the train should get the MA for the route
@@ -1081,20 +1095,21 @@ global $PT1;
         //Lock approach area
         foreach($approachArea as $approachElt) {
           print "Locking ".$approachElt." in approach area\n";
-          $PT1[$approachElt]["trackState"] = T_LOCKED;
+          lock($approachElt);
         }
-        //Train gets the MA
-        print "Assosiacting route towards ".$routeDestinationSignal." to train ".$PT1[$eltName]["trainIDs"][0]."\n";
+        //Train gets the associated to route
+        print "Route towards ".$routeDestinationSignal." can be associated to train ".$PT1[$eltName]["trainIDs"][0]."\n";
+        return $PT1[$eltName]["trainIDs"][0];
         break;
       }
     }
     //If not locked -> add to approach area locking list. Stop if signal unlocked.
-    if ($PT1[$eltName]["trackState"] !== T_LOCKED) {
+    if (!isLocked($eltName)) {
       //Do not build an approach area over a signal in the same direction
       $eltType = $PT1[$eltName]["element"];
       if ((( $dir == "U" and  $eltType == "SU") or ($dir == "D" and $eltType == "SD")) and ($eltName != $routeDestinationSignal)) {
         print "Could not find train for route to signal : ".$routeDestinationSignal." search stoped at closed signal ".$eltName."\n";
-        return;
+        return "";
       }
       $approachArea[] = $eltName;
     } else {
@@ -1103,10 +1118,81 @@ global $PT1;
     $nextEltName = getNextEltName($eltName, $searchDir);
     if ($nextEltName == "") {
       print "Could not associate train to route. No next element found after ".$eltName." in direction ".$searchDir."\n";
-      return;
+      return "";
     } else {
       $eltName = $nextEltName;
     }
+  }
+  return ""; //This is not reachable. Added for robustness
+}
+
+//Made a wrapper to ease locking state represantation change
+function isLocked($eltName) {
+global $PT1;
+  return ($PT1[$eltName]["trackState"] === T_LOCKED);
+}
+
+function isClear($eltName) {
+global $PT1;
+  return ($PT1[$eltName]["trackState"] === T_CLEAR);
+}
+
+function lock($eltName) {
+global $PT1;
+  $PT1[$eltName]["trackState"] = T_LOCKED;
+}
+function isLockedRoute($s) {
+global $lockedRoutes;
+  foreach($lockedRoutes as $dest_sig => $route) {
+    if ($dest_sig == $s) {
+      return True;
+    }
+  }
+  return False;
+}
+
+function createNewRoute($s) {
+global $lockedRoutes;
+  print "Creating route $s\n";
+  $lockedRoutes[$s] = [
+      "train" => "",
+      "MA" => []];
+
+}
+
+function associateTrainToRoute($s, $trainID) {
+global $lockedRoutes;
+  print "Associating train $trainID to route $s\n";
+  $lockedRoutes[$s]["train"] = $trainID;
+  $lockedRoutes[$s]["MA"] = getMA($trainID, $s);
+}
+
+function searchAndAssociateTrainToRoute($s) {
+  $trainID = searchTrainForRoute($s);
+  if ($trainID !== "") {
+    associateTrainToRoute($s, $trainID);
+  }
+}
+
+function setRoute($s1, $s2) {
+  print "Trying to set route  $s1 $s2\n";
+  //If $s2 already locked do nothing
+  if (isLocked($s2)) {
+    print "Target signal $s2 is already locked. Aborting Route setting\n";
+    return;
+  }
+
+  if (lockRoute($s1, $s2)) {
+    //check if this is an extension
+    if (isLockedRoute($s1)) {
+      //TODO:Update route table
+    } else {
+      //Create new element in route table
+      createNewRoute($s2);
+      searchAndAssociateTrainToRoute($s2);
+    }
+  } else {
+    print "Route from $s1 to $s2 cannot be locked\n";
   }
 }
 
@@ -1561,8 +1647,7 @@ print ">$command< \n";
   break;
   case "tr": // Try to lock the route
     if ($from == $inCharge) {
-      print "setting route  $param[1] $param[2]\n";
-      lockRoute($param[1], $param[2]);
+      setRoute($param[1], $param[2]);
     }
   break;
   case "test":
@@ -1571,10 +1656,11 @@ print ">$command< \n";
    $train["baliseName"] = "01";
    $train["distance"] = "20";
    updateTrainPosition($train, $train["baliseName"], $train["distance"], T_OCCUPIED_UP);
-   lockRoute("G", "D");
-   associateTrainToRoute("D");
-   print "MA to D\n";
-   print_r (getMA($train, "D"));
+//   lockRoute("G", "D");
+//   searchTrainForRoute("D");
+//   print "MA to D\n";
+//   print_r (getMA($train, "D"));
+
 //$PT1["S9"]["trackState"] = T_OCCUPIED; 
 //>>JP:TRAIN_ID
 //$PT1["04"]["trackState"] = T_OCCUPIED_STOP;

@@ -293,6 +293,17 @@ global fColor tColor toColor tcColor
         }
       }
     }
+    4 { ;# Locked
+      .f.canvas itemconfigure "$name&&trainIdLabel" -state hidden
+      switch $state {
+        20 {
+          .f.canvas itemconfigure "$name&&(track||trackleft||left)" -fill $tcColor
+        }
+        21 {
+          .f.canvas itemconfigure "$name&&(track||trackright||right)" -fill $tcColor
+        }
+      }
+    }
   }
 }
 
@@ -344,6 +355,9 @@ global fColor tColor toColor tcColor mColor lColor
         }
       }
     }
+    4 { ;#Locked
+      .f.canvas itemconfigure "$name&&(track||p)" -fill $tcColor
+    }
   }
 }
 proc signalState {name state trackState {trainID ""}} {
@@ -375,6 +389,10 @@ global fColor oColor cColor toColor tcColor tColor
       .f.canvas itemconfigure "$name&&trainIdLabel" -text $trainID
       .f.canvas itemconfigure "$name&&trainIdLabel" -state normal
     }
+    4 { ;#Locked
+      .f.canvas itemconfigure "$name&&track" -fill $tcColor
+      .f.canvas itemconfigure "$name&&trainIdLabel" -state hidden
+    }
   }
 }
 
@@ -396,6 +414,10 @@ global fColor tColor tcColor toColor
       .f.canvas itemconfigure "$name&&trainIdLabel" -text $trainID
       .f.canvas itemconfigure "$name&&trainIdLabel" -state normal
     }
+    4 { ;#Locked
+      .f.canvas itemconfigure "$name&&track" -fill $tcColor
+      .f.canvas itemconfigure "$name&&trainIdLabel" -state hidden
+    }
   }
 }
 
@@ -405,24 +427,22 @@ global fColor tColor tcColor toColor
   switch $trackState {
     0 { ;# Unsupervised
       .f.canvas itemconfigure "$name&&track" -fill $fColor
-#>>JP:TRAIN_ID
       .f.canvas itemconfigure "$name&&trainIdLabel" -state hidden
-#<<JP:TRAIN_ID
     }
     5 { ;# Clear
       .f.canvas itemconfigure "$name&&track" -fill $tColor
-#>>JP:TRAIN_ID
       .f.canvas itemconfigure "$name&&trainIdLabel" -state hidden
-#<<JP:TRAIN_ID
     }
     1 -
     2 -
     3 { ;# Occupied
       .f.canvas itemconfigure "$name&&track" -fill $toColor
-#>>JP:TRAIN_ID
       .f.canvas itemconfigure "$name&&trainIdLabel" -text $trainID
       .f.canvas itemconfigure "$name&&trainIdLabel" -state normal
-#<<JP:TRAIN_ID
+    }
+    4 { ;#Locked
+      .f.canvas itemconfigure "$name&&track" -fill $tcColor
+      .f.canvas itemconfigure "$name&&trainIdLabel" -state hidden
     }
   }
 }
