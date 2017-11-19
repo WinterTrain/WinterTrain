@@ -58,6 +58,7 @@ define("T_UNSUPERVISED",0);
 define("T_OCCUPIED_DOWN",1);
 define("T_OCCUPIED_UP",2);
 define("T_OCCUPIED_STOP",3);
+define("T_LOCKED", 4);
 define("T_CLEAR",5);
 // Train mode
 define("M_UDEF",0);
@@ -778,12 +779,15 @@ function addToListPayload($element, &$sharedVar, $direction, $next) {
 }
 
 function lockingPayload($element, &$sharedVar, $direction, $next) {
+global $PT1;
   #Push $element into list
   $pos = "";
   if (array_key_exists("position", $next)) {
     $pos = $next["position"];
   }
   print "Locking $element in position $pos\n";
+  //Set point in position
+  $PT1[$element]["trackState"] = T_LOCKED;
   return TRACK_TRAVERSALE_ACCEPT_ACTIVATE_PAYLOAD; #Lock all elments in route
 }
 
@@ -873,88 +877,239 @@ function lockRoute($s1, $s2) {
 
 // New train position detection function
 
-function recUpdateTrainPosition($train, $dir, $a, $eltName, $trackState, $depth) {
+function getEltLength($eltName) {
   global $PT1;
-#  print $depth." : ".$eltName."\n";
-  if ($depth > 100) {return;}
-  $elt = &$PT1[$eltName];
+  $elt = $PT1[$eltName];
   switch ($elt["element"]) {
-      case "PF":
-      case "PT":
-        $b = $a + $elt["T"]["dist"];
-        if ($elt["latestLie"] == E_RIGHT) {
-          $b += $elt["R"]["dist"];
-        } else {
-          $b += $elt["L"]["dist"];
-        }
-        break;
-      default:
-        $b = $a + $elt["D"]["dist"] + $elt["U"]["dist"];
+    case "PF":
+    case "PT":
+        return ($elt["T"]["dist"] + ($elt["latestLie"] == E_RIGHT ? $elt["R"]["dist"]: $elt["L"]["dist"]));
+    case "BSE":
+        return $elt["D"]["dist"];
+    case "BSB":
+        return $elt["U"]["dist"];
+    default:
+        return ($elt["D"]["dist"] + $elt["U"]["dist"]);
   }
-  if ($dir == "D") {$tmp = $a - ($b-$a); $b = $a; $a = $tmp;} //Reverse $a and $b if going down
-#  print "a: ".$a."   b:".$b."\n";
-#  print "x: ".$train["upFront"]."   y:".$train["backFront"]."\n";
-  if (($a <= $train["upFront"]) and ($b >= $train["backFront"])) {
-#    print $eltName." occupied ".$trackState." \n";
-    //Occupation
-    //TODO add segment to train if this is the "further one up or down"
+}
+
+function recUpdateTrainPosition(&$train, $dir, $x, $eltName, $trackState) {
+  global $PT1;
+  $elt = &$PT1[$eltName];
+  $length = getEltLength($eltName);
+  // Define  element coordinates [a,b]
+  $a = ($dir == "U" ? $x : $x - $length);
+  $b = ($dir == "U" ? $x + $length: $x);
+
+  // Check if train is occupying the element
+  if (($a <= $train["upFront"]) and ($b >= $train["downFront"])) {
+    $elt["trackState"] = $trackState;
+    //Clear trainID from element occupation list (it will be re-added below if needed)
     if (FALSE !== ($key = array_search($train["ID"], $elt["trainIDs"]))) {
       unset($elt["trainIDs"][$key]);
     }
-    $elt["trackState"] = $trackState;
     if ($trackState !== T_CLEAR) {
       $elt["trainIDs"][] = $train["ID"];
+      // Add elt to train info if this is the "further one up or down" (usefull to search for MA)
+      if ($a <= $train["downEltDist"]) {
+          $train["downEltDist"] = $a;
+          $train["downElt"] = $eltName;
+      }
+      if ($b >= $train["upEltDist"]) {
+          $train["upEltDist"] = $b;
+          $train["upElt"] = $eltName;
+      }
     }
   }
 
-    //Try to continue
-    if (($dir == "U") and ($a <= $train["upFront"])) {
-      //keep looking up unless it was facing point
-      switch ($elt["element"]) {
-        case "PF":
-          //stop and invalidate position
-          $train["positionUnambiguous"] = False;
-          return;
-        case "PT":
-          recUpdateTrainPosition($train, $dir, $b, $elt["T"]["name"], $trackState, $depth +1 );
-          return;
-        case "BSE":
-          return; //Reached end of track... Train derailed?
-        default:
-          recUpdateTrainPosition($train, $dir, $b, $elt["U"]["name"], $trackState, $depth + 1);
-      }
-    } elseif (($dir == "D") and ($b >= $train["backFront"])) {
-      //keep looking up unless it was facing point
-      switch ($elt["element"]) {
-        case "PT":
-          //stop and invalidate position
-          $train["positionUnambiguous"] = False;
-          return;
-        case "PF":
-          recUpdateTrainPosition($train, $dir, $a, $elt["T"]["name"], $trackState, $depth + 1);
-          return;
-        case "BSB":
-          return; //Reached end of track... Train derailed?
-        default:
-          recUpdateTrainPosition($train, $dir, $a, $elt["D"]["name"], $trackState, $depth + 1);
-      }
+  //Chek if further element in this direction may be occupied
+  if (($dir == "U") and ($a <= $train["upFront"])) {
+    //keep looking up unless it was facing point
+    switch ($elt["element"]) {
+      case "PF":
+        //stop and invalidate position
+        $train["positionUnambiguous"] = False;
+        return;
+      case "PT":
+        recUpdateTrainPosition($train, $dir, $b, $elt["T"]["name"], $trackState);
+        return;
+      case "BSE":
+        return; //Reached end of track... Train derailed?
+      default:
+        recUpdateTrainPosition($train, $dir, $b, $elt["U"]["name"], $trackState);
     }
+  } elseif (($dir == "D") and ($b >= $train["downFront"])) {
+    //keep looking dow unless it was facing point
+    switch ($elt["element"]) {
+      case "PT":
+        //stop and invalidate position
+        $train["positionUnambiguous"] = False;
+        return;
+      case "PF":
+        recUpdateTrainPosition($train, $dir, $a, $elt["T"]["name"], $trackState);
+        return;
+      case "BSB":
+        return; //Reached end of track... Train derailed?
+      default:
+        recUpdateTrainPosition($train, $dir, $a, $elt["D"]["name"], $trackState);
+    }
+  }
 }
 
-function updateTrainPosition($train, $balise, $dist, $trackState) {
+function updateTrainPosition(&$train, $balise, $dist, $trackState) {
   global $PT1;
   #TODO Add uncertainty margin here??
   if ($train["front"] == D_UP ) {
     $train["upFront"] = $dist + $train["lengthFront"];
-    $train["backFront"] = $dist - $train["lengthBehind"];
+    $train["downFront"] = $dist - $train["lengthBehind"];
   } else {
     $train["upFront"] = $dist + $train["lengthBehind"];
-    $train["backFront"] = $dist - $train["lengthFront"];
+    $train["downFront"] = $dist - $train["lengthFront"];
   }
   $train["positionUnambiguous"] = True;
-  recUpdateTrainPosition($train, "U", 0, $balise, $trackState, 0);
-  recUpdateTrainPosition($train, "D", 0, $PT1[$balise]["D"]["name"], $trackState, 0);
+  if ($trackState !== T_CLEAR) {
+    //init data representing element up and down of train that will be found during recUpdateTrainPosition
+    $train["upElt"] = "";
+    $train["downElt"] = "";
+    $train["upEltDist"] = $train["upFront"];
+    $train["downEltDist"] = $train["downFront"];
+  }
+  recUpdateTrainPosition($train, "U", 0, $balise, $trackState);
+  recUpdateTrainPosition($train, "D", 0, $PT1[$balise]["D"]["name"], $trackState);
 }
+
+function getNextEltName($eltName, $dir) {
+  global $PT1;
+  $elt = $PT1[$eltName];
+  if ($dir == "U") {
+    switch ($elt["element"]) {
+      case "PF":
+        if ($elt["latestLie"] == E_RIGHT) {
+          return $elt["R"]["name"];
+        } elseif ($elt["latestLie"] == E_LEFT) {
+          return $elt["L"]["name"];
+        } else {
+          print "Cannot find next element after point ".$eltName." : Lie is unknown\n";
+          return "";
+         }
+        break;
+      case "PT":
+        return $elt["T"]["name"];
+        break;
+      case "BSE":
+        print "Cannot find next element after  ".$eltName." : Buffer stop\n";
+        return "";
+      default:
+        return $elt["U"]["name"];
+    }
+  } else {
+    switch ($elt["element"]) {
+      case "PT":
+        if ($elt["latestLie"] == E_RIGHT) {
+          print "Point ".$eltName." right\n";
+          return $elt["R"]["name"];
+        } elseif ($elt["latestLie"] == E_LEFT) {
+          print "Point ".$eltName." left\n";
+          return $elt["L"]["name"];
+        } else {
+          print "Cannot find next element after point ".$eltName." Lie is unknown\n";
+          return "";
+         }
+        break;
+      case "PF":
+        return $elt["T"]["name"];
+        break;
+      case "BSB":
+        print "Cannot find next element after  ".$eltName." : Buffer stop\n";
+        return "";
+      default:
+        return $elt["D"]["name"];
+    }
+  }
+}
+
+function getMA($train, $signal) {
+  global $PT1;
+  $MA = ["bg" => $train["baliseName"], "dist" => $train["distance"]]; //default MA (position of the train)
+  if ($train["positionUnambiguous"]) {
+    $dir = getSignalDirection($signal);
+    $eltName = ($dir == "U" ? $train["upElt"]: $train["downElt"]);
+    $dist = ($dir == "U" ? $train["upEltDist"]: $train["downEltDist"]);
+
+    while ($eltName !== $signal) {
+      $eltName = getNextEltName($eltName, $dir);
+      if ($eltName == "") {print "Failed to compute MA because could not find next element\n"; return $MA;}
+      $dist += ($dir == "U" ? getEltLength($eltName) : -getEltLength($eltName));
+    }
+    //take into account balise reader position in the train
+    if ($dir == "U") {
+      $dist -= ($train["front"] == D_UP  ? $train["lengthFront"] : $train["lengthBehind"]);
+    } else {
+      $dist += ($train["front"] == D_UP  ? $train["lengthBehind"] : $train["lengthFront"]);
+    }
+    $MA["dist"] = $dist;
+    return $MA;
+  } else {
+    print "Cannot compute MA for ".$train["ID"]." : Position is ambiguous\n";
+    return $MA;
+  }
+}
+
+function associateTrainToRoute($routeDestinationSignal) {
+global $PT1;
+  $dir = getSignalDirection($routeDestinationSignal);
+  $searchDir = ($dir == "U" ? "D" : "U"); //reverse direction
+  $eltName = $routeDestinationSignal;
+  $lastLockedEltName;
+  $approachArea = [""];
+  while (True) {
+    If ($num = count($PT1[$eltName]["trainIDs"])){
+      If ($num > 1) {
+        //Ambiguous situation. Need precise train position to solve the matter. For now reject
+        print "Cannot associate route to signal ".$routeDestinationSignal." : ".$num." trains found in ".$eltName."\n";
+        return;
+      } else {
+        //check facing point in approach area are correctly set (this was not done by getNextEltName that looked in the other direction
+        for ($i = 0; $i<(count($approachArea)-1); $i++) {
+          if ($approachArea[$i] !== getNextEltName($approachArea[$i+1], $dir)) {
+            print "Point ".$approachArea[$i+1]." not set in correct position to allocate route to signal ".$routeDestinationSignal." to a train\n";
+            return;
+          }
+        }
+        //If element is occupied by train, the train should get the MA for the route
+        //Should the direction/state of the train be considered?
+        //Lock approach area
+        foreach($approachArea as $approachElt) {
+          print "Locking ".$approachElt." in approach area\n";
+          $PT1[$approachElt]["trackState"] = T_LOCKED;
+        }
+        //Train gets the MA
+        print "Assosiacting route towards ".$routeDestinationSignal." to train ".$PT1[$eltName]["trainIDs"][0]."\n";
+        break;
+      }
+    }
+    //If not locked -> add to approach area locking list. Stop if signal unlocked.
+    if ($PT1[$eltName]["trackState"] !== T_LOCKED) {
+      //Do not build an approach area over a signal in the same direction
+      $eltType = $PT1[$eltName]["element"];
+      if ((( $dir == "U" and  $eltType == "SU") or ($dir == "D" and $eltType == "SD")) and ($eltName != $routeDestinationSignal)) {
+        print "Could not find train for route to signal : ".$routeDestinationSignal." search stoped at closed signal ".$eltName."\n";
+        return;
+      }
+      $approachArea[] = $eltName;
+    } else {
+      $approachArea[0] = $eltName; //updating lastlocked element for the facing point check in approach area
+    }
+    $nextEltName = getNextEltName($eltName, $searchDir);
+    if ($nextEltName == "") {
+      print "Could not associate train to route. No next element found after ".$eltName." in direction ".$searchDir."\n";
+      return;
+    } else {
+      $eltName = $nextEltName;
+    }
+  }
+}
+
 // End of addition of new helpers
 function initRBCIL() {
 global $trainData, $trainIndex, $DATA_FILE, $SHallowed, $FSallowed, $ATOallowed;
@@ -1411,7 +1566,15 @@ print ">$command< \n";
     }
   break;
   case "test":
-  pointThrow($PT1["N101"],C_RIGHT);
+  //pointThrow($PT1["N101"],C_RIGHT);
+   $train = &$trainData[0];
+   $train["baliseName"] = "01";
+   $train["distance"] = "20";
+   updateTrainPosition($train, $train["baliseName"], $train["distance"], T_OCCUPIED_UP);
+   lockRoute("G", "D");
+   associateTrainToRoute("D");
+   print "MA to D\n";
+   print_r (getMA($train, "D"));
 //$PT1["S9"]["trackState"] = T_OCCUPIED; 
 //>>JP:TRAIN_ID
 //$PT1["04"]["trackState"] = T_OCCUPIED_STOP;
