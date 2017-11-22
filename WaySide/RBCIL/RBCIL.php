@@ -15,7 +15,7 @@ $ABUS_GATEWAYport = 9200;
 $RBCIL_CONFIG = "RBCILconf.php";
 #$PT1_DATA = "data/RBCIL_PT1.php";
 #$TRAIN_DATA = "data/RBCIL_TRAIN.php";
-$DATA_FILE = "../SiteData/W57/W57.php";
+$DATA_FILE = "../SiteData/CBU/CBU.php";
 $ERRLOG = "Log/RBCIL_ErrLog.txt";
 $MSGLOG = "Log/RBCIL.log";
 
@@ -35,8 +35,9 @@ define("LX_WARNING_TIME",2);
 define("R_IDLE", 0);
 // Interlocking Element state
 define("E_UNSUPERVISED",0); // All
-define("E_OPEN",10);        // Signal
-define("E_CLOSED",11);
+define("E_STOP",10); //Signal
+define("E_PROCEED",11);
+define("E_PROCEEDPROCEED",12);
 define("E_LEFT",20);        // Point, supervised left
 define("E_RIGHT",21);       // supervised right
 define("E_MOVING",22);      //   point is (supposed to be) moving
@@ -147,7 +148,7 @@ $ATOallowed = 0;
 //--------------------------------------- System 
 cmdLineParam();
 if ($ABUS == "cbu") {
-  include '/home/jb/scripts/AbusMasterLib.php'; // must be included at global level
+  include '/home/jabe/scripts/AbusMasterLib.php'; // must be included at global level
 }
 prepareMainProgram();
 versionInfo();
@@ -397,7 +398,7 @@ global $DATA_FILE, $trainData, $PT1_VERSION, $PT1, $HMI, $errorFound, $totalElem
       case "SU":
       case "SD":
         $signals[] = $name;
-        $element["state"] = E_CLOSED; // purpose? FIXME
+        $element["state"] = E_STOP; // purpose? FIXME
         $element["status"] = $element["type"] == "MB" ? S_CLOSED : S_UNSUPERVISED;
       break;
       case "BSB":
@@ -557,7 +558,7 @@ global $PT1, $EC;
   foreach ($EC as $addr => $ec) {
     requestElementStatusEC($addr);
     foreach ($ec["index"] as $index => $name) {
-      if ($PT1[$name]["state"] == E_OPEN)  { // ... and $name is a signal .... FIXME
+      if ($PT1[$name]["state"] == E_PROCEED)  { // ... and $name is a signal .... FIXME
         orderEC($addr, $index, O_PROCEED);// O_PROCEED_EXTENDED to be add for next version FIXME
       }
     }
@@ -1537,10 +1538,10 @@ print ">$command< \n";
   case "so": // signal order
     if ($from == $inCharge) {
       $element = &$PT1[$param[1]];
-      $state = ($element["state"] == E_CLOSED ? E_OPEN : E_CLOSED); // toggle state
+      $state = ($element["state"] == E_STOP ? E_PROCEED : E_STOP); // toggle state
       $element["state"] = $state;
       if ($element["type"] == "LS1") {
-        orderEC($element["EC"]["addr"], $element["EC"]["index"],$state == E_OPEN ? O_PROCEED : O_STOP);
+        orderEC($element["EC"]["addr"], $element["EC"]["index"],$state == E_PROCEED ? O_PROCEED : O_STOP);
       }
       HMIindication($from, "displayResponse {OK}\n");
     } else {
