@@ -147,7 +147,7 @@ $ATOallowed = 0;
 //--------------------------------------- System 
 cmdLineParam();
 if ($ABUS == "cbu") {
-  include '/home/jb/scripts/AbusMasterLib.php'; // must be included at global level
+  include '/home/jabe/scripts/AbusMasterLib.php'; // must be included at global level
 }
 prepareMainProgram();
 versionInfo();
