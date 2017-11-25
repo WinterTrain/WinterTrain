@@ -8,11 +8,11 @@ set IPport 9900
 # Default configuration
 set trackWidth 0.15
 set lineWidth 0.05
-set winWidth 1700
-set winHeight 700
+set winWidth 1900
+set winHeight 800
 set winX +50
 set winY +50
-set cWidth 1550
+set cWidth 1750
 set cHeight 350
 set fColor blue       ;# failure color
 set tColor black      ;# Clear track, not locked in route
@@ -47,6 +47,14 @@ proc label {text x y} {
 proc track {name x y {length 1}} {
   dLabel $x $y 0.5 0. $name "$name label"
   dTrack $x $y 0 0.5 $length 0.5 "$name track"
+#>>JP:TRAIN_ID
+  dTrainIDLabel  $x $y 0.5 0.2 "TEST" "$name trainIdLabel"
+#<<JP:TRAIN_ID
+}
+
+proc trackR {name x y {length 1}} {
+  dLabel $x $y 0.5 0. $name "$name label"
+  dTrack $x $y 0 0.5 1 2.5 "$name track"
 #>>JP:TRAIN_ID
   dTrainIDLabel  $x $y 0.5 0.2 "TEST" "$name trainIdLabel"
 #<<JP:TRAIN_ID
@@ -127,6 +135,16 @@ proc point {name x y layout} {
       dTrack $x $y 1 0.5 1.3 1.1 "$name right"
       dTrack $x $y 1.3 1.1 2 2.5 "$name trackright"
       dButton $x $y 1 0.5 0.4 $name selectPoint
+    }
+    fl { ;# facing, left branch is diverging
+      dLabel $x $y 1 2.9 $name "$name label"
+      dTrainIDLabel  $x $y 0.5 2.8 "TEST" "$name trainIdLabel"
+      dTrack $x $y 0 2.5 1 2.5 "$name track"
+      dTrack $x $y 1 2.5 1.5 2.5 "$name right"
+      dTrack $x $y 1.5 2.5 2 2.5 "$name trackright"
+      dTrack $x $y 1 2.5 1.3 1.9 "$name left"
+      dTrack $x $y 1.3 1.9 2 0.5 "$name trackleft"
+      dButton $x $y 1 2.5 0.4 $name selectPoint
     }
     tl { ;# trailing, left branch is diverging
       dLabel $x $y 1 0.1 $name "$name label"
