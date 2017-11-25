@@ -392,8 +392,19 @@ global $DATA_FILE, $trainData, $PT1_VERSION, $PT1, $HMI, $errorFound, $totalElem
       case "PF":
       case "PT":
         $points[] = $name;
-        $element["state"] = E_UNSUPERVISED;
-        $element["latestLie"] = E_RIGHT; // Just to start somewhere
+        switch($element["clamp"]) {
+        case "":
+          $element["state"] = E_UNSUPERVISED;
+          $element["latestLie"] = E_RIGHT; // Just to start somewhere
+        break;
+        case "R":
+          $element["state"] = E_RIGHT;
+          $element["latestLie"] = E_RIGHT;
+        break;
+        case "L":
+          $element["state"] = E_LEFT;
+          $element["latestLie"] = E_LEFT;
+        }
       break;
       case "SU":
       case "SD":
@@ -635,18 +646,20 @@ global $EC, $PT1;
       switch ($element["element"]) {
         case "PT":
         case "PF":
-          switch ($element["EC"]["type"]) {
-            case 10: // point machine without feedback
-              if ($status == S_U_RIGHT) {
-                $element["state"] = $element["latestLie"] = E_RIGHT;
-              } else if ($status == S_U_LEFT) {
-                $element["state"] = $element["latestLie"] = E_LEFT;
-              } else {
-                $element["state"] = E_UNSUPERVISED;
-              }
-              break;
-            default:
-            $element["state"] = E_UNSUPERVISED;
+          if ($element["clamp"] == "") {
+            switch ($element["EC"]["type"]) {
+              case 10: // point machine without feedback
+                if ($status == S_U_RIGHT) {
+                  $element["state"] = $element["latestLie"] = E_RIGHT;
+                } else if ($status == S_U_LEFT) {
+                  $element["state"] = $element["latestLie"] = E_LEFT;
+                } else {
+                  $element["state"] = E_UNSUPERVISED;
+                }
+                break;
+              default:
+              $element["state"] = E_UNSUPERVISED;
+            }
           }
         break;
         case "SD":
@@ -1514,7 +1527,7 @@ global $PT1;
 }
 
 function pointThrow(&$element, $lie) {
-  if ($element["trackState"] == T_CLEAR ) { // point may be thrown
+  if ($element["trackState"] == T_CLEAR and $element["clamp"] == "") { // point may be thrown if clear and not clamped
     $order = ($lie == C_TOGGLE ? ($element["latestLie"] == E_LEFT ? O_RIGHT : O_LEFT) : ($lie == C_RIGHT ? O_RIGHT : O_LEFT));
     $element["state"] = E_MOVING;
     switch ($element["EC"]["type"]) {
