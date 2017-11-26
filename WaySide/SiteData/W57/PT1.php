@@ -15,11 +15,11 @@ $PT1 = [
   ],
 "B" => [ // Signal, facing and ...
   "element" => "SU",
-  "type" => "MB",
+  "type" => "LS1",
   "EC" => [
-    "addr" => 0,
-    "type" => 0,
-    "device1" => 0,
+    "addr" => 150,
+    "type" => 41,
+    "device1" => 4,
     ],
   "U" => ["name" => "01", "dist" => 0],
   "D" => ["name" => "E", "dist" => 0],
@@ -34,7 +34,7 @@ $PT1 = [
   "U" => ["name" => "N101", "dist" => 11],
   "D" => ["name" => "B", "dist" => 0],
   ],
-  
+
 "F" => [ // Bufferstop; begin of direction up
   "element" => "BSB",
   "U" => ["name" => "C", "dist" => 121],
@@ -46,11 +46,11 @@ $PT1 = [
   ],
 "C" => [ // Signal, facing and ...
   "element" => "SU",
-  "type" => "MB",
+  "type" => "LS1",
   "EC" => [
-    "addr" => 0,
-    "type" => 0,
-    "device1" => 0,
+    "addr" => 150,
+    "type" => 41,
+    "device1" => 5,
     ],
   "U" => ["name" => "02", "dist" => 0],
   "D" => ["name" => "F", "dist" => 0],

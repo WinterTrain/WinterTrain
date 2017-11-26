@@ -18,7 +18,7 @@ $PT1 = [
 
 "BG01" => [ // Balises
   "element" => "BL",
-  "ID" => "",
+  "ID" => "76:00:0C:75:E5",
   "U" => ["name" => "S1", "dist" => 16],
   "D" => ["name" => "B1", "dist" => 1],
   ],
@@ -41,7 +41,7 @@ $PT1 = [
 
 "BG03" => [ // Balises
   "element" => "BL",
-  "ID" => "",
+  "ID" => "75:00:14:D1:25",
   "U" => ["name" => "P1", "dist" => 17],
   "D" => ["name" => "S1", "dist" => 1],
   ],
@@ -60,7 +60,7 @@ $PT1 = [
 
 "BG02" => [ // Balises
   "element" => "BL",
-  "ID" => "",
+  "ID" => "73:00:56:D9:B2",
   "U" => ["name" => "S2", "dist" => 16],
   "D" => ["name" => "B2", "dist" => 1],
   ],
@@ -83,7 +83,7 @@ $PT1 = [
 
 "BG04" => [ // Balises
   "element" => "BL",
-  "ID" => "",
+  "ID" => "76:00:0C:FA:7D",
   "U" => ["name" => "P1", "dist" => 14],
   "D" => ["name" => "S2", "dist" => 1],
   ],
@@ -109,14 +109,14 @@ $PT1 = [
 
 "BG05" => [ // Balises
   "element" => "BL",
-  "ID" => "",
+  "ID" => "73:00:70:3D:8D",
   "U" => ["name" => "BG06", "dist" => 10],
   "D" => ["name" => "P1", "dist" => 10],
   ],
 
 "BG06" => [ // Balises
   "element" => "BL",
-  "ID" => "",
+  "ID" => "74:00:11:07:0B",
   "U" => ["name" => "S3", "dist" => 1],
   "D" => ["name" => "BG05", "dist" => 10],
   ],
@@ -142,7 +142,7 @@ $PT1 = [
 
 "BG07" => [ // Balises
   "element" => "BL",
-  "ID" => "",
+  "ID" => "73:00:70:98:69",
   "U" => ["name" => "S4", "dist" => 228],
   "D" => ["name" => "S3", "dist" => 257],
   ],
@@ -181,14 +181,14 @@ $PT1 = [
 
 "BG08" => [ // Balises
   "element" => "BL",
-  "ID" => "",
+  "ID" => "74:00:15:50:C0",
   "U" => ["name" => "BG09", "dist" => 132],
   "D" => ["name" => "S5", "dist" => 1],
   ],
   
 "BG09" => [ // Balises
   "element" => "BL",
-  "ID" => "",
+  "ID" => "76:00:0C:E3:A8",
   "U" => ["name" => "S6", "dist" => 208],
   "D" => ["name" => "BG08", "dist" => 132],
   ],
@@ -213,14 +213,14 @@ $PT1 = [
 
 "BG10" => [ // Balises
   "element" => "BL",
-  "ID" => "",
+  "ID" => "76:00:0D:03:82",
   "U" => ["name" => "BG11", "dist" => 10],
   "D" => ["name" => "S6", "dist" => 1],
   ],
   
 "BG11" => [ // Balises
   "element" => "BL",
-  "ID" => "",
+  "ID" => "73:00:56:A6:71",
   "U" => ["name" => "P2", "dist" => 10],
   "D" => ["name" => "BG10", "dist" => 10],
   ],
@@ -247,14 +247,14 @@ $PT1 = [
 
 "BG12" => [ // Balises
   "element" => "BL",
-  "ID" => "",
+  "ID" => "73:00:56:E4:D1",
   "U" => ["name" => "BG14", "dist" => 10],
   "D" => ["name" => "P2", "dist" => 2],
   ],
  
 "BG14" => [ // Balises
   "element" => "BL",
-  "ID" => "",
+  "ID" => "76:00:0C:EC:E8",
   "U" => ["name" => "S7", "dist" => 1],
   "D" => ["name" => "BG12", "dist" => 11],
   ],
@@ -293,14 +293,14 @@ $PT1 = [
   
 "BG16" => [ // Balises
   "element" => "BL",
-  "ID" => "",
+  "ID" => "73:00:56:C0:72",
   "U" => ["name" => "BG17", "dist" => 0],
   "D" => ["name" => "S9", "dist" => 0],
   ],
   
 "BG17" => [ // Balises
   "element" => "BL",
-  "ID" => "",
+  "ID" => "73:00:56:93:AA",
   "U" => ["name" => "P3", "dist" => 0],
   "D" => ["name" => "BG16", "dist" => 0],
   ],
@@ -328,14 +328,14 @@ $PT1 = [
  
 "BG21" => [ // Balises
   "element" => "BL",
-  "ID" => "",
+  "ID" => "73:00:6E:C8:15",
   "U" => ["name" => "BG22", "dist" => 0],
   "D" => ["name" => "P3", "dist" => 0],
   ],
   
 "BG22" => [ // Balises
   "element" => "BL",
-  "ID" => "",
+  "ID" => "74:00:11:09:64",
   "U" => ["name" => "S11", "dist" => 1],
   "D" => ["name" => "BG21", "dist" => 9],
   ],
@@ -360,14 +360,14 @@ $PT1 = [
 
 "BG13" => [ // Balises
   "element" => "BL",
-  "ID" => "",
+  "ID" => "74:00:15:0B:FB",
   "U" => ["name" => "BG15", "dist" => 9],
   "D" => ["name" => "P2", "dist" => 1],
   ],
  
 "BG15" => [ // Balises
   "element" => "BL",
-  "ID" => "",
+  "ID" => "73:00:56:E3:9B",
   "U" => ["name" => "S8", "dist" => 1],
   "D" => ["name" => "BG13", "dist" => 10],
   ],
@@ -390,7 +390,7 @@ $PT1 = [
 
 "BG18" => [ // Balises
   "element" => "BL",
-  "ID" => "",
+  "ID" => "76:00:0C:D2:BB",
   "U" => ["name" => "S10", "dist" => 0],
   "D" => ["name" => "S8", "dist" => 0],
   ],
@@ -413,7 +413,7 @@ $PT1 = [
 
 "BG19" => [ // Balises
   "element" => "BL",
-  "ID" => "",
+  "ID" => "73:00:56:9B:F4",
   "U" => ["name" => "P4", "dist" => 1],
   "D" => ["name" => "S10", "dist" => 9],
   ],
@@ -460,7 +460,7 @@ $PT1 = [
 
 "BG25" => [ // Balises
   "element" => "BL",
-  "ID" => "",
+  "ID" => "74:00:10:F3:3E",
   "U" => ["name" => "S13", "dist" => 0],
   "D" => ["name" => "S11", "dist" => 0],
   ],
@@ -483,7 +483,7 @@ $PT1 = [
 
 "BG27" => [ // Balises
   "element" => "BL",
-  "ID" => "",
+  "ID" => "76:00:0C:FC:CB",
   "U" => ["name" => "S14", "dist" => 1],
   "D" => ["name" => "S13", "dist" => 9],
   ],
