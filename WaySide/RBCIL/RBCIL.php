@@ -947,8 +947,8 @@ function recUpdateTrainPosition(&$train, $dir, $x, $eltName, $trackState) {
     }
   }
 
-  //Chek if further element in this direction may be occupied
-  if (($dir == "U") and ($a <= $train["upFront"])) {
+  //Check if further element in this direction may be occupied
+  if (($dir == "U") and ($b <= $train["upFront"])) {
     //keep looking up unless it was facing point
     switch ($elt["element"]) {
       case "PF":
@@ -963,12 +963,13 @@ function recUpdateTrainPosition(&$train, $dir, $x, $eltName, $trackState) {
       default:
         recUpdateTrainPosition($train, $dir, $b, $elt["U"]["name"], $trackState);
     }
-  } elseif (($dir == "D") and ($b >= $train["downFront"])) {
+  } elseif (($dir == "D") and ($a >= $train["downFront"])) {
     //keep looking dow unless it was facing point
     switch ($elt["element"]) {
       case "PT":
         //stop and invalidate position
         $train["positionUnambiguous"] = False;
+        print "Invalidating postion in $eltName due to a=".$a." >= train[downFront]=".$train["downFront"]."\n";
         return;
       case "PF":
         recUpdateTrainPosition($train, $dir, $a, $elt["T"]["name"], $trackState);
@@ -999,8 +1000,8 @@ function updateTrainPosition(&$train, $balise, $dist, $trackState) {
     $train["upEltDist"] = $train["upFront"];
     $train["downEltDist"] = $train["downFront"];
   }
-  recUpdateTrainPosition($train, "U", 0, $balise, $trackState);
-  recUpdateTrainPosition($train, "D", 0, $PT1[$balise]["D"]["name"], $trackState);
+  recUpdateTrainPosition($train, "U", -$PT1[$balise]["D"]["dist"], $balise, $trackState);
+  recUpdateTrainPosition($train, "D", -$PT1[$balise]["D"]["dist"], $PT1[$balise]["D"]["name"], $trackState);
 }
 
 function getNextEltName($eltName, $dir) {
@@ -1054,8 +1055,8 @@ function getNextEltName($eltName, $dir) {
 }
 
 function getMA($trainID, $signal) {
-  global $PT1, $trainData;
-  $train = $trainData[$trainID]; //FIXME: trainID is not the index
+  global $PT1, $trainData, $trainIndex;
+  $train = $trainData[$trainIndex[$trainID]]; //FIXME: trainID is not the index
   print "Trying to build MA for train $trainID until signal $signal\n";
   $MA = ["bg" => $train["baliseName"], "dist" => $train["distance"]]; //default MA (position of the train)
   if ($train["positionUnambiguous"]) {
@@ -1067,6 +1068,10 @@ function getMA($trainID, $signal) {
       $eltName = getNextEltName($eltName, $dir);
       if ($eltName == "") {print "Failed to compute MA because could not find next element\n"; return $MA;}
       $dist += ($dir == "U" ? getEltLength($eltName) : -getEltLength($eltName));
+    }
+    //take into account the fact that the signal is in the "middle" of its segment if not buffer stop
+    if (($PT1[$signal]["element"] == "SU") or ($PT1[$signal]["element"] == "SD")) {
+      $dist += ($dir == "U"  ? -$PT1[$signal]["U"]["dist"] : $PT1[$signal]["D"]["dist"]);
     }
     //take into account balise reader position in the train
     if ($dir == "U") {
@@ -1090,6 +1095,7 @@ global $PT1;
   $eltName = $routeDestinationSignal;
   $lastLockedEltName;
   $approachArea = [""];
+  $unlockedElementMet = False; //used to avoid merging routes through approach area.
   while (True) {
     If ($num = count($PT1[$eltName]["trainIDs"])){
       If ($num > 1) {
@@ -1100,7 +1106,8 @@ global $PT1;
         //check facing point in approach area are correctly set (this was not done by getNextEltName that looked in the other direction
         for ($i = 0; $i<(count($approachArea)-1); $i++) {
           if ($approachArea[$i] !== getNextEltName($approachArea[$i+1], $dir)) {
-            print "Point ".$approachArea[$i+1]." not set in correct position to allocate route to signal ".$routeDestinationSignal." to a train\n";
+            print "Point ".$approachArea[$i+1]." not set in correct position to allocate route to signal ".$routeDestinationSignal." to a train\n".
+            "(".$approachArea[$i]." !== ".getNextEltName($approachArea[$i+1], $dir).")\n";
             return "";
           }
         }
@@ -1119,15 +1126,19 @@ global $PT1;
     }
     //If not locked -> add to approach area locking list. Stop if signal unlocked.
     if (!isLocked($eltName)) {
-      //Do not build an approach area over a signal in the same direction
+      $approachArea[] = $eltName;
+      $unlockedElementMet = True; //used to avoid merging routes through approach area.
+    } else {
+      $approachArea[0] = $eltName; //updating lastlocked element for the facing point check in approach area
+    }
+
+    //Do not build an approach area over a signal in the same direction
+    if ($unlockedElementMet) {
       $eltType = $PT1[$eltName]["element"];
       if ((( $dir == "U" and  $eltType == "SU") or ($dir == "D" and $eltType == "SD")) and ($eltName != $routeDestinationSignal)) {
         print "Could not find train for route to signal : ".$routeDestinationSignal." search stoped at closed signal ".$eltName."\n";
         return "";
       }
-      $approachArea[] = $eltName;
-    } else {
-      $approachArea[0] = $eltName; //updating lastlocked element for the facing point check in approach area
     }
     $nextEltName = getNextEltName($eltName, $searchDir);
     if ($nextEltName == "") {
@@ -1155,6 +1166,12 @@ function lock($eltName) {
 global $PT1;
   $PT1[$eltName]["trackState"] = T_LOCKED;
 }
+
+function unlock($eltName) {
+global $PT1;
+  $PT1[$eltName]["trackState"] = T_CLEAR;
+}
+
 function isLockedRoute($s) {
 global $lockedRoutes;
   foreach($lockedRoutes as $dest_sig => $route) {
@@ -1181,6 +1198,26 @@ global $lockedRoutes;
   $lockedRoutes[$s]["MA"] = getMA($trainID, $s);
 }
 
+function clearFromRoute($s) {
+global $lockedRoutes;
+  if (isset($lockedRoutes[$s])) {
+    print "Clearing Route $s\n";
+    unset($lockedRoutes[$s]);
+  }
+}
+
+function extendRoute($s1, $s2) {
+global $lockedRoutes;
+  print "Extending route $s1 to $s2\n";
+  $lockedRoutes[$s2] = $lockedRoutes[$s1];
+  unset($lockedRoutes[$s1]);
+  //Update MA if applicable
+  if ($lockedRoutes[$s2]["train"] != "") {
+    print "Updating MA of train ".$lockedRoutes[$s2]["train"]." until $s2\n";
+    $lockedRoutes[$s2]["MA"] = getMA($lockedRoutes[$s2]["train"], $s2);
+  }
+}
+
 function searchAndAssociateTrainToRoute($s) {
   $trainID = searchTrainForRoute($s);
   if ($trainID !== "") {
@@ -1199,7 +1236,8 @@ function setRoute($s1, $s2) {
   if (lockRoute($s1, $s2)) {
     //check if this is an extension
     if (isLockedRoute($s1)) {
-      //TODO:Update route table
+      //Update route table
+      extendRoute($s1, $s2);
     } else {
       //Create new element in route table
       createNewRoute($s2);
@@ -1208,6 +1246,29 @@ function setRoute($s1, $s2) {
   } else {
     print "Route from $s1 to $s2 cannot be locked\n";
   }
+}
+
+function routeRelease($s) {
+  if (isLockedRoute($s)) {
+    $eltName = $s;
+    $dir = (getSignalDirection($s) == "U"? "D": "U");
+
+    while (isLocked($eltName)) {
+      unlock($eltName);
+      print "Manually unlocking $eltName\n";
+      $eltName = getNextEltName($eltName, $dir);
+      if ($eltName == "") {return;}
+    }
+    clearFromRoute($s);
+  } else {
+    print "cannot release route $s: Route was not locked\n";
+  }
+}
+
+function startRouteRelease($s) {
+//set timer and call routeRelease
+//FixMe: route should not be extented during timer??
+  routeRelease($s);
 }
 
 // End of addition of new helpers
@@ -1550,6 +1611,9 @@ print ">$command< \n";
   switch ($param[0]) {
   case "so": // signal order
     if ($from == $inCharge) {
+// releaseRoute
+      //startRouteRelease($param[1]);
+// Control Signal State
       $element = &$PT1[$param[1]];
       $state = ($element["state"] == E_STOP ? E_PROCEED : E_STOP); // toggle state
       $element["state"] = $state;
@@ -1667,8 +1731,8 @@ print ">$command< \n";
   case "test":
   //pointThrow($PT1["N101"],C_RIGHT);
    $train = &$trainData[0];
-   $train["baliseName"] = "01";
-   $train["distance"] = "20";
+   $train["baliseName"] = "BG06";
+   $train["distance"] = "30";
    updateTrainPosition($train, $train["baliseName"], $train["distance"], T_OCCUPIED_UP);
 //   lockRoute("G", "D");
 //   searchTrainForRoute("D");
