@@ -1094,20 +1094,22 @@ global $PT1;
   $searchDir = ($dir == "U" ? "D" : "U"); //reverse direction
   $eltName = $routeDestinationSignal;
   $lastLockedEltName;
-  $approachArea = [""];
+  $approachArea = [];
+  $routeElts = [];
   $unlockedElementMet = False; //used to avoid merging routes through approach area.
   while (True) {
+    $routeElts[] = $eltName;
     If ($num = count($PT1[$eltName]["trainIDs"])){
       If ($num > 1) {
         //Ambiguous situation. Need precise train position to solve the matter. For now reject
         print "Cannot associate route to signal ".$routeDestinationSignal." : ".$num." trains found in ".$eltName."\n";
         return "";
       } else {
-        //check facing point in approach area are correctly set (this was not done by getNextEltName that looked in the other direction
-        for ($i = 0; $i<(count($approachArea)-1); $i++) {
-          if ($approachArea[$i] !== getNextEltName($approachArea[$i+1], $dir)) {
-            print "Point ".$approachArea[$i+1]." not set in correct position to allocate route to signal ".$routeDestinationSignal." to a train\n".
-            "(".$approachArea[$i]." !== ".getNextEltName($approachArea[$i+1], $dir).")\n";
+        //check facing point in route are correctly set
+        for ($i = 0; $i<(count($routeElts)-1); $i++) {
+          if ($routeElts[$i] !== getNextEltName($routeElts[$i+1], $dir)) {
+            print "Point ".$routeElts[$i+1]." not set in correct position to allocate route to signal ".$routeDestinationSignal." to a train\n".
+            $routeElts[$i]." !== ".getNextEltName($routeElts[$i+1], $dir)."\n";
             return "";
           }
         }
@@ -1128,8 +1130,6 @@ global $PT1;
     if (!isLocked($eltName)) {
       $approachArea[] = $eltName;
       $unlockedElementMet = True; //used to avoid merging routes through approach area.
-    } else {
-      $approachArea[0] = $eltName; //updating lastlocked element for the facing point check in approach area
     }
 
     //Do not build an approach area over a signal in the same direction
@@ -1612,14 +1612,16 @@ print ">$command< \n";
   case "so": // signal order
     if ($from == $inCharge) {
 // releaseRoute
-      //startRouteRelease($param[1]);
+      startRouteRelease($param[1]);
 // Control Signal State
+/*
       $element = &$PT1[$param[1]];
       $state = ($element["state"] == E_STOP ? E_PROCEED : E_STOP); // toggle state
       $element["state"] = $state;
       if ($element["type"] == "LS1") {
         orderEC($element["EC"]["addr"], $element["EC"]["index"],$state == E_PROCEED ? O_PROCEED : O_STOP);
       }
+*/
       HMIindication($from, "displayResponse {OK}\n");
     } else {
       HMIindication($from, "displayResponse {Rejected}\n");
