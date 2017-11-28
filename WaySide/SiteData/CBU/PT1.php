@@ -504,7 +504,7 @@ $PT1 = [
     "type" => 41,
     "device1" => 4,
     ],
-  "U" => ["name" => "B4", "dist" => 1],
+  "U" => ["name" => "VBG27", "dist" => 1],
   "D" => ["name" => "BG27", "dist" => 1],
   "HMI" => [
     "x" => 31,
@@ -512,9 +512,17 @@ $PT1 = [
     ],
   ],  
 
+"VBG27" => [ // Balises
+  "element" => "BL",
+  "ID" => "76:00:0C:FC:CB",
+  "U" => ["name" => "B4", "dist" => 47],
+  "D" => ["name" => "S14", "dist" => 47],
+  ],
+
+
 "B4" => [ // Bufferstop; end of direction up
   "element" => "BSE",
-  "D" => ["name" => "S14", "dist" => 189],
+  "D" => ["name" => "VBG27", "dist" => 95],
   "HMI" => [
     "x" => 34,
     "y" => 2,
@@ -759,7 +767,7 @@ $HMI = [ //------------------------------------------------------------------ HM
       "l" => 1,
     ],
     "tr12" => [
-      "balises" => [
+      "balises" => ["VBG27",
               ],
       "or" => "s",
       "x" => 33,
