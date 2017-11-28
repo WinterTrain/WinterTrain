@@ -1958,7 +1958,7 @@ global $PT1, $HMI, $trainData, $VERSION, $PT1_VERSION;
   HMIindication($client,".f.canvas raise button [.f.canvas create text 0 0]\n"); // Ensure that all element buttons are on the top layer
 // HMI data
   foreach ($HMI["baliseTrack"] as $trackName => $baliseTrack) {
-    HMIindication($client,"track $trackName ".$baliseTrack["x"]." ".$baliseTrack["y"]." ".$baliseTrack["l"]."\n");
+    HMIindication($client,"track $trackName ".$baliseTrack["x"]." ".$baliseTrack["y"]." ".$baliseTrack["l"]." ".$baliseTrack["or"]."\n");
     HMIindication($client,"trState $trackName ".$baliseTrack["trackState"]." ".$baliseTrack["trainID"]."\n");  //>>JP:TRAIN_ID
   }
 // train data

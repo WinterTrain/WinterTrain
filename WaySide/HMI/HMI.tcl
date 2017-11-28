@@ -44,26 +44,28 @@ proc label {text x y} {
   dLabelStatic $x $y 0 0 $text
 }
 
-proc track {name x y {length 1}} {
-  dLabel $x $y 0.5 0. $name "$name label"
-  dTrack $x $y 0 0.5 $length 0.5 "$name track"
+proc track {name x y length  {or s}} {
+  switch $or {
+    s {
+      dLabel $x $y 0.5 0 $name "$name label"
+      dTrack $x $y 0 0.5 $length 0.5 "$name track"
 #>>JP:TRAIN_ID
-  dTrainIDLabel  $x $y 0.5 0.2 "TEST" "$name trainIdLabel"
+      dTrainIDLabel  $x $y 0.5 0.2 "TEST" "$name trainIdLabel"
 #<<JP:TRAIN_ID
 }
-
-proc trackR {name x y {length 1}} {
-  dLabel $x $y 0.5 0. $name "$name label"
-  dTrack $x $y 0 0.5 1 2.5 "$name track"
-#>>JP:TRAIN_ID
-  dTrainIDLabel  $x $y 0.5 0.2 "TEST" "$name trainIdLabel"
-#<<JP:TRAIN_ID
+    u {
+      dLabel $x $y 0.2 1 $name "$name label"
+      dTrack $x $y 0 [expr 2.5 * $length] $length 0.5 "$name track"
+      dTrainIDLabel  $x $y 0.2 0.8 "TEST" "$name trainIdLabel"
+    }
+    d {
+      dLabel $x $y 0.7 0.5 $name "$name label"
+      dTrack $x $y 0 0.5 $length [expr 2.5 * $length] "$name track"
+      dTrainIDLabel  $x $y 0.7 0.2 "TEST" "$name trainIdLabel"
+    }
+  }
 }
 
-#proc balise {name x y {length 1}} {
-#  dLabel $x $y 0.5 0.1 $name "$name label"
-#  dTrack $x $y 0 0.5 $length 0.5 "$name track" 
-#}
 
 proc levelcrossing {name x y} {
   dLabel $x $y 0.5 0.4 $name "$name label"
