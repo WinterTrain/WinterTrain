@@ -145,6 +145,10 @@ $SHallowed = 0;
 $FSallowed = 0;
 $ATOallowed = 0;
 
+
+$testStep = 0;
+$testBg = "BG06";
+$testDist = "30";
 //--------------------------------------- System 
 cmdLineParam();
 if ($ABUS == "cbu") {
@@ -370,6 +374,7 @@ global $DATA_FILE, $trainData, $PT1_VERSION, $PT1, $HMI, $errorFound, $totalElem
 //>>JP:TRAIN_ID
     $element["trainIDs"] = [];
 //<<JP:TRAIN_ID
+    $element["locked"] = False;
     switch ($element["element"]) {
       case "BL":
         $balises[] = $name;
@@ -687,6 +692,10 @@ global $EC, $PT1;
 //------------------------------------------------------------------- RBC-IL
 // New helper functions for setting routes
 
+function RBC_IL_DebugPrint($msg) {
+  print "RBC:".date('h:i:s').": ".$msg;
+}
+
 function nextElements($element, $direction, $previousElement) {
   global $PT1;
   $elts = array();
@@ -800,7 +809,7 @@ global $PT1;
   if (array_key_exists("position", $next)) {
     $pos = $next["position"];
   }
-  print "Locking $element in position $pos\n";
+  RBC_IL_DebugPrint("Locking $element in position $pos\n");
   //TODO Move points
   //Set point in position
   lock($element);
@@ -835,7 +844,7 @@ function findSignalsFrom($element, $direction) {
   $signals = array();
   trackRecTraverse("acceptAll", $isTerminal, "addToListPayload", $element,"", $direction, $signals);
   foreach ($signals as $sig) {
-    print "$sig is next signal in direction $direction of $element\n";
+    RBC_IL_DebugPrint("$sig is next signal in direction $direction of $element\n");
   }
 }
 
@@ -857,7 +866,7 @@ function getSignalDirection($element) {
 function lockRoute($s1, $s2) {
   $direction = getSignalDirection($s1);
   if ($direction != getSignalDirection($s2)) {
-    print "$s1 and $s2 are not in the same direction. Route does not exist\n";
+    RBC_IL_DebugPrint("$s1 and $s2 are not in the same direction. Route does not exist\n");
     return false;
   }
   $isTerminal = function($elt, $dir) use ($s1, $s2) {
@@ -934,6 +943,7 @@ function recUpdateTrainPosition(&$train, $dir, $x, $eltName, $trackState) {
       unset($elt["trainIDs"][$key]);
     }
     if ($trackState !== T_CLEAR) {
+      //Element is occupied
       $elt["trainIDs"][] = $train["ID"];
       // Add elt to train info if this is the "further one up or down" (usefull to search for MA)
       if ($a <= $train["downEltDist"]) {
@@ -944,6 +954,7 @@ function recUpdateTrainPosition(&$train, $dir, $x, $eltName, $trackState) {
           $train["upEltDist"] = $b;
           $train["upElt"] = $eltName;
       }
+      checkIfRouteRelease($eltName);
     }
   }
 
@@ -954,6 +965,7 @@ function recUpdateTrainPosition(&$train, $dir, $x, $eltName, $trackState) {
       case "PF":
         //stop and invalidate position
         $train["positionUnambiguous"] = False;
+        RBC_IL_DebugPrint("Invalidating postion in $eltName due to b=".$b." <= train[upFront]=".$train["upFront"]."\n");
         return;
       case "PT":
         recUpdateTrainPosition($train, $dir, $b, $elt["T"]["name"], $trackState);
@@ -969,7 +981,7 @@ function recUpdateTrainPosition(&$train, $dir, $x, $eltName, $trackState) {
       case "PT":
         //stop and invalidate position
         $train["positionUnambiguous"] = False;
-        print "Invalidating postion in $eltName due to a=".$a." >= train[downFront]=".$train["downFront"]."\n";
+        RBC_IL_DebugPrint("Invalidating postion in $eltName due to a=".$a." >= train[downFront]=".$train["downFront"]."\n");
         return;
       case "PF":
         recUpdateTrainPosition($train, $dir, $a, $elt["T"]["name"], $trackState);
@@ -1015,7 +1027,7 @@ function getNextEltName($eltName, $dir) {
         } elseif ($elt["latestLie"] == E_LEFT) {
           return $elt["L"]["name"];
         } else {
-          print "Cannot find next element after point ".$eltName." : Lie is unknown\n";
+          RBC_IL_DebugPrint("Cannot find next element after point ".$eltName." : Lie is unknown\n");
           return "";
          }
         break;
@@ -1023,7 +1035,7 @@ function getNextEltName($eltName, $dir) {
         return $elt["T"]["name"];
         break;
       case "BSE":
-        print "Cannot find next element after  ".$eltName." : Buffer stop\n";
+        RBC_IL_DebugPrint("Cannot find next element after  ".$eltName." : Buffer stop\n");
         return "";
       default:
         return $elt["U"]["name"];
@@ -1032,13 +1044,13 @@ function getNextEltName($eltName, $dir) {
     switch ($elt["element"]) {
       case "PT":
         if ($elt["latestLie"] == E_RIGHT) {
-          print "Point ".$eltName." right\n";
+          RBC_IL_DebugPrint("Point ".$eltName." right\n");
           return $elt["R"]["name"];
         } elseif ($elt["latestLie"] == E_LEFT) {
-          print "Point ".$eltName." left\n";
+          RBC_IL_DebugPrint("Point ".$eltName." left\n");
           return $elt["L"]["name"];
         } else {
-          print "Cannot find next element after point ".$eltName." Lie is unknown\n";
+          RBC_IL_DebugPrint("Cannot find next element after point ".$eltName." Lie is unknown\n");
           return "";
          }
         break;
@@ -1046,7 +1058,7 @@ function getNextEltName($eltName, $dir) {
         return $elt["T"]["name"];
         break;
       case "BSB":
-        print "Cannot find next element after  ".$eltName." : Buffer stop\n";
+        RBC_IL_DebugPrint("Cannot find next element after  ".$eltName." : Buffer stop\n");
         return "";
       default:
         return $elt["D"]["name"];
@@ -1054,39 +1066,52 @@ function getNextEltName($eltName, $dir) {
   }
 }
 
+//TODO: improve to reject case when unkow balise was read, not just if no balise read
+function isKnownBalise($bgName) {
+  return (($bgName != "00:00:00:00:00") and ($bgName !== ""));
+}
+
 function getMA($trainID, $signal) {
   global $PT1, $trainData, $trainIndex;
-  $train = $trainData[$trainIndex[$trainID]]; //FIXME: trainID is not the index
-  print "Trying to build MA for train $trainID until signal $signal\n";
-  $MA = ["bg" => $train["baliseName"], "dist" => $train["distance"]]; //default MA (position of the train)
-  if ($train["positionUnambiguous"]) {
-    $dir = getSignalDirection($signal);
-    $eltName = ($dir == "U" ? $train["upElt"]: $train["downElt"]);
-    $dist = ($dir == "U" ? $train["upEltDist"]: $train["downEltDist"]);
+  $train = $trainData[$trainIndex[$trainID]];
+  RBC_IL_DebugPrint("Trying to build MA for train $trainID until signal $signal\n");
+  $MA = ["bg" => "", "dist" => 0]; //default MA (position of the train)
+  if (isKnownBalise($train["baliseName"])) {
+    $MA["bg"] = $train["baliseName"]; //MA from LRBG
+    if ($train["positionUnambiguous"]) {
+      $dir = getSignalDirection($signal);
+      $eltName = ($dir == "U" ? $train["upElt"]: $train["downElt"]);
+      $dist = ($dir == "U" ? $train["upEltDist"]: $train["downEltDist"]);
 
-    while ($eltName !== $signal) {
-      $eltName = getNextEltName($eltName, $dir);
-      if ($eltName == "") {print "Failed to compute MA because could not find next element\n"; return $MA;}
-      $dist += ($dir == "U" ? getEltLength($eltName) : -getEltLength($eltName));
-    }
-    //take into account the fact that the signal is in the "middle" of its segment if not buffer stop
-    if (($PT1[$signal]["element"] == "SU") or ($PT1[$signal]["element"] == "SD")) {
-      $dist += ($dir == "U"  ? -$PT1[$signal]["U"]["dist"] : $PT1[$signal]["D"]["dist"]);
-    }
-    //take into account balise reader position in the train
-    if ($dir == "U") {
-      $dist -= ($train["front"] == D_UP  ? $train["lengthFront"] : $train["lengthBehind"]);
+      while ($eltName !== $signal) {
+        $eltName = getNextEltName($eltName, $dir);
+        if ($eltName == "") {RBC_IL_DebugPrint("Failed to compute MA because could not find next element\n"); return $MA;}
+        $dist += ($dir == "U" ? getEltLength($eltName) : -getEltLength($eltName));
+      }
+      //take into account the fact that the signal is in the "middle" of its segment if not buffer stop
+      if (($PT1[$signal]["element"] == "SU") or ($PT1[$signal]["element"] == "SD")) {
+        $dist += ($dir == "U"  ? -$PT1[$signal]["U"]["dist"] : $PT1[$signal]["D"]["dist"]);
+      }
+      //take into account balise reader position in the train
+      if ($dir == "U") {
+        $dist -= ($train["front"] == D_UP  ? $train["lengthFront"] : $train["lengthBehind"]);
+      } else {
+        $dist += ($train["front"] == D_UP  ? $train["lengthBehind"] : $train["lengthFront"]);
+      }
+      $MA["dist"] = $dist;
+      RBC_IL_DebugPrint("Built MA ".$MA["bg"]." : ".$MA["dist"]." for train $trainID\n");
+      giveMAtoTrain($MA, $trainID);
+      return $MA;
     } else {
-      $dist += ($train["front"] == D_UP  ? $train["lengthBehind"] : $train["lengthFront"]);
+      RBC_IL_DebugPrint("Cannot compute MA for ".$train["ID"]." : Position is ambiguous\n");
+      return $MA;
     }
-    $MA["dist"] = $dist;
-    print "Built MA ".$MA["bg"]." : ".$MA["dist"]." for train $trainID\n";
-    return $MA;
   } else {
-    print "Cannot compute MA for ".$train["ID"]." : Position is ambiguous\n";
-    return $MA;
+    RBC_IL_DebugPrint("$bgName is not linked. Cannot compute MA to $signal for train $trainID based on this balise\n");
   }
 }
+
+
 
 function searchTrainForRoute($routeDestinationSignal) {
 global $PT1;
@@ -1102,14 +1127,14 @@ global $PT1;
     If ($num = count($PT1[$eltName]["trainIDs"])){
       If ($num > 1) {
         //Ambiguous situation. Need precise train position to solve the matter. For now reject
-        print "Cannot associate route to signal ".$routeDestinationSignal." : ".$num." trains found in ".$eltName."\n";
+        RBC_IL_DebugPrint("Cannot associate route to signal ".$routeDestinationSignal." : ".$num." trains found in ".$eltName."\n");
         return "";
       } else {
         //check facing point in route are correctly set
         for ($i = 0; $i<(count($routeElts)-1); $i++) {
           if ($routeElts[$i] !== getNextEltName($routeElts[$i+1], $dir)) {
-            print "Point ".$routeElts[$i+1]." not set in correct position to allocate route to signal ".$routeDestinationSignal." to a train\n".
-            $routeElts[$i]." !== ".getNextEltName($routeElts[$i+1], $dir)."\n";
+            RBC_IL_DebugPrint("Point ".$routeElts[$i+1]." not set in correct position to allocate route to signal ".$routeDestinationSignal." to a train\n".
+            $routeElts[$i]." !== ".getNextEltName($routeElts[$i+1], $dir)."\n");
             return "";
           }
         }
@@ -1117,11 +1142,11 @@ global $PT1;
         //Should the direction/state of the train be considered?
         //Lock approach area
         foreach($approachArea as $approachElt) {
-          print "Locking ".$approachElt." in approach area\n";
+          RBC_IL_DebugPrint("Locking ".$approachElt." in approach area\n");
           lock($approachElt);
         }
         //Train gets the associated to route
-        print "Route towards ".$routeDestinationSignal." can be associated to train ".$PT1[$eltName]["trainIDs"][0]."\n";
+        RBC_IL_DebugPrint("Route towards ".$routeDestinationSignal." can be associated to train ".$PT1[$eltName]["trainIDs"][0]."\n");
         return $PT1[$eltName]["trainIDs"][0];
         break;
       }
@@ -1136,13 +1161,13 @@ global $PT1;
     if ($unlockedElementMet) {
       $eltType = $PT1[$eltName]["element"];
       if ((( $dir == "U" and  $eltType == "SU") or ($dir == "D" and $eltType == "SD")) and ($eltName != $routeDestinationSignal)) {
-        print "Could not find train for route to signal : ".$routeDestinationSignal." search stoped at closed signal ".$eltName."\n";
+        RBC_IL_DebugPrint("Could not find train for route to signal : ".$routeDestinationSignal." search stoped at closed signal ".$eltName."\n");
         return "";
       }
     }
     $nextEltName = getNextEltName($eltName, $searchDir);
     if ($nextEltName == "") {
-      print "Could not associate train to route. No next element found after ".$eltName." in direction ".$searchDir."\n";
+      RBC_IL_DebugPrint("Could not associate train to route. No next element found after ".$eltName." in direction ".$searchDir."\n");
       return "";
     } else {
       $eltName = $nextEltName;
@@ -1154,7 +1179,8 @@ global $PT1;
 //Made a wrapper to ease locking state represantation change
 function isLocked($eltName) {
 global $PT1;
-  return ($PT1[$eltName]["trackState"] === T_LOCKED);
+  //return ($PT1[$eltName]["trackState"] === T_LOCKED);
+  return ($PT1[$eltName]["locked"]);
 }
 
 function isClear($eltName) {
@@ -1165,11 +1191,15 @@ global $PT1;
 function lock($eltName) {
 global $PT1;
   $PT1[$eltName]["trackState"] = T_LOCKED;
+  $PT1[$eltName]["locked"] = True;
 }
 
 function unlock($eltName) {
 global $PT1;
-  $PT1[$eltName]["trackState"] = T_CLEAR;
+  if ($PT1[$eltName]["trackState"] == T_LOCKED) {
+    $PT1[$eltName]["trackState"] = T_CLEAR; //Set to clear only if not occupied
+  }
+  $PT1[$eltName]["locked"] = False;
 }
 
 function isLockedRoute($s) {
@@ -1184,11 +1214,10 @@ global $lockedRoutes;
 
 function createNewRoute($s) {
 global $lockedRoutes;
-  print "Creating route $s\n";
+  RBC_IL_DebugPrint("Creating route $s\n");
   $lockedRoutes[$s] = [
       "train" => "",
       "MA" => []];
-
 }
 
 function associateTrainToRoute($s, $trainID) {
@@ -1198,38 +1227,125 @@ global $lockedRoutes;
   $lockedRoutes[$s]["MA"] = getMA($trainID, $s);
 }
 
-function clearFromRoute($s) {
+function getTrainLRBG($trainID) {
+global $trainData, $trainIndex;
+  $train = $trainData[$trainIndex[$trainID]];
+  return $train["baliseName"];
+}
+
+function giveMAtoTrain($MA, $trainID) {
+global $PT1, $trainData, $trainIndex;
+  if (isset($PT1[$MA["bg"]]["ID"])) {
+    $trainData[$trainIndex[$trainID]]["MAbalise"] = explode(":", $PT1[$MA["bg"]]["ID"]);
+    $trainData[$trainIndex[$trainID]]["MAdist"] = round($MA["dist"] / $trainData[$trainIndex[$trainID]]["wheelFactor"]); //FIXME: Confirm that still ok to divide here
+    RBC_IL_DebugPrint("Giving MA from ".$PT1[$MA["bg"]]["ID"]." with distance ".$trainData[$trainIndex[$trainID]]["MAdist"]." to train $trainID \n");
+  } else {
+    RBC_IL_DebugPrint("Cannot send MA to train $trainID: balise $bg has no ID set in PT1\n");
+  }
+}
+
+function getReverseDir($dir) {
+  return ($dir == "U"? "D": "U");
+}
+//Partial release function
+function partialRelease($trainID, $signal) {
+global $trainData, $trainIndex;
+  $dir = getSignalDirection($signal);
+  $revDir = getReverseDir($dir);
+  $train = $trainData[$trainIndex[$trainID]];
+  if ($train["positionUnambiguous"]) {
+    $elt = ($dir = "U"? $train["upElt"]: $train["downElt"]); //Looking for element occupied by train Front
+    while (isLocked($elt)) {
+      if ($elt == $signal) {
+        clearFromRoutes($signal);
+      } else {
+        unlock($elt);
+        $elt = getNextEltName($elt, $revDir); //Look for element to release behind train
+        if ($elt == "") {break;}
+      }
+    }
+  } else {
+    RBC_IL_DebugPrint("Skiping partial route release because train $trainID is ambiguous\n");
+  }
+}
+
+//Try to allocate train to route without train / update MA of trains 
+function updateRoutesStatus() {
+global $lockedRoutes;
+  foreach($lockedRoutes as $signal => $route) {
+    $trainID = $route["train"];
+    if ($trainID !== "") {
+      //route allocated to train see if recompute MA based on potential new balise reported by train
+      if ($route["MA"]["bg"] != getTrainLRBG($trainID)) {
+        RBC_IL_DebugPrint("Updating MA from balise ".$route["MA"]["bg"]." to balise ".getTrainLRBG($trainID)."\n");
+        $lockedRoutes[$signal]["MA"] = getMA($trainID, $signal);
+      } else {
+        //refresh MA for train in case it did not received it
+        giveMAtoTrain($route["MA"], $trainID);
+      }
+      //Perform Partial Release
+      partialRelease($trainID, $signal);
+    } else {
+      //Look for train
+      searchAndAssociateTrainToRoute($signal);
+    }
+  }
+
+}
+
+function checkIfRouteRelease($eltName) {
+global $PT1;
+  switch ($PT1[$eltName]["element"] ) {
+    case "SD":
+    case "BSB":
+    case "SU":
+    case "BSE":
+      clearFromRoutes($eltName);
+      return;
+    default:
+      return;
+  }
+}
+
+function clearFromRoutes($s) {
 global $lockedRoutes;
   if (isset($lockedRoutes[$s])) {
-    print "Clearing Route $s\n";
+    RBC_IL_DebugPrint("Clearing Route $s\n");
     unset($lockedRoutes[$s]);
   }
 }
 
 function extendRoute($s1, $s2) {
 global $lockedRoutes;
-  print "Extending route $s1 to $s2\n";
+  RBC_IL_DebugPrint("Extending route $s1 to $s2\n");
   $lockedRoutes[$s2] = $lockedRoutes[$s1];
   unset($lockedRoutes[$s1]);
   //Update MA if applicable
   if ($lockedRoutes[$s2]["train"] != "") {
-    print "Updating MA of train ".$lockedRoutes[$s2]["train"]." until $s2\n";
+    RBC_IL_DebugPrint("Updating MA of train ".$lockedRoutes[$s2]["train"]." until $s2\n");
     $lockedRoutes[$s2]["MA"] = getMA($lockedRoutes[$s2]["train"], $s2);
   }
 }
 
 function searchAndAssociateTrainToRoute($s) {
+global $trainData, $trainIndex;
   $trainID = searchTrainForRoute($s);
   if ($trainID !== "") {
-    associateTrainToRoute($s, $trainID);
+    $train = $trainData[$trainIndex[$trainID]];
+//    if ($train["authMode"] == M_FS or $train["authMode"] == M_ATO) {
+    if (True) {
+      associateTrainToRoute($s, $trainID);
+    } else {
+      RBC_IL_DebugPrint("Found train $trainID for route to $s but train is not in FS or ATO. Route will not be associated\n");
+    }
   }
 }
 
 function setRoute($s1, $s2) {
-  print "Trying to set route  $s1 $s2\n";
+  RBC_IL_DebugPrint("Trying to set route  $s1 $s2\n");
   //If $s2 already locked do nothing
   if (isLocked($s2)) {
-    print "Target signal $s2 is already locked. Aborting Route setting\n";
+    RBC_IL_DebugPrint("Target signal $s2 is already locked. Aborting Route setting\n");
     return;
   }
 
@@ -1244,7 +1360,7 @@ function setRoute($s1, $s2) {
       searchAndAssociateTrainToRoute($s2);
     }
   } else {
-    print "Route from $s1 to $s2 cannot be locked\n";
+    RBC_IL_DebugPrint("Route from $s1 to $s2 cannot be locked\n");
   }
 }
 
@@ -1255,13 +1371,13 @@ function routeRelease($s) {
 
     while (isLocked($eltName)) {
       unlock($eltName);
-      print "Manually unlocking $eltName\n";
+      RBC_IL_DebugPrint("Manually unlocking $eltName\n");
       $eltName = getNextEltName($eltName, $dir);
       if ($eltName == "") {return;}
     }
-    clearFromRoute($s);
+    clearFromRoutes($s);
   } else {
-    print "cannot release route $s: Route was not locked\n";
+    RBC_IL_DebugPrint("cannot release route $s: Route was not locked\n");
   }
 }
 
@@ -1604,6 +1720,38 @@ function pointThrow(&$element, $lie) {
   }
 }
 
+
+//Fake train for simulation purpose
+function moveTestTrain($dir, $dist) {
+global $testBg, $testDist, $trainData, $PT1;
+  $train = &$trainData[0];
+  $train["baliseName"] = $testBg;
+  $train["distance"] = $testDist;
+  updateTrainPosition($train, $train["baliseName"], $train["distance"], T_CLEAR);
+  $testDist += $dist;
+
+  $d = $testDist;
+  $d -= ($dir == "U"? $PT1[$testBg]["U"]["dist"]: $PT1[$testBg]["D"]["dist"]);
+  $elt = $testBg;
+  //Check if new balise read
+  while ($d>0) {
+    $elt = getNextEltName($elt, $dir);
+    if ($elt == "") {break;}
+    if ($PT1[$elt]["element"] == "BL") {
+      $delta = $d;
+      $delta -= ($dir == "U"? $PT1[$elt]["D"]["dist"]: $PT1[$elt]["U"]["dist"]);
+      if ($delta > 0) {
+        $testBg = $elt;
+        $testDist = $delta;
+      }
+      $d -= getEltLength($elt);
+    }
+  }
+  $train["baliseName"] = $testBg;
+  $train["distance"] = $testDist;
+  updateTrainPosition($train, $train["baliseName"], $train["distance"], T_OCCUPIED_UP);
+}
+
 function processCommand($command, $from) { // process HMI command
 global $PT1, $clients, $clientsData, $inCharge, $trainData, $EC, $now, $balises;
 print ">$command< \n";
@@ -1732,10 +1880,7 @@ print ">$command< \n";
   break;
   case "test":
   //pointThrow($PT1["N101"],C_RIGHT);
-   $train = &$trainData[0];
-   $train["baliseName"] = "BG06";
-   $train["distance"] = "30";
-   updateTrainPosition($train, $train["baliseName"], $train["distance"], T_OCCUPIED_UP);
+    moveTestTrain("U", 50);
 //   lockRoute("G", "D");
 //   searchTrainForRoute("D");
 //   print "MA to D\n";
@@ -1765,7 +1910,7 @@ print ">$command< \n";
 }
 
 function RBC() {
-
+  updateRoutesStatus();
 }
 
 function IL() {
