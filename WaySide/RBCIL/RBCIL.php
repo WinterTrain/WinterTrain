@@ -696,6 +696,16 @@ function RBC_IL_DebugPrint($msg) {
   print "RBC:".date('h:i:s').": ".$msg;
 }
 
+function isMoveablePoint($eltName) {
+  global $PT1;
+  $type = $PT1[$eltName]["element"];
+  if ($type == "PF" or $type == "PT") {
+    return  ($PT1[$eltName]["clamp"] == "");
+  } else {
+    return False;
+  }
+}
+
 function nextElements($element, $direction, $previousElement) {
   global $PT1;
   $elts = array();
@@ -711,35 +721,43 @@ function nextElements($element, $direction, $previousElement) {
       }
       break;
     case "PT":
-      if ($direction === "U") {
-        if ($PT1[$element]["R"]["name"] === $previousElement) {
-          $elts[] = $PT1[$element]["T"] + ["direction" => "T", "position" => "R"];
-        } elseif ($PT1[$element]["L"]["name"] === $previousElement) {
-          $elts[] = $PT1[$element]["T"] + ["direction" => "T", "position" => "L"];
-        } else {
-          $elts[] = $PT1[$element]["T"] + ["direction" => "T", "position" => "UNKNOWN"];
+      if (isMoveablePoint($element)) {
+        if ($direction === "U") {
+          if ($PT1[$element]["R"]["name"] === $previousElement) {
+            $elts[] = $PT1[$element]["T"] + ["direction" => "T", "position" => C_RIGHT];
+          } elseif ($PT1[$element]["L"]["name"] === $previousElement) {
+            $elts[] = $PT1[$element]["T"] + ["direction" => "T", "position" => C_LEFT];
+          } else {
+            $elts[] = $PT1[$element]["T"] + ["direction" => "T", "position" => "UNKNOWN"];
+          }
+        } else { #Direction down
+            $elts[] = $PT1[$element]["R"] + ["direction" => "F", "position" => C_RIGHT];
+            $elts[] = $PT1[$element]["L"] + ["direction" => "F", "position" => C_LEFT];
         }
-      } else { #Direction down
-          $elts[] = $PT1[$element]["R"] + ["direction" => "F", "position" => "R"];
-          $elts[] = $PT1[$element]["L"] + ["direction" => "F", "position" => "L"];
+      } else {
+        $elts[] = ["name" => getNextEltName($element, $direction)] + ["direction" => $direction, "position" => ""];
       }
       break;
     case "PF":
-      if ($direction === "D") {
-        if ($PT1[$element]["R"]["name"] === $previousElement) {
-          $elts[] = $PT1[$element]["T"] + ["direction" => "T", "position" => "R"];
-        } elseif ($PT1[$element]["L"]["name"] === $previousElement) {
-          $elts[] = $PT1[$element]["T"] + ["direction" => "T", "position" => "L"];
-        } else {
-          $elts[] = $PT1[$element]["T"] + ["direction" => "T", "position" => "UNKNOWN"];
+      if (isMoveablePoint($element)) {
+        if ($direction === "D") {
+          if ($PT1[$element]["R"]["name"] === $previousElement) {
+            $elts[] = $PT1[$element]["T"] + ["direction" => "T", "position" => C_RIGHT];
+          } elseif ($PT1[$element]["L"]["name"] === $previousElement) {
+            $elts[] = $PT1[$element]["T"] + ["direction" => "T", "position" => C_LEFT];
+          } else {
+            $elts[] = $PT1[$element]["T"] + ["direction" => "T", "position" => "UNKNOWN"];
+          }
+        } else { #Direction up
+            $elts[] = $PT1[$element]["R"] + ["direction" => "F", "position" => C_RIGHT];
+            $elts[] = $PT1[$element]["L"] + ["direction" => "F", "position" => C_LEFT];
         }
-      } else { #Direction up
-          $elts[] = $PT1[$element]["R"] + ["direction" => "F", "position" => "R"];
-          $elts[] = $PT1[$element]["L"] + ["direction" => "F", "position" => "L"];
+      } else {
+        $elts[] = ["name" => getNextEltName($element, $direction)] + ["direction" => $direction, "position" => ""];
       }
       break;
     default:
-          $elts[] = $PT1[$element][$direction] + ["direction" => $direction, "position" => ""];
+        $elts[] = $PT1[$element][$direction] + ["direction" => $direction, "position" => ""];
   }
   return $elts;
 }
@@ -802,17 +820,21 @@ function addToListPayload($element, &$sharedVar, $direction, $next) {
   return TRACK_TRAVERSALE_ACCEPT_DO_NOTHING; #Only the terminal element must be added
 }
 
-function lockingPayload($element, &$sharedVar, $direction, $next) {
+function lockingPayload($eltName, &$sharedVar, $direction, $next) {
 global $PT1;
   #Push $element into list
   $pos = "";
   if (array_key_exists("position", $next)) {
     $pos = $next["position"];
   }
-  RBC_IL_DebugPrint("Locking $element in position $pos\n");
+  RBC_IL_DebugPrint("Locking $eltName in position $pos\n");
   //TODO Move points
+  if (isMoveablePoint($eltName)) {
+    $point = &$PT1[$eltName];
+    pointThrow($point, $pos);
+  }
   //Set point in position
-  lock($element);
+  lock($eltName);
   return TRACK_TRAVERSALE_ACCEPT_ACTIVATE_PAYLOAD; #Lock all elments in route
 }
 
@@ -1387,6 +1409,119 @@ function startRouteRelease($s) {
   routeRelease($s);
 }
 
+function isSignalInDirection($eltName, $dir) {
+global $PT1;
+  switch ($PT1[$eltName]["element"]) {
+    case "SU":
+    case "BSE":
+      return ($dir == "U");
+    case "SD":
+    case "BSB":
+      return ($dir == "D");
+    default:
+      return False;
+  }
+}
+
+function isBufferStop($eltName) {
+global $PT1;
+  $type = $PT1[$eltName]["element"];
+  return ($type == "BSE" or $type == "BSB");
+}
+
+function findStartSignalForTrain($trainID, $dir) {
+//TODO: SEVERAL_TRAIN :if several train, should consider avoiding finding signal if other train inbetween
+global $trainData, $trainIndex;
+  $train = $trainData[$trainIndex[$trainID]];
+  $elt = ($dir == "U" ? $train["upElt"] : $train["downElt"]);
+  while ($elt !== "") {
+    //check if element is a signal in the correct direction
+    if (isSignalInDirection($elt, $dir)) {
+      //reject buffer stop as start signal
+      if (isBufferStop($elt)) {
+        return "";
+      } else {
+        return $elt;
+      }
+    }
+    $elt = getNextEltName($elt, $dir);
+  }
+  return ""; // If this is reached. No start signal were met.
+}
+
+/// ----------- TMS part -------------
+function TMS_DebugPrint($msg) {
+  print "TMS:".date('h:i:s').": ".$msg;
+}
+
+function hasSchedule($trainID) {
+  return False;
+}
+
+function cancelSchedule($trainID) {
+  TMS_DebugPrint("Canceling Schedule for train $trainID\n");
+  return;
+}
+
+function continueSchedule($trainID) {
+  TMS_DebugPrint("Continuing Schedule for train $trainID\n");
+  return;
+}
+
+function createSchedule($trainID) {
+//For now, consider releasing all routes to avoid ressource conflict?
+global $trainData, $trainIndex;
+  TMS_DebugPrint("Trying to create Schedule for train $trainID\n");
+  $train = $trainData[$trainIndex[$trainID]];
+  //Choose direction and find start signal.
+  //For now, always try to start ATO in the up direction
+  $dir = "U";
+  //Find signal
+  $start = findStartSignalForTrain($trainID, $dir);
+  if ($start != "") {
+    TMS_DebugPrint("Will try to start schedule of train $trainID from signal $start\n");
+  } else {
+    TMS_DebugPrint("Could not find start signal in direction $dir of train $trainID\n");
+    $dir = getReverseDir($dir);
+    $start = findStartSignalForTrain($trainID, $dir);
+    if ($start != "") {
+      TMS_DebugPrint("Will try to start schedule of train $trainID from signal $start\n");
+    } else {
+      TMS_DebugPrint("Could not find start signal in direction $dir of train $trainID. Aborting schedule creation\n");
+      return;
+    }
+  }
+  //TODO: Start signal was found. Launch schedule accordingly
+  //Create routes until next stop (disregarding the start as a stop)
+  //Record schedule table
+  return;
+}
+
+function TMS() {
+global $trainData;
+  //Check if a train is in ATO
+  foreach($trainData as $train) {
+    //Check if train is in ATO
+    $trainID = $train["ID"];
+    if ($train["authMode"] == M_ATO) {
+      //check if train already has a schedule
+      if (hasSchedule($trainID)) {
+        //Continue schedule
+        continueSchedule($trainID);
+      } else {
+        //Create schedule
+        createSchedule($trainID);
+      }
+    } else {
+      //check if train has a schedule
+      if (hasSchedule($trainID)) {
+        //Train is not anymore in ATO. Cancel schedule
+        cancelSchedule($trainID);
+      }
+    }
+  }
+}
+/// ------------ End of TMS ----------
 // End of addition of new helpers
 function initRBCIL() {
 global $trainData, $trainIndex, $DATA_FILE, $SHallowed, $FSallowed, $ATOallowed;
