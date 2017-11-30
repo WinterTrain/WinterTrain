@@ -24,6 +24,7 @@ $radioLinkAddr = 150;
 $SR_MAX_SPEED = 100;
 $SH_MAX_SPEED = 60;
 $ATO_MAX_SPEED = 40;
+$FS_MAX_SPEED = 40;
 
 // ---------------------------------------- Timing
 define("EC_TIMEOUT",5);
@@ -480,9 +481,8 @@ global $trainData;
   foreach ($trainData as $index => &$train) {
     sendMA($train["ID"], $train["authMode"], $train["MAbalise"], $train["MAdist"], $train["maxSpeed"]);
     if ($train["MAbalise"][0]) {
-      print_r($train["MAbalise"]);
-      print "Dist: ".$train["MAdist"]." Max: ".$train["maxSpeed"]."
-      ";
+      //print_r($train["MAbalise"]);
+      print "Dist: ".$train["MAdist"]." Max: ".$train["maxSpeed"]."\n";
     }
     $train["MAbalise"] = array(0,0,0,0,0); // Clear balise so manually commanded MA is issued only once. MA generation to be redesigned!!!
   }
@@ -920,6 +920,7 @@ function lockRoute($s1, $s2) {
 
   $canBeLocked = function($element, $direction) use ($s1){
       if ($element == $s1) {return True;} //Train is allowed to already occupy it and it can be locked in ptrevious route or clear
+      print "canBeLocked: isLocked:".isLocked($element)." isClear:".isClear($element)."\n";
       return (!isLocked($element) and isClear($element));
   };
   $dummy = array();
@@ -976,7 +977,7 @@ function recUpdateTrainPosition(&$train, $dir, $x, $eltName, $trackState) {
           $train["upEltDist"] = $b;
           $train["upElt"] = $eltName;
       }
-      checkIfRouteRelease($eltName);
+      //checkIfRouteRelease($eltName); TODO: probably delete
     }
   }
 
@@ -1168,8 +1169,13 @@ global $PT1;
           lock($approachElt);
         }
         //Train gets the associated to route
-        RBC_IL_DebugPrint("Route towards ".$routeDestinationSignal." can be associated to train ".$PT1[$eltName]["trainIDs"][0]."\n");
-        return $PT1[$eltName]["trainIDs"][0];
+        //get train ID this is weird but to avoid having issue with the index being different from 0
+        $trainID = "Undefined";
+        foreach ($PT1[$eltName]["trainIDs"] as $id) {
+          $trainID = $id;
+        }
+        RBC_IL_DebugPrint("Route towards ".$routeDestinationSignal." can be associated to train ".$trainID."\n");
+        return $trainID;
         break;
       }
     }
@@ -1244,7 +1250,14 @@ global $lockedRoutes;
 
 function associateTrainToRoute($s, $trainID) {
 global $lockedRoutes;
-  print "Associating train $trainID to route $s\n";
+  RBC_IL_DebugPrint("Associating train $trainID to route $s\n");
+  //first check if train already had a route if this is a case cancel it
+  foreach($lockedRoutes as $signal => $route) {
+    if ($route["train"] == $trainID) {
+      RBC_IL_DebugPrint("Release route $signal because $trainID is getting new route towards $s\n");
+      routeRelease($signal);
+    }
+  }
   $lockedRoutes[$s]["train"] = $trainID;
   $lockedRoutes[$s]["MA"] = getMA($trainID, $s);
 }
@@ -1604,6 +1617,7 @@ global $trainIndex, $trainData, $balisesID, $SR_MAX_SPEED, $SH_MAX_SPEED, $ATO_M
         break;
         case M_FS:
           $train["authMode"] = $train["FSallowed"] ? M_FS : M_N;
+          $train["maxSpeed"] = $FS_MAX_SPEED;
           if (!$train["MAreceived"]) { // MA request
           // generate MA  
           }
@@ -1894,22 +1908,22 @@ print ">$command< \n";
   switch ($param[0]) {
   case "so": // signal order
     if ($from == $inCharge) {
-// releaseRoute
-      startRouteRelease($param[1]);
 // Control Signal State
-/*
       $element = &$PT1[$param[1]];
       $state = ($element["state"] == E_STOP ? E_PROCEED : E_STOP); // toggle state
       $element["state"] = $state;
       if ($element["type"] == "LS1") {
         orderEC($element["EC"]["addr"], $element["EC"]["index"],$state == E_PROCEED ? O_PROCEED : O_STOP);
       }
-*/
       HMIindication($from, "displayResponse {OK}\n");
     } else {
       HMIindication($from, "displayResponse {Rejected}\n");
     }
   break;
+  case "rr":
+// releaseRoute
+      startRouteRelease($param[1]);
+    break;
   case "lo": // LX order
     if ($from == $inCharge) {
       $element = $PT1[$param[1]];
@@ -2260,7 +2274,15 @@ global $HMI, $PT1;
     $baliseTrack["trainID"] = ""; //>>JP:TRAIN_ID
     foreach ($baliseTrack["balises"] as $baliseName ) {
       if ($PT1[$baliseName]["trackState"] != T_CLEAR) {
-        $baliseTrack["trackState"] = $PT1[$baliseName]["trackState"];
+        switch ($baliseTrack["trackState"]) {
+          case T_CLEAR:
+          case T_LOCKED:
+            $baliseTrack["trackState"] = $PT1[$baliseName]["trackState"];
+          break;
+          default:
+            break;
+          //already occupied. Occupy has priority on the rest.
+        }
 //>>JP:TRAIN_ID
         foreach ($PT1[$baliseName]["trainIDs"] as $trainID ) {
           #Giving the name to the HMI and "??" in case of multiple occupation
