@@ -1293,6 +1293,7 @@ global $trainData, $trainIndex;
     while (isLocked($elt)) {
       if ($elt == $signal) {
         clearFromRoutes($signal);
+        unlock($signal);
       } else {
         unlock($elt);
         $elt = getNextEltName($elt, $revDir); //Look for element to release behind train
