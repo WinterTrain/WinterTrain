@@ -1399,6 +1399,16 @@ function setRoute($s1, $s2) {
   }
 }
 
+function stopTrainWithRoute($s) {
+global $trainData, $trainIndex, $lockedRoutes;
+  $id = $lockedRoutes[$s]["train"];
+  if ( $id != "") {
+     RBC_IL_DebugPrint("Stooping train $id\n");
+     $train =  $trainData[$trainIndex[$id]];
+     giveMAtoTrain(["bg" => $train["baliseName"],"dist" => $train["distance"]], $id);
+  }
+}
+
 function routeRelease($s) {
   if (isLockedRoute($s)) {
     $eltName = $s;
@@ -1410,6 +1420,7 @@ function routeRelease($s) {
       $eltName = getNextEltName($eltName, $dir);
       if ($eltName == "") {return;}
     }
+    stopTrainWithRoute($s);
     clearFromRoutes($s);
   } else {
     RBC_IL_DebugPrint("cannot release route $s: Route was not locked\n");
