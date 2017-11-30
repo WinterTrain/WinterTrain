@@ -1168,8 +1168,13 @@ global $PT1;
           lock($approachElt);
         }
         //Train gets the associated to route
-        RBC_IL_DebugPrint("Route towards ".$routeDestinationSignal." can be associated to train ".$PT1[$eltName]["trainIDs"][0]."\n");
-        return $PT1[$eltName]["trainIDs"][0];
+        //get train ID this is weird but to avoid having issue with the index being different from 0
+        $trainID = "Undefined";
+        foreach ($PT1[$eltName]["trainIDs"] as $id) {
+          $trainID = $id;
+        }
+        RBC_IL_DebugPrint("Route towards ".$routeDestinationSignal." can be associated to train ".$trainID."\n");
+        return $trainID;
         break;
       }
     }
