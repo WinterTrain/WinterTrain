@@ -24,6 +24,7 @@ $radioLinkAddr = 150;
 $SR_MAX_SPEED = 100;
 $SH_MAX_SPEED = 60;
 $ATO_MAX_SPEED = 40;
+$FS_MAX_SPEED = 40;
 
 // ---------------------------------------- Timing
 define("EC_TIMEOUT",5);
@@ -1249,7 +1250,14 @@ global $lockedRoutes;
 
 function associateTrainToRoute($s, $trainID) {
 global $lockedRoutes;
-  print "Associating train $trainID to route $s\n";
+  RBC_IL_DebugPrint("Associating train $trainID to route $s\n");
+  //first check if train already had a route if this is a case cancel it
+  foreach($lockedRoutes as $signal => $route) {
+    if ($route["train"] == $trainID) {
+      RBC_IL_DebugPrint("Release route $signal because $trainID is getting new route towards $s\n");
+      routeRelease($signal);
+    }
+  }
   $lockedRoutes[$s]["train"] = $trainID;
   $lockedRoutes[$s]["MA"] = getMA($trainID, $s);
 }
@@ -1609,6 +1617,7 @@ global $trainIndex, $trainData, $balisesID, $SR_MAX_SPEED, $SH_MAX_SPEED, $ATO_M
         break;
         case M_FS:
           $train["authMode"] = $train["FSallowed"] ? M_FS : M_N;
+          $train["maxSpeed"] = $FS_MAX_SPEED;
           if (!$train["MAreceived"]) { // MA request
           // generate MA  
           }
