@@ -1578,7 +1578,7 @@ global $trainData, $trainIndex, $DATA_FILE, $SHallowed, $FSallowed, $ATOallowed;
 }
 
 function positionReport($data) { // analyse received position report
-global $trainIndex, $trainData, $balisesID, $SR_MAX_SPEED, $SH_MAX_SPEED, $ATO_MAX_SPEED, $now;
+global $trainIndex, $trainData, $balisesID, $SR_MAX_SPEED, $SH_MAX_SPEED, $ATO_MAX_SPEED, $FS_MAX_SPEED, $now;
   if (isset($trainIndex[$data[4]])) {
     $index = $trainIndex[$data[4]];
     $train = &$trainData[$index];
