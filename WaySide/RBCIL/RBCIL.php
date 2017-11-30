@@ -1045,12 +1045,12 @@ function getNextEltName($eltName, $dir) {
   if ($dir == "U") {
     switch ($elt["element"]) {
       case "PF":
-        if ($elt["latestLie"] == E_RIGHT) {
+        if ($elt["state"] == E_RIGHT) {
           return $elt["R"]["name"];
-        } elseif ($elt["latestLie"] == E_LEFT) {
+        } elseif ($elt["state"] == E_LEFT) {
           return $elt["L"]["name"];
         } else {
-          RBC_IL_DebugPrint("Cannot find next element after point ".$eltName." : Lie is unknown\n");
+          RBC_IL_DebugPrint("Cannot find next element after point ".$eltName." Point is moving or unsupervized\n");
           return "";
          }
         break;
@@ -1066,14 +1066,14 @@ function getNextEltName($eltName, $dir) {
   } else {
     switch ($elt["element"]) {
       case "PT":
-        if ($elt["latestLie"] == E_RIGHT) {
+        if ($elt["state"] == E_RIGHT) {
           RBC_IL_DebugPrint("Point ".$eltName." right\n");
           return $elt["R"]["name"];
-        } elseif ($elt["latestLie"] == E_LEFT) {
+        } elseif ($elt["state"] == E_LEFT) {
           RBC_IL_DebugPrint("Point ".$eltName." left\n");
           return $elt["L"]["name"];
         } else {
-          RBC_IL_DebugPrint("Cannot find next element after point ".$eltName." Lie is unknown\n");
+          RBC_IL_DebugPrint("Cannot find next element after point ".$eltName." Point is moving or unsupervized\n");
           return "";
          }
         break;
@@ -1108,7 +1108,7 @@ function getMA($trainID, $signal) {
 
       while ($eltName !== $signal) {
         $eltName = getNextEltName($eltName, $dir);
-        if ($eltName == "") {RBC_IL_DebugPrint("Failed to compute MA because could not find next element\n"); return $MA;}
+        if ($eltName == "") {RBC_IL_DebugPrint("Failed to compute MA because could not find next element\n"); $MA["bg"] =""; return $MA;}
         $dist += ($dir == "U" ? getEltLength($eltName) : -getEltLength($eltName));
       }
       //take into account the fact that the signal is in the "middle" of its segment if not buffer stop
@@ -2293,7 +2293,6 @@ global $HMI, $PT1;
           }
         }
 //<<JP:TRAIN_ID
-        break;
       }
     }
     HMIindicationAll("trState $name ".$baliseTrack["trackState"]." ".$baliseTrack["trainID"]."\n"); //>>JP:TRAIN_ID
