@@ -47,7 +47,7 @@ proc label {text x y} {
 proc track {name x y length  {or s}} {
   switch $or {
     s {
-      dLabel $x $y 0.5 0 $name "$name label"
+      dLabel $x $y 0.5 0.9 $name "$name label"
       dTrack $x $y 0 0.5 $length 0.5 "$name track"
 #>>JP:TRAIN_ID
       dTrainIDLabel  $x $y 0.5 0.2 "TEST" "$name trainIdLabel"
@@ -59,7 +59,7 @@ proc track {name x y length  {or s}} {
       dTrainIDLabel  $x $y 0.2 0.8 "TEST" "$name trainIdLabel"
     }
     d {
-      dLabel $x $y 0.7 0.5 $name "$name label"
+      dLabel $x $y 0.3 1.9 $name "$name label"
       dTrack $x $y 0 0.5 $length [expr 2.5 * $length] "$name track"
       dTrainIDLabel  $x $y 0.7 0.2 "TEST" "$name trainIdLabel"
     }
@@ -83,14 +83,14 @@ proc levelcrossing {name x y} {
 proc bufferStop {name x y layout {length 1}} {
   switch $layout {
     b {
-      dLabel $x $y 0.5 0.1 $name "$name label"
+      dLabel $x $y 0.5 0.9 $name "$name label"
       dTrack $x $y 0 0.5 $length 0.5 "$name track"
       dTrack $x $y 0 0.3 0 0.7 
       dTrainIDLabel  $x $y 0.5 0.2 "TEST" "$name trainIdLabel"
       dButton $x $y 0.3 0.5 0.4 $name selectBufferStop
     }
     e {
-      dLabel $x $y [expr $length - 0.6] 0.1 $name "$name label"
+      dLabel $x $y [expr $length - 0.6] 0.9 $name "$name label"
       dTrack $x $y 0 0.5 $length 0.5 "$name track"
       dTrack $x $y $length 0.3 $length 0.7 
       dTrainIDLabel  $x $y 0.5 0.2 "TEST" "$name trainIdLabel"
@@ -201,6 +201,8 @@ global nTrainFrame trainMAbalise trainMAdist entryFontSize
   .f.fTrain.t$index.ato_allowed state disabled
   set trainMAbalise($index) ""
   set trainMAdist($index) ""
+# Comment next line to allow maSend
+  .f.fTrain.t$index.maSend state disabled
 }
 
 proc destroyTrainFrame {} {
@@ -553,19 +555,32 @@ if {$command == "_p"} {
   } else {
   set command "_p"
   .f.buttonPoint configure -text "SPSK"
-  .f.buttonSignal configure -text "Signal"
+  .f.buttonRelease configure -text "Release"
   .f.buttonLX configure -text "Ovk"
   }
 }
 
-proc buttonSignal {} {
+#proc buttonSignal {} {
+#global command
+#if {$command == "_s"} {
+#  set command ""
+#  .f.buttonSignal configure -text "Signal"
+#  } else {
+#  set command "_s"
+#  .f.buttonSignal configure -text "SIGNAL"
+#  .f.buttonPoint configure -text "Spsk"
+#  .f.buttonLX configure -text "Ovk"
+#  }
+#}
+
+proc buttonRelease {} {
 global command
-if {$command == "_s"} {
+if {$command == "_r"} {
   set command ""
-  .f.buttonSignal configure -text "Signal"
+  .f.buttonRelease configure -text "Release"
   } else {
-  set command "_s"
-  .f.buttonSignal configure -text "SIGNAL"
+  set command "_r"
+  .f.buttonRelease configure -text "RELEASE"
   .f.buttonPoint configure -text "Spsk"
   .f.buttonLX configure -text "Ovk"
   }
@@ -580,7 +595,7 @@ if {$command == "_l"} {
   set command "_l"
   .f.buttonLX configure -text "OVK"
   .f.buttonPoint configure -text "Spsk"
-  .f.buttonSignal configure -text "Signal"
+  .f.buttonRelease configure -text "Release"
   }
 }
 
@@ -594,9 +609,11 @@ global command aColor
       "_l" -
       "_p" {
       }
-      "_n" {
+      "_r" {
         set command ""
-#      sendCommand "so $ID" // nødopl.
+        .f.buttonRelease configure -text "Release"
+      sendCommand "rr $ID"
+# puts "Release $ID"
       }
       "" {
         set command $ID
@@ -609,7 +626,7 @@ global command aColor
       default {
         #Asking RBC to set route if possible
         sendCommand "tr $command $ID"
-        puts "Valgt: $command og $ID"
+#        puts "Valgt: $command og $ID"
         .f.canvas itemconfigure "$command&&button" -fill "" -outline "" -activefill $aColor -activeoutline $aColor
         set command ""
       }
@@ -626,6 +643,12 @@ global command aColor
     switch $command {
       "_l" -
       "_p" {
+      }
+      "_r" {
+        set command ""
+        .f.buttonRelease configure -text "Release"
+      sendCommand "rr $ID"
+# puts "Release $ID"
       }
       "_s" {
         set command ""
@@ -726,7 +749,8 @@ global showGrid
 proc disableButtons {} {
 global nTrainFrame
   .f.buttonPoint state disabled
-  .f.buttonSignal state disabled
+#  .f.buttonSignal state disabled
+  .f.buttonRelease state disabled
   .f.buttonLX state disabled
   for {set x 0} {$x < $nTrainFrame} {incr x} {
     .f.fTrain.t$x.sr_allowed state disabled
@@ -740,7 +764,8 @@ global nTrainFrame
 proc enableButtons {} {
 global aColor nTrainFrame
   .f.buttonPoint state !disabled
-  .f.buttonSignal state !disabled
+#  .f.buttonSignal state !disabled
+  .f.buttonRelease state !disabled
   .f.buttonLX state !disabled
   for {set x 0} {$x < $nTrainFrame} {incr x} {
     .f.fTrain.t$x.sr_allowed state !disabled
@@ -891,7 +916,8 @@ grid [ttk::label .f.status -textvariable status] -column 2 -row 5 -padx 5 -pady 
 grid [ttk::label .f.versions -textvariable versions] -column 6 -columnspan 2 -row 5 -padx 5 -pady 5 -sticky e
 #grid [ttk::label .f.versionPT1 -textvariable PT1version] -column 7 -row 5 -padx 5 -pady 5 -sticky e
 grid [ttk::label .f.live -textvariable liveIndicator] -column 8 -row 5 -padx 5 -pady 5 -sticky e
-grid [ttk::button .f.buttonSignal -text "Signal" -command buttonSignal] -column 2 -row 1 -sticky we
+#grid [ttk::button .f.buttonSignal -text "Signal" -command buttonSignal] -column 2 -row 1 -sticky we
+grid [ttk::button .f.buttonRelease -text "Release" -command buttonRelease] -column 2 -row 1 -sticky we
 grid [ttk::button .f.buttonPoint -text "Spsk" -command buttonPoint] -column 3 -row 1 -sticky we
 grid [ttk::button .f.buttonLX -text "Ovk" -command buttonLX] -column 4 -row 1 -sticky we
 grid [ttk::button .f.buttonOpr -text "Request operation" -command rqopr] -column 5 -row 1 -sticky e
