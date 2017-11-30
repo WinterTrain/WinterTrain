@@ -976,7 +976,7 @@ function recUpdateTrainPosition(&$train, $dir, $x, $eltName, $trackState) {
           $train["upEltDist"] = $b;
           $train["upElt"] = $eltName;
       }
-      checkIfRouteRelease($eltName);
+      //checkIfRouteRelease($eltName); TODO: probably delete
     }
   }
 
@@ -1899,22 +1899,22 @@ print ">$command< \n";
   switch ($param[0]) {
   case "so": // signal order
     if ($from == $inCharge) {
-// releaseRoute
-      startRouteRelease($param[1]);
 // Control Signal State
-/*
       $element = &$PT1[$param[1]];
       $state = ($element["state"] == E_STOP ? E_PROCEED : E_STOP); // toggle state
       $element["state"] = $state;
       if ($element["type"] == "LS1") {
         orderEC($element["EC"]["addr"], $element["EC"]["index"],$state == E_PROCEED ? O_PROCEED : O_STOP);
       }
-*/
       HMIindication($from, "displayResponse {OK}\n");
     } else {
       HMIindication($from, "displayResponse {Rejected}\n");
     }
   break;
+  case "rr":
+// releaseRoute
+      startRouteRelease($param[1]);
+    break;
   case "lo": // LX order
     if ($from == $inCharge) {
       $element = $PT1[$param[1]];
