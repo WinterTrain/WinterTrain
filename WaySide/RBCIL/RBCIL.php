@@ -480,9 +480,8 @@ global $trainData;
   foreach ($trainData as $index => &$train) {
     sendMA($train["ID"], $train["authMode"], $train["MAbalise"], $train["MAdist"], $train["maxSpeed"]);
     if ($train["MAbalise"][0]) {
-      print_r($train["MAbalise"]);
-      print "Dist: ".$train["MAdist"]." Max: ".$train["maxSpeed"]."
-      ";
+      //print_r($train["MAbalise"]);
+      print "Dist: ".$train["MAdist"]." Max: ".$train["maxSpeed"]."\n";
     }
     $train["MAbalise"] = array(0,0,0,0,0); // Clear balise so manually commanded MA is issued only once. MA generation to be redesigned!!!
   }
@@ -920,6 +919,7 @@ function lockRoute($s1, $s2) {
 
   $canBeLocked = function($element, $direction) use ($s1){
       if ($element == $s1) {return True;} //Train is allowed to already occupy it and it can be locked in ptrevious route or clear
+      print "canBeLocked: isLocked:".isLocked($element)." isClear:".isClear($element)."\n";
       return (!isLocked($element) and isClear($element));
   };
   $dummy = array();
@@ -2265,7 +2265,15 @@ global $HMI, $PT1;
     $baliseTrack["trainID"] = ""; //>>JP:TRAIN_ID
     foreach ($baliseTrack["balises"] as $baliseName ) {
       if ($PT1[$baliseName]["trackState"] != T_CLEAR) {
-        $baliseTrack["trackState"] = $PT1[$baliseName]["trackState"];
+        switch ($baliseTrack["trackState"]) {
+          case T_CLEAR:
+          case T_LOCKED:
+            $baliseTrack["trackState"] = $PT1[$baliseName]["trackState"];
+          break;
+          default:
+            break;
+          //already occupied. Occupy has priority on the rest.
+        }
 //>>JP:TRAIN_ID
         foreach ($PT1[$baliseName]["trainIDs"] as $trainID ) {
           #Giving the name to the HMI and "??" in case of multiple occupation
