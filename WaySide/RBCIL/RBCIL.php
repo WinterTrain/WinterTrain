@@ -7,6 +7,7 @@ $ABUS = "";
 //--------------------------------------- Default Configuration
 $VERSION = "02P02";  // What does this mean with git??
 $HMIport = 9900;
+$MCePort = 9901;
 $HMIaddress = "0.0.0.0";
 $ABUS_GATEWAYaddress = "10.0.0.201";
 $ABUS_GATEWAYport = 9200;
@@ -95,11 +96,12 @@ define("O_RIGHT_HOLD",13);
 define("O_LEFT_HOLD",14);
 define("O_RELEASE",19);
 
-// Physical status
+// Physical status from EC
 define("S_UNSUPERVISED",0);
 define("S_CLOSED",1);
 define("S_PROCEED",2);
 define("S_PROCEEDPROCEED",3);
+define("S_VOID",10);   // No physical signal connected (i.e. type marker board)
 define("S_BARRIER_CLOSED",1);
 define("S_BARRIER_OPEN",2);
 define("S_U_RIGHT",5); // Point, unsupervised, previous command was throw right
@@ -121,10 +123,11 @@ $debug = FALSE; $background = FALSE; $run = true;
 $pollTimeout = 0;
 $timeoutUr = 0;
 
-//--------------------------------------- HMI variable
+//--------------------------------------- Server variable
 $clients = array();
 $clientsData = array();
 $inCharge = false;
+$inChargeMCe = false;
 
 //--------------------------------------- RBCIL variable
 $PT1 = array();
@@ -142,6 +145,7 @@ $lockedRoutes = array();
 $errorFound = false;
 $totalElement = 0;
 
+$SRallowed = 0;
 $SHallowed = 0;
 $FSallowed = 0;
 $ATOallowed = 0;
@@ -163,52 +167,25 @@ forkToBackground();
 initMainProgram();
 AbusInit();
 initEC();
-initHMIServer();
+initServer();
 do {
   $now = time();
   if ($now != $pollTimeout) {
-//  print "$now: ";
     $pollTimeout = $now;
-  
-    foreach ($EC as $addr => $ec) {
-      if ($now > $ec["validTimer"]) { // EC not providing status
-      // EC offline
-        foreach ($ec["index"] as $name) {
-          $PT1[$name]["status"] = S_UNSUPERVISED; // barrier and road signal status to be set to unsupervised as well  FIXME
-          // status or state to be set unsupervised FIXME
-          HMIindicationAll("signalState $name ".S_UNSUPERVISED." ".$PT1[$name]["trackState"]."\n");
-        }
-        if ($addr == $radioLinkAddr) {
-          // position report UDEF------------------------------------- FIXME
-        }
-      }
-    }
-    foreach ($trainData as $index => &$train) {
-      if ($now > $train["validTimer"]) { // Train not sending position reports
-        $train["dataValid"] = "VOID";
-        updateTrainDataHMI($index);
-      }
-    }
-//  print " a";
+    checkECtimeout();
+    checkTrainTimeout();
     processLX();
-//  print " b";
     pollEC();
-//  print " c";
     pollRadioLink();
-//  print " d";
     IL();
-//  print " e";
     RBC();
-//  print " f";
     updateHMI();
-//  print " g\n";
-
   }
   if ($ABUS == "cbu" and $timeoutUr <= $now) {
     $urTimeout = $now + 60;
     CBUupdate();
   }
-  HMIserver();
+  Server();
 } while ($run);
 msgLog("Exitting...");
 
@@ -372,9 +349,7 @@ global $DATA_FILE, $trainData, $PT1_VERSION, $PT1, $HMI, $errorFound, $totalElem
     $element["checked"] = false;
     $element["routeState"] = R_IDLE;
     $element["trackState"] = T_CLEAR;
-//>>JP:TRAIN_ID
     $element["trainIDs"] = [];
-//<<JP:TRAIN_ID
     $element["locked"] = False;
     switch ($element["element"]) {
       case "BL":
@@ -389,8 +364,8 @@ global $DATA_FILE, $trainData, $PT1_VERSION, $PT1, $HMI, $errorFound, $totalElem
       break;
       case "LX":
         $levelCrossings[] = $name;
-        $element["state"] = E_LX_DEACTIVATED;
-        $element["status"] = S_UNSUPERVISED; // combined status
+        $element["state"] = E_LX_DEACTIVATED; // Logical state
+        $element["status"] = S_UNSUPERVISED; // Combined physical status
         $element["signalStatus"] = S_UNSUPERVISED;
         $element["barrierStatus"] = S_UNSUPERVISED;
         $element["prevTrackState"] = T_CLEAR;
@@ -400,7 +375,7 @@ global $DATA_FILE, $trainData, $PT1_VERSION, $PT1, $HMI, $errorFound, $totalElem
         $points[] = $name;
         switch($element["clamp"]) {
         case "":
-          $element["state"] = E_UNSUPERVISED;
+          $element["state"] = E_UNSUPERVISED; // Logical state
           $element["latestLie"] = E_RIGHT; // Just to start somewhere
         break;
         case "R":
@@ -415,8 +390,8 @@ global $DATA_FILE, $trainData, $PT1_VERSION, $PT1, $HMI, $errorFound, $totalElem
       case "SU":
       case "SD":
         $signals[] = $name;
-        $element["state"] = E_STOP; // purpose? FIXME
-        $element["status"] = $element["type"] == "MB" ? S_CLOSED : S_UNSUPERVISED;
+        $element["state"] = E_STOP; // Logical state
+        $element["status"] = $element["type"] == "MB" ? S_VOID : S_UNSUPERVISED; // Physical status from EC
       break;
       case "BSB":
       case "BSE":
@@ -470,12 +445,9 @@ global $DATA_FILE, $trainData, $PT1_VERSION, $PT1, $HMI, $errorFound, $totalElem
     errLog("Error: HMI data not OK. Source: $DATA_FILE");
     exit(1);
   }
-
-//  print_r($LX);
 }
 
 // --------------------------------------------------------------------- RadioLink
-
 function pollRadioLink() {
 global $trainData;
   foreach ($trainData as $index => &$train) {
@@ -484,11 +456,11 @@ global $trainData;
       //print_r($train["MAbalise"]);
       print "Dist: ".$train["MAdist"]." Max: ".$train["maxSpeed"]."\n";
     }
-    $train["MAbalise"] = array(0,0,0,0,0); // Clear balise so manually commanded MA is issued only once. MA generation to be redesigned!!!
+    $train["MAbalise"] = array(0,0,0,0,0); // Clear balise after each transmission
   }
 }
 
-function sendMA($trainID, $authMode, $balise, $dist, $speed) { // send mode and movement authorization. Request status and position report
+function sendMA($trainID, $authMode, $balise, $dist, $speed) { // send mode and movement authorization.
 global $radioLinkAddr;
   $packet[2] = 03;
   $packet[3] = $trainID; 
@@ -582,7 +554,6 @@ global $PT1, $EC;
 }
 
 function resetEC($addr) {
-//print "resetEC $addr\n";
   $packet[2] = 20;
   $packet[3] = 00;
   AbusSendPacket($addr, $packet, 4);
@@ -598,7 +569,6 @@ function configureEC($addr, $elementType, $device1, $device2 = 0) {
  }
 
 function orderEC($addr, $index, $order) {
-//print "orderEC $addr, $index, $order\n";
   $packet[2] = 10;
   $packet[3] = $index;
   $packet[4] = $order;
@@ -616,6 +586,7 @@ function receivedFromEC($addr, $data) {
       case 01: // status
       case 10: // status
         elementStatusEC($addr, $data);
+        // log msg: EC back online, but only once FIXME
         break;
       case 02: // EC status
         break;  
@@ -644,7 +615,6 @@ global $EC, $PT1;
     initEC($addr);
   } else {
     $EC[$addr]["validTimer"] = time() + EC_TIMEOUT;
-//    print_r($data);
     foreach ($EC[$addr]["index"] as $index => $name) {
       $element = &$PT1[$name];
       $status = $index % 2 ? ((int)$data[$index/2 +4] & 0xF0) >> 4 : (int)$data[$index/2 +4] & 0x0F ;
@@ -685,6 +655,48 @@ global $EC, $PT1;
           }
         break;
       }
+    }
+  }
+}
+
+function checkECtimeout() {
+global $PT1, $EC, $now, $radioLinkAddr;
+  foreach ($EC as $addr => $ec) {
+    if ($now > $ec["validTimer"]) { // EC not providing status - EC assumed offline
+    // log msg: timeout, but only once FIXME
+      foreach ($ec["index"] as $name) {
+        $element = $PT1[$name];
+        switch ($element["element"]) {
+          case "SU":
+          case "SD":
+            if ($PT1[$name]["type"] != "MB") {
+              $PT1[$name]["status"] = S_UNSUPERVISED;
+            }
+          break;
+          case "PT":
+          case "PF":
+            if ($element["clamp"] == "") {
+              $PT1[$name]["state"] = E_UNSUPERVISED;
+            }
+          break;
+          case "LX":
+            // FIXME
+          break;
+        }
+      }
+      if ($addr == $radioLinkAddr) {
+        // position report UDEF------------------------------------- FIXME
+      }
+    }
+  }
+}
+
+function checkTrainTimeout() {
+global $trainData, $now;
+  foreach ($trainData as $index => &$train) {
+    if ($now > $train["validTimer"]) { // Train not sending position reports
+      $train["dataValid"] = "VOID";
+      updateTrainDataHMI($index);
     }
   }
 }
@@ -1549,10 +1561,10 @@ global $trainData;
 /// ------------ End of TMS ----------
 // End of addition of new helpers
 function initRBCIL() {
-global $trainData, $trainIndex, $DATA_FILE, $SHallowed, $FSallowed, $ATOallowed;
+global $trainData, $trainIndex, $DATA_FILE, $SRallowed, $SHallowed, $FSallowed, $ATOallowed;
   //require($DATA_FILE);
   foreach ($trainData as $index => &$train) {
-    $train["SRallowed"] = 0;
+    $train["SRallowed"] = $SRallowed;
     $train["SHallowed"] = $SHallowed;
     $train["FSallowed"] = $FSallowed;
     $train["ATOallowed"] = $ATOallowed;
@@ -1602,18 +1614,10 @@ global $trainIndex, $trainData, $balisesID, $SR_MAX_SPEED, $SH_MAX_SPEED, $ATO_M
         $train["baliseName"] = $balisesID[$train["balise"]];
         if ($train["prevBaliseName"] != "00:00:00:00:00") {
           updateTrainPosition($train, $train["prevBaliseName"], $train["prevDistance"], T_CLEAR);
-         // trackOccupation(T_CLEAR, $train["prevBaliseName"], $train["prevDistance"],
-           // ($train["front"] == D_UP ? $train["lengthFront"] : $train["lengthBehind"]),
-            //($train["front"] == D_UP ? $train["lengthBehind"] : $train["lengthFront"]),
-            //$train["ID"]); //>>JP:TRAIN_ID
         }
         updateTrainPosition($train, $train["baliseName"], $train["distance"], $train["nomDir"]);
-        //trackOccupation($train["nomDir"], $train["baliseName"], $train["distance"],
-         // ($train["front"] == D_UP ? $train["lengthFront"] : $train["lengthBehind"]),
-          //($train["front"] == D_UP ? $train["lengthBehind"] : $train["lengthFront"]),
-          // $train["ID"]); //>>JP:TRAIN_ID
-          $train["prevBaliseName"] = $train["baliseName"];
-          $train["prevDistance"] = $train["distance"];
+        $train["prevBaliseName"] = $train["baliseName"];
+        $train["prevDistance"] = $train["distance"];
       } else {
         $train["baliseName"] = "(".$train["balise"].")";
       }
@@ -1655,214 +1659,6 @@ global $trainIndex, $trainData, $balisesID, $SR_MAX_SPEED, $SH_MAX_SPEED, $ATO_M
   } // else unknown trainID in posRep
 }
 
-function trackOccupation($trackState, $baliseName, $distance, $lengthUp, $lengthDown, $trainID) {#>>JP:TRAIN_ID
-global $PT1;
-  if (isset($PT1[$baliseName])) {
-    $element = &$PT1[$baliseName];
-//>>JP:TRAIN_ID
-    #first remove the train from the occupying train list. If we needed to clear the track, the it is done, else it will be re-added below (and we avoid duplication)
-    #!The type sensitive check against FALSE covers the scenario where key is 0 which would be interpreted as FALSE by the if.
-    if (FALSE !== ($key = array_search($trainID, $element["trainIDs"]))) {
-      unset($element["trainIDs"][$key]);
-    }
-//<<JP:TRAIN_ID
-    $oUp = $distance + $lengthUp;
-    $oDown = $distance - $lengthDown;
-//print "BaliseName: $baliseName Up: $oUp Down: $oDown \n";
-    if ($oDown >= 0) { // train is fully in direction UP
-      if ($oDown < $element["U"]["dist"]) {
-        $element["trackState"] = $trackState;
-//>>JP:TRAIN_ID
-      if ($trackState !== T_CLEAR) {
-        $element["trainIDs"][] = $trainID;
-      }
-//<<JP:TRAIN_ID
-      }
-      traverseTrackUp($trackState, $element["U"]["name"], $baliseName, $oUp - $element["U"]["dist"], $oDown - $element["U"]["dist"], $trainID); //JP:TRAIN_ID
-    } elseif ($oUp <= 0) { // train is fully in direction down
-      if (-$oUp < $element["D"]["dist"]) {
-        $element["trackState"] = $trackState;
-//>>JP:TRAIN_ID
-      if ($trackState !== T_CLEAR) {
-        $element["trainIDs"][] = $trainID;
-      }
-//<<JP:TRAIN_ID
-      }
-      traverseTrackDown($trackState, $element["D"]["name"], $baliseName, $oUp + $element["D"]["dist"], $oDown + $element["D"]["dist"], $trainID); //>>JP:TRAIN_ID
-    } else { // train is occuping the balise
-      $element["trackState"] = $trackState;
-//>>JP:TRAIN_ID
-      if ($trackState !== T_CLEAR) {
-        $element["trainIDs"][] = $trainID;
-      }
-//<<JP:TRAIN_ID
-      traverseTrackUp($trackState, $element["U"]["name"], $baliseName, $oUp - $element["U"]["dist"], $oDown - $element["U"]["dist"], $trainID); //>>JP:TRAIN_ID
-      traverseTrackDown($trackState, $element["D"]["name"], $baliseName, $oUp + $element["D"]["dist"], $oDown + $element["D"]["dist"], $trainID); //>>JP:TRAIN_ID
-    }
-  } else {
-    print "Unknown location of train \n";
-  }
-}
-
-function traverseTrackUp($trackState, $name, $prevName, $oUp, $oDown, $trainID) { //>>JP:TRAIN_ID
-global $PT1;
-  if ($oUp > 0) {
-//print "traverseUp $name Up: $oUp Down $oDown\n";
-    $element = &$PT1[$name];
-//>>JP:TRAIN_ID
-    #first remove the train from the occupying train list. If we needed to clear the track, the it is done, else it will be re-added below (and we avoid duplication)
-    #!The type sensitive check against FALSE covers the scenario where key is 0 which would be interpreted as FALSE by the if.
-    if (FALSE !== ($key = array_search($trainID, $element["trainIDs"]))) {
-      unset($element["trainIDs"][$key]);
-    }
-//<<JP:TRAIN_ID
-    switch ($element["element"]) { // element type
-      case "BL":
-      case "SU":
-      case "SD":
-      case "TK":
-      case "TG":
-      case "LX":
-        if ($oDown <= $element["D"]["dist"] + $element["U"]["dist"]) {
-          $element["trackState"] = $trackState;
-//>>JP:TRAIN_ID
-          #Add train to occupying train list if state != 
-          if ($trackState !== T_CLEAR) {
-            $element["trainIDs"][] = $trainID;
-          }
-//<<JP:TRAIN_ID
-        }
-        if ($oUp > $element["D"]["dist"] + $element["U"]["dist"]) {
-          traverseTrackUp($trackState, $element["U"]["name"], $name, $oUp - ($element["D"]["dist"] + $element["U"]["dist"]),
-            $oDown - ($element["D"]["dist"] + $element["U"]["dist"]), $trainID); //>>JP:TRAIN_ID
-        }
-      break;
-      case "PF":
-        $branch = $element["state"] == E_LEFT ? "L" : "R"; // Physical state to be observed FIXME
-        if ($oDown <= $element["T"]["dist"] + $element[$branch]["dist"]) {
-          $element["trackState"] = $trackState;
-//>>JP:TRAIN_ID
-          #Add train to occupying train list if state != 
-          if ($trackState !== T_CLEAR) {
-            $element["trainIDs"][] = $trainID;
-          }
-//<<JP:TRAIN_ID
-        }
-        if ($oUp > $element[$branch]["dist"] + $element["T"]["dist"]) {
-          traverseTrackUp($trackState, $element[$branch]["name"], $name, $oUp - ($element[$branch]["dist"] + $element["T"]["dist"]),
-            $oDown - ($element[$branch]["dist"] + $element["T"]["dist"]), $trainID); //>>JP:TRAIN_ID
-        }
-      break;
-      case "PT":
-        $branch = $element["L"]["name"] == $prevName ? "L" : "R";
-        if ($oDown <= $element[$branch]["dist"] + $element["T"]["dist"]) {
-          $element["trackState"] = $trackState;
-//>>JP:TRAIN_ID
-          if ($trackState !== T_CLEAR) {
-            $element["trainIDs"][] = $trainID;
-          }
-//<<JP:TRAIN_ID
-        }
-      if ($oUp > $element[$branch]["dist"] + $element["T"]["dist"]) {
-        traverseTrackUp($trackState, $element["T"]["name"], $name, $oUp - ($element[$branch]["dist"] + $element["T"]["dist"]),
-          $oDown - ($element[$branch]["dist"] + $element["T"]["dist"]), $trainID);//>>JP:TRAIN_ID
-      }
-      break;
-      case "BSE":
-        if ($oDown <= $element["D"]["dist"]) {
-          $element["trackState"] = $trackState;
-//>>JP:TRAIN_ID
-          if ($trackState !== T_CLEAR) {
-            $element["trainIDs"][] = $trainID;
-          }
-//<<JP:TRAIN_ID
-        } // else warning position out of range
-      break;
-      default:
-        print "Warning, occupation traverseUp: unknown element type at $name\n";
-      break;
-    }
-  }
-}
-
-function traverseTrackDown($trackState, $name, $prevName, $oUp, $oDown, $trainID) {
-global $PT1;
-  if ($oDown < 0) {
-//print "traverseDown $name Up: $oUp Down $oDown\n";
-  $element = &$PT1[$name];
-//>>JP:TRAIN_ID
-  #first remove the train from the occupying train list. If we needed to clear the track, the it is done, else it will be re-added below (and we avoid duplication)
-  #!The type sensitive check against FALSE covers the scenario where key is 0 which would be interpreted as FALSE by the if.
-  if (FALSE !== ($key = array_search($trainID, $element["trainIDs"]))) {
-    unset($element["trainIDs"][$key]);
-  }
-//<<JP:TRAIN_ID
-  switch ($element["element"]) { // element type
-    case "BL":
-    case "SU":
-    case "SD":
-    case "TK":
-    case "TG":
-    case "LX":
-      if (-$oUp <= $element["D"]["dist"] + $element["U"]["dist"]) {
-        $element["trackState"] = $trackState;
-//>>JP:TRAIN_ID
-        if ($trackState !== T_CLEAR) {
-          $element["trainIDs"][] = $trainID;
-        }
-//<<JP:TRAIN_ID
-      }
-      if (-$oDown > $element["D"]["dist"] + $element["U"]["dist"]) {
-        traverseTrackDown($trackState, $element["D"]["name"], $name, $oUp + ($element["D"]["dist"] + $element["U"]["dist"]),
-          $oDown + ($element["D"]["dist"] + $element["U"]["dist"]), $trainID);//>>JP:TRAIN_ID
-      }
-    break;
-    case "PT": // i.e. facing in dir down
-      $branch = $element["state"] == E_LEFT ? "L" : "R"; // Physical state to be included FIXME
-      if (-$oUp <= $element["T"]["dist"] + $element[$branch]["dist"]) {
-        $element["trackState"] = $trackState;
-//>>JP:TRAIN_ID
-        if ($trackState !== T_CLEAR) {
-          $element["trainIDs"][] = $trainID;
-        }
-//<<JP:TRAIN_ID
-      }
-      if (-$oDown > $element[$branch]["dist"] + $element["T"]["dist"]) {
-        traverseTrackDown($trackState, $element[$branch]["name"], $name, $oUp + ($element[$branch]["dist"] + $element["T"]["dist"]),
-          $oDown + ($element[$branch]["dist"] + $element["T"]["dist"]), $trainID);//>>JP:TRAIN_ID
-      }
-    break;
-    case "PF": // i.e. trailing in dir down
-      $branch = $element["L"]["name"] == $prevName ? "L" : "R";
-      if (-$oUp <= $element[$branch]["dist"] + $element["T"]["dist"]) {
-        $element["trackState"] = $trackState;
-//>>JP:TRAIN_ID
-        if ($trackState !== T_CLEAR) {
-          $element["trainIDs"][] = $trainID;
-        }
-//<<JP:TRAIN_ID
-      }
-      if (-$oDown > $element[$branch]["dist"] + $element["T"]["dist"]) {
-        traverseTrackDown($trackState, $element["T"]["name"], $name, $oUp + ($element[$branch]["dist"] + $element["T"]["dist"]),
-          $oDown + ($element[$branch]["dist"] + $element["T"]["dist"]), $trainID);//>>JP:TRAIN_ID
-      }
-    break;
-    case "BSB":
-      if (-$oUp <= $element["U"]["dist"]) {
-        $element["trackState"] = $trackState;
-//>>JP:TRAIN_ID
-        if ($trackState !== T_CLEAR) {
-          $element["trainIDs"][] = $trainID;
-        }
-//<<JP:TRAIN_ID
-      } // else warning position out of range
-    break;
-    default:
-      print "Warning, occupation traverseDown: unknown element type at $name\n";
-    break;
-  }
-  }
-}
 
 function pointThrow(&$element, $lie) {
   if ($element["trackState"] == T_CLEAR and $element["clamp"] == "") { // point may be thrown if clear and not clamped
@@ -1914,11 +1710,11 @@ global $testBg, $testDist, $trainData, $PT1;
 }
 
 function processCommand($command, $from) { // process HMI command
-global $PT1, $clients, $clientsData, $inCharge, $trainData, $EC, $now, $balises;
+global $PT1, $clients, $clientsData, $inCharge, $trainData, $EC, $now, $balises, $run;
 print ">$command< \n";
   $param = explode(" ",$command);
   switch ($param[0]) {
-  case "so": // signal order
+/*  case "so": // signal order
     if ($from == $inCharge) {
 // Control Signal State
       $element = &$PT1[$param[1]];
@@ -1931,10 +1727,11 @@ print ">$command< \n";
     } else {
       HMIindication($from, "displayResponse {Rejected}\n");
     }
-  break;
-  case "rr":
-// releaseRoute
+  break; */
+  case "rr": // releaseRoute
+    if ($from == $inCharge) {
       startRouteRelease($param[1]);
+    }
     break;
   case "lo": // LX order
     if ($from == $inCharge) {
@@ -2037,6 +1834,11 @@ print ">$command< \n";
   case "tr": // Try to lock the route
     if ($from == $inCharge) {
       setRoute($param[1], $param[2]);
+    }
+  break;
+  case "exitRBC":
+    if ($from == $inCharge) {
+      $run = false;
     }
   break;
   case "test":
@@ -2156,22 +1958,29 @@ global $now, $levelCrossings, $triggers, $PT1;
   }
 }
 
-//------------------------------------------------------------------------------------  HMI
-function initHMIserver() {
-global $HMIport, $HMIaddress, $listener;
+//------------------------------------------------------------------------------------  Server
+function initServer() {
+global $HMIport, $MCePort, $HMIaddress, $listener, $listenerMCe;
 
   $listener = @stream_socket_server("tcp://$HMIaddress:".$HMIport, $errno, $errstr);
   if (!$listener) {
-    fwrite(STDERR,"Cannot create server socket: $errstr ($errno)\n");
+    fwrite(STDERR,"Cannot create server socket for HMI connection: $errstr ($errno)\n");
     die();
   }
   stream_set_blocking($listener,false);
+  $listenerMCe = @stream_socket_server("tcp://$HMIaddress:".$MCePort, $errno, $errstr);
+  if (!$listenerMCe) {
+    fwrite(STDERR,"Cannot create server socket for MCe connection: $errstr ($errno)\n");
+    die();
+  }
+  stream_set_blocking($listenerMCe,false);
 }
 
-function HMIserver() {
-global $ABUS, $listener, $clients, $clientsData, $inCharge;
+function Server() {
+global $ABUS, $listener, $listenerMCe, $clients, $clientsData, $inCharge, $inChargeMCe;
   $read = $clients;
   $read[] = $listener;
+  $read[] = $listenerMCe;
   if ($ABUS == "genie") {
     global $fromGenie;
     $read[] = $fromGenie;
@@ -2180,17 +1989,31 @@ global $ABUS, $listener, $clients, $clientsData, $inCharge;
   $write = NULL;
   if (stream_select($read, $write, $except, 0, 500000 )) {
     foreach ($read as $r) {
-      if ($r == $listener) {
+      if ($r == $listener) { // new HMI client
         if ($newClient = stream_socket_accept($listener,0,$clientName)) {
-          msgLog("Client $clientName signed in");
+          msgLog("HMI Client $clientName signed in");
           $clients[] = $newClient;
           $clientsData[(int)$newClient] = [
             "addr" => $clientName,
             "signIn" => date("Ymd H:i:s"),
-            "inChargeSince" => ""];
+            "inChargeSince" => "",
+            "type" => "HMI"];
           HMIstartup($newClient);
         } else {
           fatalError("HMI: accept failed");
+        }
+      } elseif ($r == $listenerMCe) { // new MCe Client
+        if ($newClient = stream_socket_accept($listenerMCe,0,$clientName)) {
+          msgLog("MCe Client $clientName signed in");
+          $clients[] = $newClient;
+          $clientsData[(int)$newClient] = [
+            "addr" => $clientName,
+            "signIn" => date("Ymd H:i:s"),
+            "inChargeSince" => "",
+            "type" => "MCe"];
+          MCeStartup($newClient);
+        } else {
+          fatalError("MCe: accept failed");
         }
       } elseif ($ABUS == "genie" and $r == $fromGenie) {
         if ($data = fgets($r)) {
@@ -2199,7 +2022,14 @@ global $ABUS, $listener, $clients, $clientsData, $inCharge;
       } else { // exsisting client
         if ($data = fgets($r)) {
 //          print "ClientData: $data";
-          processCommand(trim($data),$r);
+          switch ($clientsData[(int)$r]["type"]) {
+            case "HMI":
+              processCommand(trim($data),$r);
+            break;
+            case "MCe":
+              processCommandMCe(trim($data),$r);
+            break;
+          }
         } else { // Connection closed by client
           msgLog("Client ".stream_socket_get_name($r,true)." signed out");
           fclose($r);
@@ -2213,6 +2043,8 @@ global $ABUS, $listener, $clients, $clientsData, $inCharge;
     }
   }
 }
+
+// ------------------------------------------------------------------------------------ HMI
 
 function HMIstartup($client) { // Initialize specific client and send track layout, status, train data, version info
 global $PT1, $HMI, $trainData, $VERSION, $PT1_VERSION;
@@ -2265,7 +2097,7 @@ global $PT1, $HMI, $trainData, $VERSION, $PT1_VERSION;
 // HMI data
   foreach ($HMI["baliseTrack"] as $trackName => $baliseTrack) {
     HMIindication($client,"track $trackName ".$baliseTrack["x"]." ".$baliseTrack["y"]." ".$baliseTrack["l"]." ".$baliseTrack["or"]."\n");
-    HMIindication($client,"trState $trackName ".$baliseTrack["trackState"]." ".$baliseTrack["trainID"]."\n");  //>>JP:TRAIN_ID
+    HMIindication($client,"trState $trackName ".$baliseTrack["trackState"]." ".$baliseTrack["trainID"]."\n");
   }
 // train data
   foreach ($trainData as $index => &$train) { // train data
@@ -2283,7 +2115,7 @@ function updateHMI() {
 global $HMI, $PT1;
   foreach ($HMI["baliseTrack"] as $name => &$baliseTrack) {
     $baliseTrack["trackState"] = T_CLEAR;
-    $baliseTrack["trainID"] = ""; //>>JP:TRAIN_ID
+    $baliseTrack["trainID"] = "";
     foreach ($baliseTrack["balises"] as $baliseName ) {
       if ($PT1[$baliseName]["trackState"] != T_CLEAR) {
         switch ($baliseTrack["trackState"]) {
@@ -2295,7 +2127,6 @@ global $HMI, $PT1;
             break;
           //already occupied. Occupy has priority on the rest.
         }
-//>>JP:TRAIN_ID
         foreach ($PT1[$baliseName]["trainIDs"] as $trainID ) {
           #Giving the name to the HMI and "??" in case of multiple occupation
           if (($baliseTrack["trainID"] != "")  and ($baliseTrack["trainID"] != $trainID)) {
@@ -2304,14 +2135,12 @@ global $HMI, $PT1;
             $baliseTrack["trainID"] = $trainID;
           }
         }
-//<<JP:TRAIN_ID
       }
     }
     HMIindicationAll("trState $name ".$baliseTrack["trackState"]." ".$baliseTrack["trainID"]."\n"); //>>JP:TRAIN_ID
   }
   unset($name);
   foreach ($PT1 as $name => $element) {
-//>>JP:TRAIN_ID
     $displayedTrainID = "";
     foreach ($element["trainIDs"] as $trainID ) {
       #Giving the name to the HMI and "??" in case of multiple occupation
@@ -2321,7 +2150,6 @@ global $HMI, $PT1;
         $displayedTrainID = $trainID;
       }
     }
-//<<JP:TRAIN_ID
     switch ($element["element"]) {
       case "SU":
       case "SD":
@@ -2351,14 +2179,49 @@ global $trainData, $MODE_TXT, $DIR_TXT, $PWR_TXT, $ACK_TXT;
 }
         
 function HMIindicationAll($msg) {// Send indication to all clients
-global $clients;
+global $clients, $clientsData;
   foreach ($clients as $w) {
-    fwrite($w,$msg);
+    if ($clientsData[(int)$w]["type"] == "HMI") {
+      fwrite($w,$msg);
+    }
   }
 }
 
 function HMIindication($to, $msg) {// Send indication to specific client
   fwrite($to,$msg);
+}
+
+// ------------------------------------------------------------- MCe
+
+function MCeStartup($client) {
+  fwrite($client,"Welcome to WinterTrain MCe\n");
+}
+
+function processCommandMCe($command, $from) {
+global $clients, $clientsData, $inChargeMCe, $run;
+  print "MCe command: $command\n";
+  $param = explode(" ",$command);
+  switch ($param[0]) {  
+    case "Rq": // request operation
+      if ($inChargeMCe) {
+//        HMIindication($from, "displayResponse {Rejected ".$clientsData[(int)$inChargeMCe]["addr"]." is in charge (since ".
+//          $clientsData[(int)$inChargeMCe]["inChargeSince"].")}\n");
+      } else {
+        $inChargeMCe = $from;
+        $clientsData[(int)$from]["inChargeSince"] = date("Ymd H:i:s");
+//        HMIindication($from, "oprAllowed\n");
+      }
+    break;
+    case "Rl": // release operation
+      $inChargeMCe = false;
+//      HMIindication($from, "oprReleased\n");
+    break;
+    case "exitRBC":
+      if ($from == $inChargeMCe) {
+        $run = false;
+      }
+    break;
+  }
 }
 
 // -------------------------------------- CBU clock
@@ -2477,6 +2340,7 @@ global $debug, $background, $RBCIL_CONFIG, $DATA_FILE, $SYSTEM_NAME, $VERSION, $
 -n                do not connect to Abus gateway
 -D <Data_file>    PT1 and Train data
 -d                enable debug info
+-sr               enable Staff Responsible for all trains
 -sh               enable Shunt Mode for all trains
 -fs               enable Full Supervision Mode for all trains
 -ato              enable ATO Mode for all trains
@@ -2486,6 +2350,9 @@ global $debug, $background, $RBCIL_CONFIG, $DATA_FILE, $SYSTEM_NAME, $VERSION, $
   next($argv);
   while (list(,$opt) = each($argv)) {
     switch ($opt) {
+    case "-sr":
+      $SRallowed = 1;
+    break;
     case "-sh":
       $SHallowed = 1;
     break;

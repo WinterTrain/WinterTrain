@@ -8,7 +8,7 @@ set IPport 9900
 # Default configuration
 set trackWidth 0.15
 set lineWidth 0.05
-set winWidth 1900
+set winWidth 1850
 set winHeight 800
 set winX +50
 set winY +50
@@ -720,6 +720,10 @@ proc rlopr {} {
   sendCommand "Rl"
 }
 
+proc exitRBC {} {
+  sendCommand "exitRBC"
+}
+
 proc showLabel {} {
 global showLabel
   if {$showLabel} {
@@ -752,6 +756,8 @@ global nTrainFrame
 #  .f.buttonSignal state disabled
   .f.buttonRelease state disabled
   .f.buttonLX state disabled
+  .f.buttonERBC state disabled
+  .f.buttonT state disabled
   for {set x 0} {$x < $nTrainFrame} {incr x} {
     .f.fTrain.t$x.sr_allowed state disabled
     .f.fTrain.t$x.sh_allowed state disabled
@@ -767,6 +773,8 @@ global aColor nTrainFrame
 #  .f.buttonSignal state !disabled
   .f.buttonRelease state !disabled
   .f.buttonLX state !disabled
+  .f.buttonERBC state !disabled
+  .f.buttonT state !disabled
   for {set x 0} {$x < $nTrainFrame} {incr x} {
     .f.fTrain.t$x.sr_allowed state !disabled
     .f.fTrain.t$x.sh_allowed state !disabled
@@ -923,10 +931,11 @@ grid [ttk::button .f.buttonLX -text "Ovk" -command buttonLX] -column 4 -row 1 -s
 grid [ttk::button .f.buttonOpr -text "Request operation" -command rqopr] -column 5 -row 1 -sticky e
 grid [ttk::button .f.buttonShowGrid -text "Show Grid" -command showGrid] -column 6 -row 1 -sticky e
 grid [ttk::button .f.buttonShowLabel -text "Show Label" -command showLabel] -column 7 -row 1 -sticky e
-grid [ttk::button .f.buttonE -text "Exit" -command exit] -column 8 -row 1 -sticky e
-grid [ttk::button .f.buttonT -text "TEST" -command test] -column 9 -row 1 -sticky e
+grid [ttk::button .f.buttonEHMI -text "Exit HMI" -command exit] -column 8 -row 1 -sticky e
+grid [ttk::button .f.buttonERBC -text "Exit RBC" -command exitRBC] -column 9 -row 1 -sticky e
+grid [ttk::button .f.buttonT -text "TEST" -command test] -column 10 -row 1 -sticky e
 
-grid [tk::canvas .f.canvas -scrollregion "0 0 $cWidth $cHeight" -yscrollcommand ".f.sbv set" -xscrollcommand ".f.sbh set"] -sticky nwes -column 2 -columnspan 7 -row 3
+grid [tk::canvas .f.canvas -scrollregion "0 0 $cWidth $cHeight" -yscrollcommand ".f.sbv set" -xscrollcommand ".f.sbh set"] -sticky nwes -column 2 -columnspan 9 -row 3
 grid [tk::scrollbar .f.sbh -orient horizontal -command ".f.canvas xview"] -column 2 -columnspan 7 -row 4 -sticky we
 grid [tk::scrollbar .f.sbv -orient vertical -command ".f.canvas yview"] -column 9 -row 3 -sticky ns
 
