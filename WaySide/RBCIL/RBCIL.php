@@ -2073,11 +2073,11 @@ global $PT1, $HMI, $trainData, $VERSION, $PT1_VERSION;
     break;
     case "SU":
       HMIindication($client,"signal $name ".$element["HMI"]["x"]." ".$element["HMI"]["y"]." f\n");
-      HMIindication($client,"signalState $name ".$element["status"]." ".$element["trackState"]."\n");
+      HMIindication($client,"signalState $name ".$element["state"]." ".$element["trackState"]."\n");
     break;
     case "SD":
       HMIindication($client,"signal $name ".$element["HMI"]["x"]." ".$element["HMI"]["y"]." r\n");
-      HMIindication($client,"signalState $name ".$element["status"]." ".$element["trackState"]."\n");
+      HMIindication($client,"signalState $name ".$element["state"]." ".$element["trackState"]."\n");
     break;
     case "BSB":
       HMIindication($client,"bufferStop $name ".$element["HMI"]["x"]." ".$element["HMI"]["y"]." b ".$element["HMI"]["l"]."\n");
@@ -2153,7 +2153,7 @@ global $HMI, $PT1;
     switch ($element["element"]) {
       case "SU":
       case "SD":
-        HMIindicationAll("signalState $name ".$element["status"]." ".$element["trackState"]." ".$displayedTrainID."\n");
+        HMIindicationAll("signalState $name ".$element["state"]." ".$element["trackState"]." ".$displayedTrainID."\n");
       break;
       case "PF":
       case "PT":

@@ -385,10 +385,10 @@ global fColor tColor toColor tcColor mColor lColor
 proc signalState {name state trackState {trainID ""}} {
 global fColor oColor cColor toColor tcColor tColor
   switch $state {
-    2 {
+    11 {
     .f.canvas itemconfigure "$name&&aspect" -fill $oColor
     }
-    1 {
+    10 {
     .f.canvas itemconfigure "$name&&aspect" -fill $cColor
     }
     0 {
