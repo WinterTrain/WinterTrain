@@ -29,7 +29,7 @@ $PT1 = [
   "EC" => [
     "addr" => 0,
     "type" => 0,
-    "device1" => 4,
+    "majorDevice" => 4,
     ],
   "U" => ["name" => "BG03", "dist" => 1],
   "D" => ["name" => "BG01", "dist" => 1],
@@ -71,7 +71,7 @@ $PT1 = [
   "EC" => [
     "addr" => 0,
     "type" => 0,
-    "device1" => 4,
+    "majorDevice" => 4,
     ],
   "U" => ["name" => "BG04", "dist" => 11],
   "D" => ["name" => "BG02", "dist" => 1],
@@ -93,8 +93,8 @@ $PT1 = [
   "EC" => [
     "addr" => 152,
     "type" => 10,
-    "device1" => 1,
-    "device2" => 0,
+    "majorDevice" => 1,
+    "minorDevice" => 0,
     ],
   "clamp" => "L",
   "R" => ["name" => "BG03", "dist" => 50],
@@ -128,7 +128,7 @@ $PT1 = [
   "EC" => [
     "addr" => 0,
     "type" => 0,
-    "device1" => 4,
+    "majorDevice" => 4,
     ],
   "U" => ["name" => "BG07", "dist" => 1],
   "D" => ["name" => "BG06", "dist" => 1],
@@ -153,7 +153,7 @@ $PT1 = [
   "EC" => [
     "addr" => 0,
     "type" => 0,
-    "device1" => 0,
+    "majorDevice" => 0,
     ],
   "U" => ["name" => "S5", "dist" => 15],
   "D" => ["name" => "BG07", "dist" => 1],
@@ -169,7 +169,7 @@ $PT1 = [
   "EC" => [
     "addr" => 0,
     "type" => 0,
-    "device1" => 0,
+    "majorDevice" => 0,
     ],
   "U" => ["name" => "BG08", "dist" => 1],
   "D" => ["name" => "S4", "dist" => 15],
@@ -201,7 +201,7 @@ $PT1 = [
   "EC" => [
     "addr" => 0,
     "type" => 0,
-    "device1" => 0,
+    "majorDevice" => 0,
     ],
   "U" => ["name" => "BG10", "dist" => 59],
   "D" => ["name" => "BG09", "dist" => 1],
@@ -230,8 +230,8 @@ $PT1 = [
   "EC" => [
     "addr" => 152,
     "type" => 10,
-    "device1" => 2,
-    "device2" => 0,
+    "majorDevice" => 2,
+    "minorDevice" => 0,
     ],
   "clamp" => "",
   "R" => ["name" => "BG13", "dist" => 40],
@@ -265,7 +265,7 @@ $PT1 = [
   "EC" => [
     "addr" => 0,
     "type" => 0,
-    "device1" => 0,
+    "majorDevice" => 0,
     ],
   "U" => ["name" => "VBG01", "dist" => 1],
   "D" => ["name" => "BG14", "dist" => 9],
@@ -288,7 +288,7 @@ $PT1 = [
   "EC" => [
     "addr" => 0,
     "type" => 0,
-    "device1" => 0,
+    "majorDevice" => 0,
     ],
   "U" => ["name" => "BG16", "dist" => 1],
   "D" => ["name" => "VBG01", "dist" => 1],
@@ -318,8 +318,8 @@ $PT1 = [
   "EC" => [
     "addr" => 152,
     "type" => 10,
-    "device1" => 1,
-    "device2" => 0,
+    "majorDevice" => 1,
+    "minorDevice" => 0,
     ],
   "clamp" => "",
   "R" => ["name" => "BG17", "dist" => 46],
@@ -353,7 +353,7 @@ $PT1 = [
   "EC" => [
     "addr" => 0,
     "type" => 0,
-    "device1" => 0,
+    "majorDevice" => 0,
     ],
   "U" => ["name" => "BG25", "dist" => 1],
   "D" => ["name" => "BG22", "dist" => 1],
@@ -385,7 +385,7 @@ $PT1 = [
   "EC" => [
     "addr" => 0,
     "type" => 0,
-    "device1" => 0,
+    "majorDevice" => 0,
     ],
   "U" => ["name" => "BG18", "dist" => 1],
   "D" => ["name" => "BG15", "dist" => 1],
@@ -408,7 +408,7 @@ $PT1 = [
   "EC" => [
     "addr" => 0,
     "type" => 0,
-    "device1" => 0,
+    "majorDevice" => 0,
     ],
   "U" => ["name" => "BG19", "dist" => 1],
   "D" => ["name" => "BG18", "dist" => 1],
@@ -431,8 +431,8 @@ $PT1 = [
   "EC" => [
     "addr" => 152,
     "type" => 10,
-    "device1" => 3,
-    "device2" => 0,
+    "majorDevice" => 3,
+    "minorDevice" => 0,
     ],
   "clamp" => "L",
   "R" => ["name" => "B3", "dist" => 44],
@@ -453,7 +453,7 @@ $PT1 = [
   "EC" => [
     "addr" => 0,
     "type" => 0,
-    "device1" => 0,
+    "majorDevice" => 0,
     ],
   "U" => ["name" => "BG18", "dist" => 0],
   "D" => ["name" => "P4", "dist" => 0],
@@ -478,7 +478,7 @@ $PT1 = [
   "EC" => [
     "addr" => 150,
     "type" => 41,
-    "device1" => 5,
+    "majorDevice" => 5,
     ],
   "U" => ["name" => "BG27", "dist" => 1],
   "D" => ["name" => "BG25", "dist" => 1],
@@ -502,7 +502,7 @@ $PT1 = [
   "EC" => [
     "addr" => 150,
     "type" => 41,
-    "device1" => 4,
+    "majorDevice" => 4,
     ],
   "U" => ["name" => "VBG27", "dist" => 1],
   "D" => ["name" => "BG27", "dist" => 1],
@@ -545,7 +545,7 @@ $PT1 = [
   "EC" => [
     "addr" => 0,
     "type" => 0,
-    "device1" => 0,
+    "majorDevice" => 0,
     ],
   "U" => ["name" => "S16", "dist" => 0],
   "D" => ["name" => "BG18", "dist" => 1],
@@ -561,7 +561,7 @@ $PT1 = [
   "EC" => [
     "addr" => 0,
     "type" => 0,
-    "device1" => 0,
+    "majorDevice" => 0,
     ],
   "U" => ["name" => "BG19", "dist" => 1],
   "D" => ["name" => "S15", "dist" => 0],
@@ -619,8 +619,8 @@ $PT1 = [
   "EC" => [
     "addr" => 0,
     "type" => 0,
-    "device1" => 0,
-    "device2" => 0,
+    "majorDevice" => 0,
+    "minorDevice" => 0,
     ],
   "clamp" => "",
   "R" => ["name" => "", "dist" => 0],
@@ -638,8 +638,8 @@ $PT1 = [
   "EC" => [
     "addr" => 0,
     "type" => 0,
-    "device1" => 0,
-    "device2" => 0,
+    "majorDevice" => 0,
+    "minorDevice" => 0,
     ],
   "clamp" => "",
   "R" => ["name" => "", "dist" => 0],
@@ -656,7 +656,7 @@ $PT1 = [
   "EC" => [
     "addr" => 0,
     "type" => 0,
-    "device1" => 0,
+    "majorDevice" => 0,
     ],
   "U" => ["name" => "", "dist" => 0],
   "D" => ["name" => "", "dist" => 0],
@@ -670,14 +670,14 @@ $PT1 = [
   "ECsignal" => [
     "addr" => 152,
     "type" => 31,
-    "device1" => 1,
-    "device2" => 0,
+    "majorDevice" => 1,
+    "minorDevice" => 0,
     ],
   "ECbarrier" => [
     "addr" => 152,
     "type" => 32,
-    "device1" => 4,
-    "device2" => 0,
+    "majorDevice" => 4,
+    "minorDevice" => 0,
     ],
   "U" => ["name" => "BG028", "dist" => 20],
   "D" => ["name" => "BG027", "dist" => 20],

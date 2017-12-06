@@ -5,7 +5,7 @@ $arduino = 0x33; // CBU Master, I2C addresse
 $ABUS = "";
 
 //--------------------------------------- Default Configuration
-$VERSION = "02P02";  // What does this mean with git??
+$VERSION = "02P02";  // What does this mean with git?? FIXME
 $HMIport = 9900;
 $MCePort = 9901;
 $HMIaddress = "0.0.0.0";
@@ -170,7 +170,7 @@ initEC();
 initServer();
 do {
   $now = time();
-  if ($now != $pollTimeout) {
+  if ($now != $pollTimeout) { // every 1 second
     $pollTimeout = $now;
     checkECtimeout();
     checkTrainTimeout();
@@ -460,7 +460,8 @@ global $trainData;
   }
 }
 
-function sendMA($trainID, $authMode, $balise, $dist, $speed) { // send mode and movement authorization.
+function sendMA($trainID, $authMode, $balise, $dist, $speed) {
+// Send mode and movement authorization. Request position report for same train from Abus Master
 global $radioLinkAddr;
   $packet[2] = 03;
   $packet[3] = $trainID; 
@@ -471,6 +472,16 @@ global $radioLinkAddr;
   $packet[12] = $speed;
   AbusSendPacket($radioLinkAddr, $packet, 13);
 } 
+
+function checkTrainTimeout() {
+global $trainData, $now;
+  foreach ($trainData as $index => &$train) {
+    if ($now > $train["validTimer"]) { // Train not sending position reports
+      $train["dataValid"] = "VOID";
+      updateTrainDataHMI($index);
+    }
+  }
+}
 
 //---------------------------------------------------------------------- EC interface
 function initEC($specificEC = "") {
@@ -485,10 +496,11 @@ global $PT1, $EC;
           if (!isset($EC[$addr])) {
             $EC[$addr]["index"] = array();
             $EC[$addr]["validTimer"] = 0;
+            $EC[$addr]["ECstatus"] = "*";
             resetEC($addr);
           }
-//        print "$name: addr:$addr type:".$element["EC"]["type"]." device1:".$element["EC"]["device1"]."\n";
-          configureEC($addr, $element["EC"]["type"], $element["EC"]["device1"]);
+//        print "$name: addr:$addr type:".$element["EC"]["type"]." majorDevice:".$element["EC"]["majorDevice"]."\n";
+          configureEC($addr, $element["EC"]["type"], $element["EC"]["majorDevice"]);
           $element["EC"]["index"] = count($EC[$addr]["index"]);
           $EC[$addr]["index"][] = $name;
         }
@@ -500,10 +512,11 @@ global $PT1, $EC;
           if (!isset($EC[$addr])) {
             $EC[$addr]["index"] = array();
             $EC[$addr]["validTimer"] = 0;
+            $EC[$addr]["ECstatus"] = "*";
             resetEC($addr);
           }
-//        print "$name: addr:$addr type:".$element["EC"]["type"]." device1:".$element["EC"]["device1"]."\n";
-          configureEC($addr, $element["EC"]["type"], $element["EC"]["device1"]);
+//        print "$name: addr:$addr type:".$element["EC"]["type"]." majorDevice:".$element["EC"]["majorDevice"]."\n";
+          configureEC($addr, $element["EC"]["type"], $element["EC"]["majorDevice"]);
           $element["EC"]["index"] = count($EC[$addr]["index"]);
           $EC[$addr]["index"][] = $name;
         }
@@ -514,10 +527,11 @@ global $PT1, $EC;
           if (!isset($EC[$addr])) {
             $EC[$addr]["index"] = array();
             $EC[$addr]["validTimer"] = 0;
+            $EC[$addr]["ECstatus"] = "*";
             resetEC($addr);
           }
-//        print "LXbarrier $name: addr:$addr type:".$element["ECbarrier"]["type"]." device1:".$element["ECbarrier"]["device1"]."\n";
-          configureEC($addr, $element["ECbarrier"]["type"], $element["ECbarrier"]["device1"]);
+//        print "LXbarrier $name: addr:$addr type:".$element["ECbarrier"]["type"]." majorDevice:".$element["ECbarrier"]["majorDevice"]."\n";
+          configureEC($addr, $element["ECbarrier"]["type"], $element["ECbarrier"]["majorDevice"]);
           $element["ECbarrier"]["index"] = count($EC[$addr]["index"]);
           $EC[$addr]["index"][] = $name;
         }
@@ -526,10 +540,11 @@ global $PT1, $EC;
           if (!isset($EC[$addr])) {
             $EC[$addr]["index"] = array();
             $EC[$addr]["validTimer"] = 0;
+            $EC[$addr]["ECstatus"] = "*";
             resetEC($addr);
           }
-//        print "LXsignal $name: addr:$addr type:".$element["ECsignal"]["type"]." device1:".$element["ECsignal"]["device1"]."\n";
-          configureEC($addr, $element["ECsignal"]["type"], $element["ECsignal"]["device1"]);
+//        print "LXsignal $name: addr:$addr type:".$element["ECsignal"]["type"]." majorDevice:".$element["ECsignal"]["majorDevice"]."\n";
+          configureEC($addr, $element["ECsignal"]["type"], $element["ECsignal"]["majorDevice"]);
           $element["ECsignal"]["index"] = count($EC[$addr]["index"]);
           $EC[$addr]["index"][] = $name;
         }
@@ -545,9 +560,15 @@ function pollEC() {
 global $PT1, $EC;
   foreach ($EC as $addr => $ec) {
     requestElementStatusEC($addr);
-    foreach ($ec["index"] as $index => $name) {
-      if ($PT1[$name]["state"] == E_PROCEED)  { // ... and $name is a signal .... FIXME
-        orderEC($addr, $index, O_PROCEED);// O_PROCEED_EXTENDED to be add for next version FIXME
+    foreach ($ec["index"] as $index => $name) { // Refresh signal order (otherwise EC will change back to STOP on timeout)
+      $element = $PT1[$name];
+      switch ($element["element"]) {
+        case "SU":
+        case "SD":
+          if ($element["state"] != E_STOP)  {
+            orderEC($addr, $index, $element["state"] == E_PROCEED ? O_PROCEED : O_PROCEEDPROCEED);
+          }
+        break;
       }
     }
   }
@@ -559,14 +580,19 @@ function resetEC($addr) {
   AbusSendPacket($addr, $packet, 4);
 }
 
-function configureEC($addr, $elementType, $device1, $device2 = 0) {
+function configureEC($addr, $elementType, $majorDevice, $minorDevice = 0) {
   $packet[2] = 20;
   $packet[3] = 01;
   $packet[4] = $elementType;
-  $packet[5] = $device1;
-  $packet[6] = $device2;
+  $packet[5] = $majorDevice;
+  $packet[6] = $minorDevice;
   AbusSendPacket($addr, $packet, 7);
  }
+
+function requestECstatus($addr) {
+  $packet[2] = 02;
+  AbusSendPacket($addr, $packet, 3);
+} 
 
 function orderEC($addr, $index, $order) {
   $packet[2] = 10;
@@ -589,15 +615,21 @@ function receivedFromEC($addr, $data) {
         // log msg: EC back online, but only once FIXME
         break;
       case 02: // EC status
+        $uptime = 0;
+        for ($i = 0; $i < 4; $i++) {
+          $uptime = 256 * $uptime + (int)$data[$i + 3];
+        }
+        $EC[$addr]["ECstatus"] = "Uptime: $uptime, N_ELEMENT_CONFIGURED: {$data[7]}, N_ELEMENT: {$data[8]}, ".
+                                       "N_UDEVICE: {$data[9]}, N_LDEVICE: {$data[10]}, N_PDEVICE: {$data[11]}";
         break;  
       case 03: // position report
         positionReport($data);
         break;
       case 20: // configuration
         if ($data[3] > 0) {
-          print "Configuration error: ".$data[3]."\n";
+          print "EC ($addr), Configuration error: ".$data[3]."\n";
         } else {
-          print "Configuration OK\n";
+          print "EC ($addr), Configuration OK\n";
         }
         break;
       default:
@@ -611,7 +643,8 @@ function receivedFromEC($addr, $data) {
 function elementStatusEC($addr, $data) { // Analyse element status from EC
 global $EC, $PT1;
   if (isset($EC[$addr]) and $data[3] < count($EC[$addr]["index"])) {
-    print "Error: EC not configured\n"; //---------------------------------------------------------------------FIXME
+    print "Error: EC ($addr) not configured: #conf. element EC: {$data[3]}, RBC: ".count($EC[$addr]["index"])."\n";
+    unset($EC[$addr]);
     initEC($addr);
   } else {
     $EC[$addr]["validTimer"] = time() + EC_TIMEOUT;
@@ -687,16 +720,6 @@ global $PT1, $EC, $now, $radioLinkAddr;
       if ($addr == $radioLinkAddr) {
         // position report UDEF------------------------------------- FIXME
       }
-    }
-  }
-}
-
-function checkTrainTimeout() {
-global $trainData, $now;
-  foreach ($trainData as $index => &$train) {
-    if ($now > $train["validTimer"]) { // Train not sending position reports
-      $train["dataValid"] = "VOID";
-      updateTrainDataHMI($index);
     }
   }
 }

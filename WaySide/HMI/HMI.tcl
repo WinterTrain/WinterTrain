@@ -32,8 +32,9 @@ set scale 45
 set xOffset 5
 set yOffset 10
 set nTrainFrame 0
-set liveT 500
+set liveT 42
 set live 0
+set liveC 0
 set liveTxt {\\ | / -}
 set entryFontSize 12
 set labelFontSize 12
@@ -901,10 +902,14 @@ Usage:
 
 #----------------------------------------------- window layout
 proc rotate {} {
-global liveT live liveTxt liveIndicator
-  incr live
-  if {[expr $live > 3]} { set live 0}
-  set liveIndicator [lindex $liveTxt $live]
+global liveT live liveTxt liveIndicator liveC
+  incr liveC
+  if {[expr $liveC > $liveT]} {
+    set liveC 0
+    incr live
+    if {[expr $live > 3]} { set live 0}
+    set liveIndicator [lindex $liveTxt $live]
+  }
 }
 
 ttk::style configure TButton -font "'Helvetica', $buttonFontSize"
