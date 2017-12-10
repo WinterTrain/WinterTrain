@@ -1,7 +1,7 @@
 #!/usr/bin/wish
 package require Tk
 
-set HMIversion 02P01
+set HMIversion 02P02
 set IPaddress 0.0.0.0
 set IPport 9900
 
@@ -39,6 +39,8 @@ set liveTxt {\\ | / -}
 set entryFontSize 12
 set labelFontSize 12
 set buttonFontSize 12
+
+set emergencyStop false
 
 #----------------------------------------------------------------------------- Display elements
 proc label {text x y} {
@@ -537,7 +539,15 @@ proc resetLabel {} {
 global showLabel
   .f.buttonShowLabel configure -text "Show Label"
   set showLabel no
+}
 
+proc eStopInd {state} {
+global showLabel
+  if {$state} {
+  .f.buttonStop configure -text "Release ES"
+  } else {
+  .f.buttonStop configure -text " - - Emergency STOP - - "
+  }
 }
 
 #--------------------------------------------------------------------------------------------------- command handlers
@@ -713,6 +723,10 @@ global ato
   sendCommand "ATO $trainIndex $ato($trainIndex)"
 }
 
+proc eStop {} {
+  sendCommand "eStop"
+}
+
 proc rqopr {} {
   sendCommand "Rq"
 }
@@ -757,6 +771,7 @@ global nTrainFrame
 #  .f.buttonSignal state disabled
   .f.buttonRelease state disabled
   .f.buttonLX state disabled
+  .f.buttonStop state disabled
   .f.buttonERBC state disabled
   .f.buttonT state disabled
   for {set x 0} {$x < $nTrainFrame} {incr x} {
@@ -774,6 +789,7 @@ global aColor nTrainFrame
 #  .f.buttonSignal state !disabled
   .f.buttonRelease state !disabled
   .f.buttonLX state !disabled
+  .f.buttonStop state !disabled
   .f.buttonERBC state !disabled
   .f.buttonT state !disabled
   for {set x 0} {$x < $nTrainFrame} {incr x} {
@@ -926,23 +942,24 @@ grid columnconfigure .f 6 -weight 1; grid rowconfigure .f 3 -weight 1
 grid [ttk::label .f.menu -text ""] -column 1 -row 1 -padx 5 -pady 5 -sticky we
 grid [ttk::label .f.response -textvariable response] -column 2 -columnspan 5 -row 6 -padx 5 -pady 5 -sticky we
 grid [ttk::label .f.status -textvariable status] -column 2 -row 5 -padx 5 -pady 5 -sticky we
-grid [ttk::label .f.versions -textvariable versions] -column 6 -columnspan 2 -row 5 -padx 5 -pady 5 -sticky e
+grid [ttk::label .f.versions -textvariable versions] -column 8 -columnspan 2 -row 5 -padx 5 -pady 5 -sticky e
 #grid [ttk::label .f.versionPT1 -textvariable PT1version] -column 7 -row 5 -padx 5 -pady 5 -sticky e
 grid [ttk::label .f.live -textvariable liveIndicator] -column 8 -row 5 -padx 5 -pady 5 -sticky e
 #grid [ttk::button .f.buttonSignal -text "Signal" -command buttonSignal] -column 2 -row 1 -sticky we
 grid [ttk::button .f.buttonRelease -text "Release" -command buttonRelease] -column 2 -row 1 -sticky we
 grid [ttk::button .f.buttonPoint -text "Spsk" -command buttonPoint] -column 3 -row 1 -sticky we
 grid [ttk::button .f.buttonLX -text "Ovk" -command buttonLX] -column 4 -row 1 -sticky we
-grid [ttk::button .f.buttonOpr -text "Request operation" -command rqopr] -column 5 -row 1 -sticky e
-grid [ttk::button .f.buttonShowGrid -text "Show Grid" -command showGrid] -column 6 -row 1 -sticky e
-grid [ttk::button .f.buttonShowLabel -text "Show Label" -command showLabel] -column 7 -row 1 -sticky e
-grid [ttk::button .f.buttonEHMI -text "Exit HMI" -command exit] -column 8 -row 1 -sticky e
-grid [ttk::button .f.buttonERBC -text "Exit RBC" -command exitRBC] -column 9 -row 1 -sticky e
-grid [ttk::button .f.buttonT -text "TEST" -command test] -column 10 -row 1 -sticky e
+grid [ttk::button .f.buttonStop -text "" -command eStop] -column 5 -row 1 -sticky w
+grid [ttk::button .f.buttonOpr -text "Request operation" -command rqopr] -column 7 -row 1 -sticky e
+grid [ttk::button .f.buttonShowGrid -text "Show Grid" -command showGrid] -column 8 -row 1 -sticky e
+grid [ttk::button .f.buttonShowLabel -text "Show Label" -command showLabel] -column 9 -row 1 -sticky e
+grid [ttk::button .f.buttonEHMI -text "Exit HMI" -command exit] -column 10 -row 1 -sticky e
+grid [ttk::button .f.buttonERBC -text "Exit RBC" -command exitRBC] -column 11 -row 1 -sticky e
+grid [ttk::button .f.buttonT -text "TEST" -command test] -column 12 -row 1 -sticky e
 
-grid [tk::canvas .f.canvas -scrollregion "0 0 $cWidth $cHeight" -yscrollcommand ".f.sbv set" -xscrollcommand ".f.sbh set"] -sticky nwes -column 2 -columnspan 9 -row 3
-grid [tk::scrollbar .f.sbh -orient horizontal -command ".f.canvas xview"] -column 2 -columnspan 7 -row 4 -sticky we
-grid [tk::scrollbar .f.sbv -orient vertical -command ".f.canvas yview"] -column 9 -row 3 -sticky ns
+grid [tk::canvas .f.canvas -scrollregion "0 0 $cWidth $cHeight" -yscrollcommand ".f.sbv set" -xscrollcommand ".f.sbh set"] -sticky nwes -column 2 -columnspan 10 -row 3
+grid [tk::scrollbar .f.sbh -orient horizontal -command ".f.canvas xview"] -column 2 -columnspan 9 -row 4 -sticky we
+grid [tk::scrollbar .f.sbv -orient vertical -command ".f.canvas yview"] -column 11 -row 3 -sticky ns
 
 grid [ttk::frame .f.fTrain -padding "3 3 3 3" -relief solid -borderwidth 2] -column 1 -row 7 -columnspan 8 -sticky nwes
 
