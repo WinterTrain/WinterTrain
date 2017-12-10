@@ -5,7 +5,7 @@ $arduino = 0x33; // CBU Master, I2C addresse
 $ABUS = "";
 
 //--------------------------------------- Default Configuration
-$VERSION = "02P02";  // What does this mean with git?? FIXME
+$VERSION = "02P03";  // What does this mean with git?? FIXME
 $HMIport = 9900;
 $MCePort = 9901;
 $HMIaddress = "0.0.0.0";
@@ -24,13 +24,15 @@ $MSGLOG = "Log/RBCIL.log";
 $radioLinkAddr = 150;
 $SR_MAX_SPEED = 100;
 $SH_MAX_SPEED = 60;
-$ATO_MAX_SPEED = 40;
-$FS_MAX_SPEED = 40;
+$ATO_MAX_SPEED = 50;
+$FS_MAX_SPEED = 50;
 
 // ---------------------------------------- Timing
 define("EC_TIMEOUT",5);
 define("TRAIN_DATA_TIMEOUT",5);
 define("LX_WARNING_TIME",2);
+define("ESTOP_TIMEOUT",1); // Timing for emergency Stop cmd
+define("EREL_TIMEOUT",10); // Timing for release cmd
 
 // ----------------------------------------Enummerations
 // Route
@@ -122,6 +124,7 @@ $ACK_TXT = [0 => "NO_MA", 1 => "MA_ACK"];
 $debug = FALSE; $background = FALSE; $run = true;
 $pollTimeout = 0;
 $timeoutUr = 0;
+$EstopTimeout = 0;
 
 //--------------------------------------- Server variable
 $clients = array();
@@ -141,6 +144,7 @@ $levelCrossings = array();
 $triggers = array();
 $EC = array();
 $lockedRoutes = array();
+$emergencyStop = false;
 
 $errorFound = false;
 $totalElement = 0;
@@ -180,6 +184,10 @@ do {
     IL();
     RBC();
     updateHMI();
+  }
+  if ($now > $EstopTimeout) {
+    sendEstopCmd($emergencyStop);
+    $EstopTimeout = $now + ($emergencyStop ? ESTOP_TIMEOUT : EREL_TIMEOUT);
   }
   if ($ABUS == "cbu" and $timeoutUr <= $now) {
     $urTimeout = $now + 60;
@@ -471,7 +479,15 @@ global $radioLinkAddr;
   $packet[11] = ($dist & 0xFF00) >> 8;
   $packet[12] = $speed;
   AbusSendPacket($radioLinkAddr, $packet, 13);
-} 
+}
+
+function sendEstopCmd($state) {
+// Send emergency Stop command
+global $radioLinkAddr;
+  $packet[2] = 04;
+  $packet[3] = (int)$state;
+  AbusSendPacket($radioLinkAddr, $packet, 4);
+}
 
 function checkTrainTimeout() {
 global $trainData, $now;
@@ -1733,7 +1749,7 @@ global $testBg, $testDist, $trainData, $PT1;
 }
 
 function processCommand($command, $from) { // process HMI command
-global $PT1, $clients, $clientsData, $inCharge, $trainData, $EC, $now, $balises, $run;
+global $PT1, $clients, $clientsData, $inCharge, $trainData, $EC, $now, $balises, $run, $emergencyStop, $EstopTimeout;
 print ">$command< \n";
   $param = explode(" ",$command);
   switch ($param[0]) {
@@ -1827,6 +1843,10 @@ print ">$command< \n";
       HMIindication($from, "displayResponse {Rejected}\n");
     }
   break;  
+  case "eStop":
+    $emergencyStop = !$emergencyStop;
+    $EstopTimeout = 0; // Trigger command
+  break;
   case "Rq": // request operation
     if ($inCharge) {
       HMIindication($from, "displayResponse {Rejected ".$clientsData[(int)$inCharge]["addr"]." is in charge (since ".
@@ -2135,7 +2155,8 @@ global $PT1, $HMI, $trainData, $VERSION, $PT1_VERSION;
 }
 
 function updateHMI() {
-global $HMI, $PT1;
+global $HMI, $PT1, $emergencyStop;
+  HMIindicationAll("eStopInd ".($emergencyStop ? "true" : "false")."\n");
   foreach ($HMI["baliseTrack"] as $name => &$baliseTrack) {
     $baliseTrack["trackState"] = T_CLEAR;
     $baliseTrack["trainID"] = "";

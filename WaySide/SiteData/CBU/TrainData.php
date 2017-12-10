@@ -5,7 +5,7 @@ $trainData = [
   "ID" => 20,
   "name" => "Cargo",
   "lengthFront" => 40,
-  "lengthBehind" => 55,
+  "lengthBehind" => 45,
   "wheelFactor" => 5,
   ],
 1 => [
