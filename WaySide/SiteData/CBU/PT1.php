@@ -93,10 +93,10 @@ $PT1 = [
   "EC" => [
     "addr" => 152,
     "type" => 10,
-    "majorDevice" => 1,
+    "majorDevice" => 3,
     "minorDevice" => 0,
     ],
-  "clamp" => "L",
+  "clamp" => "",
   "R" => ["name" => "BG03", "dist" => 50],
   "L" => ["name" => "BG04", "dist" => 40],
   "T" => ["name" => "BG05", "dist" => 1],

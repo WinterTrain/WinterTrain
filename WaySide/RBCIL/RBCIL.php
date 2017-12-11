@@ -31,8 +31,6 @@ $FS_MAX_SPEED = 50;
 define("EC_TIMEOUT",5);
 define("TRAIN_DATA_TIMEOUT",5);
 define("LX_WARNING_TIME",2);
-define("ESTOP_TIMEOUT",1); // Timing for emergency Stop cmd
-define("EREL_TIMEOUT",10); // Timing for release cmd
 
 // ----------------------------------------Enummerations
 // Route
@@ -72,6 +70,7 @@ define("M_SR",1);
 define("M_SH",2);
 define("M_FS",3);
 define("M_ATO",4);
+define("M_ESTOP",7);
 // Train power mode
 define("P_UDEF",0);
 define("P_R",1);
@@ -124,7 +123,7 @@ $ACK_TXT = [0 => "NO_MA", 1 => "MA_ACK"];
 $debug = FALSE; $background = FALSE; $run = true;
 $pollTimeout = 0;
 $timeoutUr = 0;
-$EstopTimeout = 0;
+$startTime = time();
 
 //--------------------------------------- Server variable
 $clients = array();
@@ -181,13 +180,9 @@ do {
     processLX();
     pollEC();
     pollRadioLink();
-    IL();
     RBC();
     updateHMI();
-  }
-  if ($now > $EstopTimeout) {
-    sendEstopCmd($emergencyStop);
-    $EstopTimeout = $now + ($emergencyStop ? ESTOP_TIMEOUT : EREL_TIMEOUT);
+    updateMCe();
   }
   if ($ABUS == "cbu" and $timeoutUr <= $now) {
     $urTimeout = $now + 60;
@@ -457,9 +452,13 @@ global $DATA_FILE, $trainData, $PT1_VERSION, $PT1, $HMI, $errorFound, $totalElem
 
 // --------------------------------------------------------------------- RadioLink
 function pollRadioLink() {
-global $trainData;
+global $trainData, $emergencyStop;
   foreach ($trainData as $index => &$train) {
-    sendMA($train["ID"], $train["authMode"], $train["MAbalise"], $train["MAdist"], $train["maxSpeed"]);
+    if ($emergencyStop) {
+      sendMA($train["ID"], M_ESTOP, $train["MAbalise"], $train["MAdist"], $train["maxSpeed"]);
+    } else {
+      sendMA($train["ID"], $train["authMode"], $train["MAbalise"], $train["MAdist"], $train["maxSpeed"]);
+    }
     if ($train["MAbalise"][0]) {
       //print_r($train["MAbalise"]);
       print "Dist: ".$train["MAdist"]." Max: ".$train["maxSpeed"]."\n";
@@ -481,14 +480,6 @@ global $radioLinkAddr;
   AbusSendPacket($radioLinkAddr, $packet, 13);
 }
 
-function sendEstopCmd($state) {
-// Send emergency Stop command
-global $radioLinkAddr;
-  $packet[2] = 04;
-  $packet[3] = (int)$state;
-  AbusSendPacket($radioLinkAddr, $packet, 4);
-}
-
 function checkTrainTimeout() {
 global $trainData, $now;
   foreach ($trainData as $index => &$train) {
@@ -502,6 +493,21 @@ global $trainData, $now;
 //---------------------------------------------------------------------- EC interface
 function initEC($specificEC = "") {
 global $PT1, $EC;
+
+  function addEC($addr) {
+  global $EC;
+    $EC[$addr]["index"] = array();
+    $EC[$addr]["validTimer"] = 0;
+    $EC[$addr]["ECstatus"] = "*";
+    $EC[$addr]["uptime"] = "*";
+    $EC[$addr]["elementConf"] = "*";
+    $EC[$addr]["N_ELEMENT"] = "*";
+    $EC[$addr]["N_UDEVICE"] = "*";
+    $EC[$addr]["N_LDEVICE"] = "*";
+    $EC[$addr]["N_PDEVICE"] = "*";
+    resetEC($addr);
+  }
+
   foreach ($PT1 as $name => &$element) {
     if ($specificEC == "" or (isset($element["EC"]["addr"]) and $element["EC"]["addr"] == $specificEC)) {
       switch ($element["element"]) {
@@ -510,10 +516,7 @@ global $PT1, $EC;
         if ($element["EC"]["type"] != 0) {
           $addr = $element["EC"]["addr"];
           if (!isset($EC[$addr])) {
-            $EC[$addr]["index"] = array();
-            $EC[$addr]["validTimer"] = 0;
-            $EC[$addr]["ECstatus"] = "*";
-            resetEC($addr);
+            addEC($addr);
           }
 //        print "$name: addr:$addr type:".$element["EC"]["type"]." majorDevice:".$element["EC"]["majorDevice"]."\n";
           configureEC($addr, $element["EC"]["type"], $element["EC"]["majorDevice"]);
@@ -526,10 +529,7 @@ global $PT1, $EC;
         if ($element["EC"]["type"] != 0) {
           $addr = $element["EC"]["addr"];
           if (!isset($EC[$addr])) {
-            $EC[$addr]["index"] = array();
-            $EC[$addr]["validTimer"] = 0;
-            $EC[$addr]["ECstatus"] = "*";
-            resetEC($addr);
+            addEC($addr);
           }
 //        print "$name: addr:$addr type:".$element["EC"]["type"]." majorDevice:".$element["EC"]["majorDevice"]."\n";
           configureEC($addr, $element["EC"]["type"], $element["EC"]["majorDevice"]);
@@ -541,10 +541,7 @@ global $PT1, $EC;
         if ($element["ECbarrier"]["type"] != 0) {
           $addr = $element["ECbarrier"]["addr"];
           if (!isset($EC[$addr])) {
-            $EC[$addr]["index"] = array();
-            $EC[$addr]["validTimer"] = 0;
-            $EC[$addr]["ECstatus"] = "*";
-            resetEC($addr);
+            addEC($addr);
           }
 //        print "LXbarrier $name: addr:$addr type:".$element["ECbarrier"]["type"]." majorDevice:".$element["ECbarrier"]["majorDevice"]."\n";
           configureEC($addr, $element["ECbarrier"]["type"], $element["ECbarrier"]["majorDevice"]);
@@ -554,10 +551,7 @@ global $PT1, $EC;
         if ($element["ECsignal"]["type"] != 0) {
           $addr = $element["ECsignal"]["addr"];
           if (!isset($EC[$addr])) {
-            $EC[$addr]["index"] = array();
-            $EC[$addr]["validTimer"] = 0;
-            $EC[$addr]["ECstatus"] = "*";
-            resetEC($addr);
+            addEC($addr);
           }
 //        print "LXsignal $name: addr:$addr type:".$element["ECsignal"]["type"]." majorDevice:".$element["ECsignal"]["majorDevice"]."\n";
           configureEC($addr, $element["ECsignal"]["type"], $element["ECsignal"]["majorDevice"]);
@@ -623,6 +617,7 @@ function requestElementStatusEC($addr) {
 } 
 
 function receivedFromEC($addr, $data) {
+global $EC;
   if ($addr) {
     switch ($data[2]) { // packet type
       case 01: // status
@@ -632,11 +627,15 @@ function receivedFromEC($addr, $data) {
         break;
       case 02: // EC status
         $uptime = 0;
-        for ($i = 0; $i < 4; $i++) {
+        for ($i = 3; $i >= 0; $i--) {
           $uptime = 256 * $uptime + (int)$data[$i + 3];
         }
-        $EC[$addr]["ECstatus"] = "Uptime: $uptime, N_ELEMENT_CONFIGURED: {$data[7]}, N_ELEMENT: {$data[8]}, ".
-                                       "N_UDEVICE: {$data[9]}, N_LDEVICE: {$data[10]}, N_PDEVICE: {$data[11]}";
+        $EC[$addr]["uptime"] = round($uptime / 1000);
+        $EC[$addr]["elementConf"] = $data[7];
+        $EC[$addr]["N_ELEMENT"] = $data[8];
+        $EC[$addr]["N_UDEVICE"] = $data[9];
+        $EC[$addr]["N_LDEVICE"] = $data[10];
+        $EC[$addr]["N_PDEVICE"] = $data[11];
         break;  
       case 03: // position report
         positionReport($data);
@@ -1326,7 +1325,7 @@ global $PT1, $trainData, $trainIndex;
     $trainData[$trainIndex[$trainID]]["MAdist"] = round($MA["dist"] / $trainData[$trainIndex[$trainID]]["wheelFactor"]); //FIXME: Confirm that still ok to divide here
     RBC_IL_DebugPrint("Giving MA from ".$PT1[$MA["bg"]]["ID"]." with distance ".$trainData[$trainIndex[$trainID]]["MAdist"]." to train $trainID \n");
   } else {
-    RBC_IL_DebugPrint("Cannot send MA to train $trainID: balise $bg has no ID set in PT1\n");
+    RBC_IL_DebugPrint("Cannot send MA to train $trainID: balise {$MA["bg"]} has no ID set in PT1\n");
   }
 }
 
@@ -1749,7 +1748,7 @@ global $testBg, $testDist, $trainData, $PT1;
 }
 
 function processCommand($command, $from) { // process HMI command
-global $PT1, $clients, $clientsData, $inCharge, $trainData, $EC, $now, $balises, $run, $emergencyStop, $EstopTimeout;
+global $PT1, $clients, $clientsData, $inCharge, $trainData, $EC, $now, $balises, $run, $emergencyStop;
 print ">$command< \n";
   $param = explode(" ",$command);
   switch ($param[0]) {
@@ -1843,9 +1842,8 @@ print ">$command< \n";
       HMIindication($from, "displayResponse {Rejected}\n");
     }
   break;  
-  case "eStop":
+  case "eStop": // Toggle emergency stop state
     $emergencyStop = !$emergencyStop;
-    $EstopTimeout = 0; // Trigger command
   break;
   case "Rq": // request operation
     if ($inCharge) {
@@ -1917,10 +1915,6 @@ print ">$command< \n";
 
 function RBC() {
   updateRoutesStatus();
-}
-
-function IL() {
-
 }
 
 function ILlevelCrossing($name, $ILorder) {
@@ -2061,7 +2055,7 @@ global $ABUS, $listener, $listenerMCe, $clients, $clientsData, $inCharge, $inCha
       } elseif ($ABUS == "genie" and $r == $fromGenie) {
         if ($data = fgets($r)) {
           AbusReceivedPacketGenie($data);
-        }       
+        }
       } else { // exsisting client
         if ($data = fgets($r)) {
 //          print "ClientData: $data";
@@ -2221,7 +2215,7 @@ global $trainData, $MODE_TXT, $DIR_TXT, $PWR_TXT, $ACK_TXT;
         $train["distance"]." ".$train["speed"]." ".$DIR_TXT[$train["nomDir"]]." {".$PWR_TXT[$train["pwr"]]."} {".
         $ACK_TXT[$train["MAreceived"]]."} ".$train["dataValid"]."\n");
 }
-        
+
 function HMIindicationAll($msg) {// Send indication to all clients
 global $clients, $clientsData;
   foreach ($clients as $w) {
@@ -2238,34 +2232,73 @@ function HMIindication($to, $msg) {// Send indication to specific client
 // ------------------------------------------------------------- MCe
 
 function MCeStartup($client) {
-  fwrite($client,"Welcome to WinterTrain MCe\n");
+global $EC;
+  MCeIndication($client,"serverFrames\n");
+  foreach ($EC as  $addr => $ec) {
+    MCeIndication($client,"ECframe $addr\n");
+  }
+}
+
+function updateMCe() {
+global $EC, $startTime;
+  MCeIndicationAll("set ::serverUptime {".trim(`/usr/bin/uptime`)."}\n");
+  MCeIndicationAll("set ::RBCuptime {".(time() - $startTime)."}\n");
+  foreach($EC as $addr => $ec) {
+    MCeIndicationAll("set ::ECuptime($addr) {$ec["uptime"]}\n");
+    MCeIndicationAll("set ::elementConf($addr) {$ec["elementConf"]}\n");
+    MCeIndicationAll("set ::N_ELEMENT($addr) {$ec["N_ELEMENT"]}\n");
+    MCeIndicationAll("set ::N_PDEVICE($addr) {$ec["N_PDEVICE"]}\n");
+    MCeIndicationAll("set ::N_UDEVICE($addr) {$ec["N_UDEVICE"]}\n");
+    MCeIndicationAll("set ::N_LDEVICE($addr) {$ec["N_LDEVICE"]}\n");
+  }
 }
 
 function processCommandMCe($command, $from) {
-global $clients, $clientsData, $inChargeMCe, $run;
+global $EC, $clients, $clientsData, $inChargeMCe, $run;
   print "MCe command: $command\n";
   $param = explode(" ",$command);
-  switch ($param[0]) {  
+  switch ($param[0]) {
+    case "ECstatus":
+      foreach($EC as $addr => $ec) {
+        requestECstatus($addr);
+      }
+    break;
     case "Rq": // request operation
       if ($inChargeMCe) {
-//        HMIindication($from, "displayResponse {Rejected ".$clientsData[(int)$inChargeMCe]["addr"]." is in charge (since ".
-//          $clientsData[(int)$inChargeMCe]["inChargeSince"].")}\n");
+        MCeIndication($from, "displayResponse {Rejected ".$clientsData[(int)$inChargeMCe]["addr"]." is in charge (since ".
+          $clientsData[(int)$inChargeMCe]["inChargeSince"].")}\n");
       } else {
         $inChargeMCe = $from;
         $clientsData[(int)$from]["inChargeSince"] = date("Ymd H:i:s");
-//        HMIindication($from, "oprAllowed\n");
+        MCeIndication($from, "oprAllowed\n");
       }
     break;
     case "Rl": // release operation
       $inChargeMCe = false;
-//      HMIindication($from, "oprReleased\n");
+      MCeIndication($from, "oprReleased\n");
     break;
     case "exitRBC":
       if ($from == $inChargeMCe) {
         $run = false;
       }
     break;
+    default:
+      print "Unknown MCe command: {$param[0]}";
   }
+}
+
+
+function MCeIndicationAll($msg) {// Send indication to all MCe clients
+global $clients, $clientsData;
+  foreach ($clients as $w) {
+    if ($clientsData[(int)$w]["type"] == "MCe") {
+      fwrite($w,$msg);
+    }
+  }
+}
+
+function MCeIndication($to, $msg) {// Send indication to specific MCe client
+  fwrite($to,$msg);
 }
 
 // -------------------------------------- CBU clock
