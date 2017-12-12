@@ -491,8 +491,6 @@ global $trainData, $now;
 }
 
 //---------------------------------------------------------------------- EC interface
-function initEC($specificEC = "") {
-global $PT1, $EC;
 
   function addEC($addr) {
   global $EC;
@@ -507,6 +505,10 @@ global $PT1, $EC;
     $EC[$addr]["N_PDEVICE"] = "*";
     resetEC($addr);
   }
+
+
+function initEC($specificEC = "") {
+global $PT1, $EC;
 
   foreach ($PT1 as $name => &$element) {
     if ($specificEC == "" or (isset($element["EC"]["addr"]) and $element["EC"]["addr"] == $specificEC)) {
@@ -1141,7 +1143,7 @@ function getNextEltName($eltName, $dir) {
 
 //TODO: improve to reject case when unkow balise was read, not just if no balise read
 function isKnownBalise($bgName) {
-  return (($bgName != "00:00:00:00:00") and ($bgName !== ""));
+  return (($bgName != "00:00:00:00:00") and ($bgName !== "") ); //and (isset($PT1[$bgName]["ID"])));
 }
 
 function getMA($trainID, $signal) {
@@ -1150,8 +1152,8 @@ function getMA($trainID, $signal) {
   RBC_IL_DebugPrint("Trying to build MA for train $trainID until signal $signal\n");
   $MA = ["bg" => "", "dist" => 0]; //default MA (position of the train)
   if (isKnownBalise($train["baliseName"])) {
-    $MA["bg"] = $train["baliseName"]; //MA from LRBG
     if ($train["positionUnambiguous"]) {
+      $MA["bg"] = $train["baliseName"]; //MA from LRBG
       $dir = getSignalDirection($signal);
       $eltName = ($dir == "U" ? $train["upElt"]: $train["downElt"]);
       $dist = ($dir == "U" ? $train["upEltDist"]: $train["downEltDist"]);
@@ -1180,7 +1182,7 @@ function getMA($trainID, $signal) {
       return $MA;
     }
   } else {
-    RBC_IL_DebugPrint("$bgName is not linked. Cannot compute MA to $signal for train $trainID based on this balise\n");
+    RBC_IL_DebugPrint($train["baliseName"]." is not linked. Cannot compute MA to $signal for train $trainID based on this balise\n");
   }
 }
 
@@ -1364,7 +1366,12 @@ global $lockedRoutes;
       //route allocated to train see if recompute MA based on potential new balise reported by train
       if ($route["MA"]["bg"] != getTrainLRBG($trainID)) {
         RBC_IL_DebugPrint("Updating MA from balise ".$route["MA"]["bg"]." to balise ".getTrainLRBG($trainID)."\n");
-        $lockedRoutes[$signal]["MA"] = getMA($trainID, $signal);
+	$newMA = getMA($trainID, $signal);
+	if ($newMA["bg"] != "") {
+	  $lockedRoutes[$signal]["MA"] = getMA($trainID, $signal);
+	} else {
+          RBC_IL_DebugPrint("Updating MA from balise ".$route["MA"]["bg"]." to balise ".getTrainLRBG($trainID)." failed. Keeping previous MA\n");
+	}
       } else {
         //refresh MA for train in case it did not received it
         giveMAtoTrain($route["MA"], $trainID);
