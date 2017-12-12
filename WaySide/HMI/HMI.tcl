@@ -21,12 +21,10 @@ set tcColor green     ;# Clear track, locked in route
 set oColor lightgreen ;# signal open
 set cColor red        ;# signal closed
 set aColor green      ;# Select buttom for elements
-#>>JP:TRAIN_ID
-set trIdColor orange      ;# Train ID when occupied
-#<<JP:TRAIN_ID
+set trIdColor blue      ;# Train ID when occupied
 set nColor grey
-set lColor black ;# lines
-set xColor black ;# text
+set lColor black      ;# lines
+set xColor black      ;# text
 set mColor yellow     ;# barrier moving
 set scale 45
 set xOffset 5
@@ -673,7 +671,7 @@ global command aColor
       default {
         #Asking RBC to set route if possible
         sendCommand "tr $command $ID"
-        puts "Valgt: $command og $ID"
+#        puts "Valgt: $command og $ID"
         .f.canvas itemconfigure "$command&&button" -fill "" -outline "" -activefill $aColor -activeoutline $aColor
         set command ""
       }
