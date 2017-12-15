@@ -331,7 +331,7 @@ global $DATA_FILE, $trainData, $PT1_VERSION, $PT1, $HMI, $errorFound, $totalElem
         }
         if ($neighbor["name"] != $prevName) {
           print "Error: ($prevName => $name) Inconsistancy in reference\n";
-          $errorFound = true;          
+          $errorFound = true;
         }
       } else {
         print "Error: ($prevName => $name) Unknown element $name\n";
@@ -343,9 +343,9 @@ global $DATA_FILE, $trainData, $PT1_VERSION, $PT1, $HMI, $errorFound, $totalElem
     }
 //  print "Done with node $name ".($up ? "Up" : "Down")."\n";
   }
-  
+
   require($DATA_FILE);
-  
+
   if (array_key_exists("", $PT1)) { unset($PT1[""]); } // delete any remaining template entry
   $totalElement = count($PT1);
   foreach ($PT1 as $name => &$element) {  // Check each node and generate various lists
@@ -427,10 +427,9 @@ global $DATA_FILE, $trainData, $PT1_VERSION, $PT1, $HMI, $errorFound, $totalElem
   }
   if ($errorFound) {
     print "Error: Track network not OK. Source: $DATA_FILE\n";
-    errLog("Error: Track network not OK. Source: $DATA_FILE");
-    exit(1);
+    fatalError("Track network not OK. Source: $DATA_FILE");
   } else {
-    msgLog("Found $totalElement in PT1 data file: $DATA_FILE");
+    msgLog("Found $totalElement elements in PT1 data file: $DATA_FILE");
   }
 // HMI data
   if (array_key_exists("", $HMI["baliseTrack"])) { unset($HMI["baliseTrack"][""]); } // delete any remaining template entry
@@ -439,14 +438,13 @@ global $DATA_FILE, $trainData, $PT1_VERSION, $PT1, $HMI, $errorFound, $totalElem
     foreach ($baliseTrack["balises"] as $baliseName ) {
       if (!isset($PT1[$baliseName])) {
         $errorFound = true;
-        print "Unknown balise \"$baliseName\" in HMI baliseTrack: $trackName\n";
+        print "Error: Unknown balise \"$baliseName\" in HMI baliseTrack: $trackName\n";
       }
     }
   }
   if ($errorFound) {
     print "Error: HMI data not OK. Source: $DATA_FILE\n";
-    errLog("Error: HMI data not OK. Source: $DATA_FILE");
-    exit(1);
+    fatalError("HMI data not OK. Source: $DATA_FILE");
   }
 }
 
@@ -496,7 +494,7 @@ global $trainData, $now;
   global $EC;
     $EC[$addr]["index"] = array();
     $EC[$addr]["validTimer"] = 0;
-    $EC[$addr]["ECstatus"] = "*";
+    $EC[$addr]["EConline"] = false;
     $EC[$addr]["uptime"] = "*";
     $EC[$addr]["elementConf"] = "*";
     $EC[$addr]["N_ELEMENT"] = "*";
@@ -564,8 +562,6 @@ global $PT1, $EC;
       }
     }
   }
-//  print_r($EC);
-//  print_r($PT1);
 }
 
 function pollEC() {
@@ -604,19 +600,19 @@ function configureEC($addr, $elementType, $majorDevice, $minorDevice = 0) {
 function requestECstatus($addr) {
   $packet[2] = 02;
   AbusSendPacket($addr, $packet, 3);
-} 
+}
 
 function orderEC($addr, $index, $order) {
   $packet[2] = 10;
   $packet[3] = $index;
   $packet[4] = $order;
   AbusSendPacket($addr, $packet, 5);
-} 
+}
 
 function requestElementStatusEC($addr) {
   $packet[2] = 01;
   AbusSendPacket($addr, $packet, 3);
-} 
+}
 
 function receivedFromEC($addr, $data) {
 global $EC;
@@ -644,13 +640,13 @@ global $EC;
         break;
       case 20: // configuration
         if ($data[3] > 0) {
-          print "EC ($addr), Configuration error: ".$data[3]."\n";
+          errLog("EC ($addr), Configuration error: ".$data[3]);
         } else {
           print "EC ($addr), Configuration OK\n";
         }
         break;
       default:
-        print "Unknown packet: ".$data[2]."\n";
+        errLog("EC ($addr) Unknown Abus packet: ".$data[2]);
     }
   } else {
     // log or ignore timeout?? ------- Might be due to timeout when wrong EC address is used. FIXME
@@ -660,11 +656,12 @@ global $EC;
 function elementStatusEC($addr, $data) { // Analyse element status from EC
 global $EC, $PT1;
   if (isset($EC[$addr]) and $data[3] < count($EC[$addr]["index"])) {
-    print "Error: EC ($addr) not configured: #conf. element EC: {$data[3]}, RBC: ".count($EC[$addr]["index"])."\n";
+    errLog("Error: EC ($addr) not configured: #conf. element EC: {$data[3]}, RBC: ".count($EC[$addr]["index"]));
     unset($EC[$addr]);
     initEC($addr);
   } else {
     $EC[$addr]["validTimer"] = time() + EC_TIMEOUT;
+    $EC[$addr]["EConline"] = true;
     foreach ($EC[$addr]["index"] as $index => $name) {
       $element = &$PT1[$name];
       $status = $index % 2 ? ((int)$data[$index/2 +4] & 0xF0) >> 4 : (int)$data[$index/2 +4] & 0x0F ;
@@ -711,9 +708,12 @@ global $EC, $PT1;
 
 function checkECtimeout() {
 global $PT1, $EC, $now, $radioLinkAddr;
-  foreach ($EC as $addr => $ec) {
+  foreach ($EC as $addr => &$ec) {
     if ($now > $ec["validTimer"]) { // EC not providing status - EC assumed offline
-    // log msg: timeout, but only once FIXME
+      if ($ec["EConline"]) { // was online
+        errLog("EC ($addr) off-line");
+      }
+      $ec["EConline"] = false;
       foreach ($ec["index"] as $name) {
         $element = $PT1[$name];
         switch ($element["element"]) {
@@ -745,7 +745,10 @@ global $PT1, $EC, $now, $radioLinkAddr;
 // New helper functions for setting routes
 
 function RBC_IL_DebugPrint($msg) {
-  print "RBC:".date('h:i:s').": ".$msg;
+global $debug;
+  if ($debug) {
+    print "RBC:".date('h:i:s').": ".$msg;
+  }
 }
 
 function isMoveablePoint($eltName) {
@@ -1533,7 +1536,10 @@ global $trainData, $trainIndex;
 
 /// ----------- TMS part -------------
 function TMS_DebugPrint($msg) {
-  print "TMS:".date('h:i:s').": ".$msg;
+global $debug;
+  if ($debug) {
+    print "TMS:".date('h:i:s').": ".$msg;
+  }
 }
 
 function hasSchedule($trainID) {
@@ -1627,6 +1633,7 @@ global $trainData, $trainIndex, $DATA_FILE, $SRallowed, $SHallowed, $FSallowed, 
     $train["prevBaliseName"] = "00:00:00:00:00";
     $train["prevDistance"] = 0;
     $train["dataValid"] = "VOID";
+    $train["pr0"] = false;
     $train["validTimer"] = 0;
     $train["MAbalise"] = array(0,0,0,0,0);
     $train["MAdist"] = 0;
@@ -1640,6 +1647,14 @@ global $trainIndex, $trainData, $balisesID, $SR_MAX_SPEED, $SH_MAX_SPEED, $ATO_M
     $index = $trainIndex[$data[4]];
     $train = &$trainData[$index];
     if ($data[3] == 1) { // valid report
+      if ($data[5] + $data[6] + $data[7] + $data[8] + $data[9] == 0) {
+        if (!$train["pr0"]) {
+          $train["pr0"] = true;
+          errLog("Train ({$train["ID"]}): Position report 0:0:0:0:0");
+        }
+      } else {
+        $train["pr0"] = false;
+      }
       $train["dataValid"] = "OK";
       $train["validTimer"] = $now + TRAIN_DATA_TIMEOUT;
       $train["distance"] = round(toSigned($data[10], $data[11]) * $train["wheelFactor"]);
@@ -1715,6 +1730,7 @@ function pointThrow(&$element, $lie) {
         return true;
       break;
       default: // type of point machine not assigned or not implemented
+      errLog("Point throw: type {$element["EC"]["type"]} not implemented");
         return false;
     }
   } else {
@@ -1756,7 +1772,7 @@ global $testBg, $testDist, $trainData, $PT1;
 
 function processCommand($command, $from) { // process HMI command
 global $PT1, $clients, $clientsData, $inCharge, $trainData, $EC, $now, $balises, $run, $emergencyStop;
-print ">$command< \n";
+//print ">$command< \n";
   $param = explode(" ",$command);
   switch ($param[0]) {
 /*  case "so": // signal order
@@ -1826,7 +1842,7 @@ print ">$command< \n";
     } else {
       HMIindication($from, "displayResponse {Rejected}\n");
     }
-  break;  
+  break;
   case "FS": // set allowed FS mode for train
     if ($from == $inCharge) {
       if (isset($trainData[$param[1]])) { 
@@ -1837,7 +1853,7 @@ print ">$command< \n";
     } else {
       HMIindication($from, "displayResponse {Rejected}\n");
     }
-  break;  
+  break;
   case "ATO": // set allowed ATO mode for train
     if ($from == $inCharge) {
       if (isset($trainData[$param[1]])) { 
@@ -1848,7 +1864,7 @@ print ">$command< \n";
     } else {
       HMIindication($from, "displayResponse {Rejected}\n");
     }
-  break;  
+  break;
   case "eStop": // Toggle emergency stop state
     $emergencyStop = !$emergencyStop;
   break;
@@ -2081,6 +2097,8 @@ global $ABUS, $listener, $listenerMCe, $clients, $clientsData, $inCharge, $inCha
           unset($clients[array_search($r, $clients, TRUE)]);
           if ($r == $inCharge) {
             $inCharge = false;
+          } elseif ($r == $inChargeMCe) {
+            $inCharge = false;
           }
         }
       }
@@ -2251,6 +2269,7 @@ global $EC, $startTime;
   MCeIndicationAll("set ::serverUptime {".trim(`/usr/bin/uptime`)."}\n");
   MCeIndicationAll("set ::RBCuptime {".(time() - $startTime)."}\n");
   foreach($EC as $addr => $ec) {
+    MCeIndicationAll("set ::EConline($addr) ".($ec["EConline"] ? "Online" : "Offline")."\n");
     MCeIndicationAll("set ::ECuptime($addr) {$ec["uptime"]}\n");
     MCeIndicationAll("set ::elementConf($addr) {$ec["elementConf"]}\n");
     MCeIndicationAll("set ::N_ELEMENT($addr) {$ec["N_ELEMENT"]}\n");
@@ -2262,7 +2281,8 @@ global $EC, $startTime;
 
 function processCommandMCe($command, $from) {
 global $EC, $clients, $clientsData, $inChargeMCe, $run;
-  print "MCe command: $command\n";
+
+//  print "MCe command: $command\n";
   $param = explode(" ",$command);
   switch ($param[0]) {
     case "ECstatus":
@@ -2290,7 +2310,7 @@ global $EC, $clients, $clientsData, $inChargeMCe, $run;
       }
     break;
     default:
-      print "Unknown MCe command: {$param[0]}";
+      errLog("Unknown MCe command: {$param[0]}");
   }
 }
 
@@ -2370,16 +2390,19 @@ global $ABUS;
 //print_r($data);
 //sleep(1);
       if ($data[0] != 0) { // timeout
+        errLog("EC ($addr) Abus Time out: {$data[0]}\n");
         $addr = false;
         $data = array();
       }
       receivedFromEC($addr, $data);
     break;
-  }  
+  }
 }
 
 function AbusReceivedPacketGenie($line) {
-  print "Abus: >$line<\n";
+  if ($debug) {
+    print "Abus: >$line<\n";
+  }
   if (substr($line, 0,9) != "<TimeOut>") {
     $data = array();
     for ($i = 0; $i < strlen($line); $i += 2) {
@@ -2503,7 +2526,7 @@ global $debug, $background, $RBCIL_CONFIG, $DATA_FILE, $SYSTEM_NAME, $VERSION, $
 
 function prepareMainProgram() {
 global $logFh, $errFh, $debug, $ERRLOG, $MSGLOG, $RBCIL_CONFIG, $DATAFh, $DATA_FILE, $ABUS;
-  if ($debug) {    
+  if ($debug) {
     error_reporting(E_ALL);
   } else {
     error_reporting(0);
@@ -2578,18 +2601,28 @@ global $background, $errFh, $logFh;
 }
 
 function msgLog($txt) {
-global $logFh;
+global $logFh, $debug;
+  if ($debug) {
+    print date("Ymd H:i:s")." $txt\n";
+  }
   fwrite($logFh,date("Ymd H:i:s")." $txt\n");
 }
 
 function errLog($txt) {
-global $errFh;
+global $errFh, $debug;
+  if ($debug) {
+    print date("Ymd H:i:s")." $txt\n";
+  }
   fwrite($errFh,date("Ymd H:i:s")." $txt\n");
 }
 
 function fatalError($txt) {
-  fwrite($logFh,date("Ymd H:i:s")." Fatal Error: $txt\n");
-  fwrite($errFh,date("Ymd H:i:s")." Fatal Error: $txt\n");
+global $logFh, $errFh, $debug;
+  if ($debug) {
+    print date("Ymd H:i:s")." Fatal Error: $txt\n";
+  }
+  fwrite($logFh,date("Ymd H:i:s")." Fatal Error: $txt - Exiting...\n");
+  fwrite($errFh,date("Ymd H:i:s")." Fatal Error: $txt - Exiting...\n");
   exit(1);
 }
 
