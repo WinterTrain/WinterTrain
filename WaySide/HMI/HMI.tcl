@@ -8,11 +8,11 @@ set IPport 9900
 # Default configuration
 set trackWidth 0.15
 set lineWidth 0.05
-set winWidth 1850
+set winWidth 1900
 set winHeight 800
 set winX +50
 set winY +50
-set cWidth 1750
+set cWidth 1800
 set cHeight 350
 set fColor blue       ;# failure color
 set tColor black      ;# Clear track, not locked in route
@@ -942,7 +942,7 @@ grid [ttk::label .f.response -textvariable response] -column 2 -columnspan 5 -ro
 grid [ttk::label .f.status -textvariable status] -column 2 -row 5 -padx 5 -pady 5 -sticky we
 grid [ttk::label .f.versions -textvariable versions] -column 8 -columnspan 2 -row 5 -padx 5 -pady 5 -sticky e
 #grid [ttk::label .f.versionPT1 -textvariable PT1version] -column 7 -row 5 -padx 5 -pady 5 -sticky e
-grid [ttk::label .f.live -textvariable liveIndicator] -column 8 -row 5 -padx 5 -pady 5 -sticky e
+grid [ttk::label .f.live -textvariable liveIndicator] -column 10 -row 5 -padx 5 -pady 5 -sticky e
 #grid [ttk::button .f.buttonSignal -text "Signal" -command buttonSignal] -column 2 -row 1 -sticky we
 grid [ttk::button .f.buttonRelease -text "Release" -command buttonRelease] -column 2 -row 1 -sticky we
 grid [ttk::button .f.buttonPoint -text "Spsk" -command buttonPoint] -column 3 -row 1 -sticky we
@@ -955,11 +955,13 @@ grid [ttk::button .f.buttonEHMI -text "Exit HMI" -command exit] -column 10 -row 
 grid [ttk::button .f.buttonERBC -text "Exit RBC" -command exitRBC] -column 11 -row 1 -sticky e
 grid [ttk::button .f.buttonT -text "TEST" -command test] -column 12 -row 1 -sticky e
 
-grid [tk::canvas .f.canvas -scrollregion "0 0 $cWidth $cHeight" -yscrollcommand ".f.sbv set" -xscrollcommand ".f.sbh set"] -sticky nwes -column 2 -columnspan 10 -row 3
-grid [tk::scrollbar .f.sbh -orient horizontal -command ".f.canvas xview"] -column 2 -columnspan 9 -row 4 -sticky we
-grid [tk::scrollbar .f.sbv -orient vertical -command ".f.canvas yview"] -column 11 -row 3 -sticky ns
+grid [tk::canvas .f.canvas -scrollregion "0 0 $cWidth $cHeight" -yscrollcommand ".f.sbv set" -xscrollcommand ".f.sbh set"] -sticky nwes -column 2 -columnspan 12 -row 3
+grid [tk::scrollbar .f.sbh -orient horizontal -command ".f.canvas xview"] -column 2 -columnspan 12 -row 4 -sticky we
+grid [tk::scrollbar .f.sbv -orient vertical -command ".f.canvas yview"] -column 0 -row 3 -sticky ns
 
 grid [ttk::frame .f.fTrain -padding "3 3 3 3" -relief solid -borderwidth 2] -column 1 -row 7 -columnspan 8 -sticky nwes
+
+bind . <space> {eStop}
 
 dGrid
 disconnected

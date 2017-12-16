@@ -23,8 +23,8 @@
 #define N_PDEVICE 4
 #define N_PREG 1
 #define UDEVICE_PIN {7,6,5}; // 2 pol molex, 4 pol molex
-#define PDEVICE_ON_MASK {0x10, 0x20, 0x01, 0x40}; // Mask to set device on, per device
-#define PDEVICE_POL_MASK {0x08, 0x04, 0x02, 0x80}; // Mask to set device reversed polarity, per device
+#define PDEVICE_ON_MASK {0x10, 0x20, 0x01, 0x80}; // Mask to set device on, per device
+#define PDEVICE_POL_MASK {0x08, 0x04, 0x02, 0x40}; // Mask to set device reversed polarity, per device
 #define PDEVICE_REG {0, 0, 0, 0}; // Assignment of device to shift register
 #define LDEVICE_ON_MASK {}; // Mask to set device on, per device
 #define LDEVICE_REG {}; // Assignment of device to shift register

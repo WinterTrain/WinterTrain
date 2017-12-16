@@ -64,19 +64,21 @@ global nECframe entryFontSize
   incr nECframe
   grid [ttk::frame .f.fStatus.t$addr -padding "3 3 12 12" -relief solid -borderwidth 2] -column 1 -row [expr $nECframe + 3] -sticky nwes
   grid [ttk::label .f.fStatus.t$addr.name -text "EC ($addr)" ] -column 0 -row 0 -padx 5 -pady 5 -sticky we
-  grid [ttk::label .f.fStatus.t$addr.uptimeX -text "Uptime" ] -column 0 -row 1 -padx 5 -pady 5 -sticky we
+  grid [ttk::label .f.fStatus.t$addr.uptimeX -text "Uptime:" ] -column 0 -row 1 -padx 5 -pady 5 -sticky we
   grid [ttk::label .f.fStatus.t$addr.uptime -textvariable ECuptime($addr)] -column 1 -row 1 -padx 5 -pady 5 -sticky we
-  grid [ttk::label .f.fStatus.t$addr.elementX -text "Element Conf.: " ] -column 2 -row 1 -padx 5 -pady 5 -sticky we
-  grid [ttk::label .f.fStatus.t$addr.element -textvariable elementConf($addr)] -column 3 -row 1 -padx 5 -pady 5 -sticky we
-  grid [ttk::label .f.fStatus.t$addr.hwX -text "HW: " ] -column 0 -row 2 -padx 5 -pady 5 -sticky we
-  grid [ttk::label .f.fStatus.t$addr.nElementX -text "N_ELEMENT: " ] -column 1 -row 2 -padx 5 -pady 5 -sticky we
-  grid [ttk::label .f.fStatus.t$addr.nElement -textvariable N_ELEMENT($addr)] -column 2 -row 2 -padx 5 -pady 5 -sticky we
-  grid [ttk::label .f.fStatus.t$addr.nPdeviceX -text "N_PDEVICE: " ] -column 3 -row 2 -padx 5 -pady 5 -sticky we
-  grid [ttk::label .f.fStatus.t$addr.nPdevice -textvariable N_PDEVICE($addr)] -column 4 -row 2 -padx 5 -pady 5 -sticky we
-  grid [ttk::label .f.fStatus.t$addr.nUdeviceX -text "N_UDEVICE: " ] -column 5 -row 2 -padx 5 -pady 5 -sticky we
-  grid [ttk::label .f.fStatus.t$addr.nUdevice -textvariable N_UDEVICE($addr)] -column 6 -row 2 -padx 5 -pady 5 -sticky we
-  grid [ttk::label .f.fStatus.t$addr.nLdeviceX -text "N_LDEVICE: " ] -column 7 -row 2 -padx 5 -pady 5 -sticky we
-  grid [ttk::label .f.fStatus.t$addr.nLdevice -textvariable N_LDEVICE($addr)] -column 8 -row 2 -padx 5 -pady 5 -sticky we
+  grid [ttk::label .f.fStatus.t$addr.onlineX -text "Status:" ] -column 2 -row 1 -padx 5 -pady 5 -sticky we
+  grid [ttk::label .f.fStatus.t$addr.online -textvariable EConline($addr)] -column 3 -row 1 -padx 5 -pady 5 -sticky we
+  grid [ttk::label .f.fStatus.t$addr.elementX -text "Actual configuration: " ] -column 0 -row 2 -padx 5 -pady 5 -sticky we
+  grid [ttk::label .f.fStatus.t$addr.element -textvariable elementConf($addr)] -column 1 -row 2 -padx 5 -pady 5 -sticky we
+  grid [ttk::label .f.fStatus.t$addr.hwX -text "Capability: " ] -column 0 -row 3 -padx 5 -pady 5 -sticky we
+  grid [ttk::label .f.fStatus.t$addr.nElementX -text "E: " ] -column 1 -row 3 -padx 5 -pady 5 -sticky we
+  grid [ttk::label .f.fStatus.t$addr.nElement -textvariable N_ELEMENT($addr)] -column 2 -row 3 -padx 5 -pady 5 -sticky we
+  grid [ttk::label .f.fStatus.t$addr.nPdeviceX -text "P: " ] -column 3 -row 3 -padx 5 -pady 5 -sticky we
+  grid [ttk::label .f.fStatus.t$addr.nPdevice -textvariable N_PDEVICE($addr)] -column 4 -row 3 -padx 5 -pady 5 -sticky we
+  grid [ttk::label .f.fStatus.t$addr.nUdeviceX -text "U: " ] -column 5 -row 3 -padx 5 -pady 5 -sticky we
+  grid [ttk::label .f.fStatus.t$addr.nUdevice -textvariable N_UDEVICE($addr)] -column 6 -row 3 -padx 5 -pady 5 -sticky we
+  grid [ttk::label .f.fStatus.t$addr.nLdeviceX -text "L: " ] -column 7 -row 3 -padx 5 -pady 5 -sticky we
+  grid [ttk::label .f.fStatus.t$addr.nLdevice -textvariable N_LDEVICE($addr)] -column 8 -row 3 -padx 5 -pady 5 -sticky we
 }
 
 proc destroyTrainFrame {} {
