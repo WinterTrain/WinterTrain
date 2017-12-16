@@ -450,7 +450,7 @@ global $DATA_FILE, $trainData, $PT1_VERSION, $PT1, $HMI, $errorFound, $totalElem
 
 // --------------------------------------------------------------------- RadioLink
 function pollRadioLink() {
-global $trainData, $emergencyStop;
+global $trainData, $emergencyStop, $debug;
   foreach ($trainData as $index => &$train) {
     if ($emergencyStop) {
       sendMA($train["ID"], M_ESTOP, $train["MAbalise"], $train["MAdist"], $train["maxSpeed"]);
@@ -459,7 +459,9 @@ global $trainData, $emergencyStop;
     }
     if ($train["MAbalise"][0]) {
       //print_r($train["MAbalise"]);
-      print "Dist: ".$train["MAdist"]." Max: ".$train["maxSpeed"]."\n";
+      if ($debug) {
+        print "Dist: ".$train["MAdist"]." Max: ".$train["maxSpeed"]."\n";
+      }
     }
     $train["MAbalise"] = array(0,0,0,0,0); // Clear balise after each transmission
   }
@@ -1664,6 +1666,7 @@ global $trainIndex, $trainData, $balisesID, $SR_MAX_SPEED, $SH_MAX_SPEED, $ATO_M
       $train["pwr"] = ($data[13] & 0x60) >> 5;
       $train["MAreceived"] = ($data[13] & 0x80) >> 7;
       $train["balise"] = sprintf("%02X:%02X:%02X:%02X:%02X",$data[5],$data[6],$data[7],$data[8],$data[9]);
+ //  printf("%02X:%02X:%02X:%02X:%02X\n",$data[5],$data[6],$data[7],$data[8],$data[9]);
       if ($train["pwr"] == P_R) { // determin orientation of train front end
         $train["front"] = D_UP;
       } elseif ($train["pwr"] == P_L) {
