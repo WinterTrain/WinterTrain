@@ -19,7 +19,9 @@ set tColor black      ;# Clear track, not locked in route
 set toColor red       ;# Occupied track, locked or not locked in route
 set tcColor green     ;# Clear track, locked in route
 set oColor lightgreen ;# signal open
-set cColor red        ;# signal closed
+set oppColor lightgreen;# signal open proceed proceed
+set cColor red    ;# signal closed
+set dColor orangered        ;# destination signal
 set aColor green      ;# Select buttom for elements
 set trIdColor blue      ;# Train ID when occupied
 set nColor grey
@@ -384,8 +386,14 @@ global fColor tColor toColor tcColor mColor lColor
   }
 }
 proc signalState {name state trackState {trainID ""}} {
-global fColor oColor cColor toColor tcColor tColor
+global fColor oColor cColor toColor tcColor tColor oppColor dColor
   switch $state {
+    13 {
+    .f.canvas itemconfigure "$name&&aspect" -fill $dColor
+    }
+    12 {
+    .f.canvas itemconfigure "$name&&aspect" -fill $oppColor
+    }
     11 {
     .f.canvas itemconfigure "$name&&aspect" -fill $oColor
     }

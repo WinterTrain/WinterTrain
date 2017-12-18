@@ -879,18 +879,13 @@ function addToListPayload($element, &$sharedVar, $direction, $next) {
 
 function lockingPayload($eltName, &$sharedVar, $direction, $next) {
 global $PT1;
-  #Push $element into list
-  $pos = "";
-  if (array_key_exists("position", $next)) {
-    $pos = $next["position"];
-  }
-  RBC_IL_DebugPrint("Locking $eltName in position $pos\n");
-  //TODO Move points
+  //Set point in position
   if (isMoveablePoint($eltName)) {
+    $pos = $next["position"];
+    RBC_IL_DebugPrint("Throwing point $eltName in position $pos\n");
     $point = &$PT1[$eltName];
     pointThrow($point, $pos);
   }
-  //Set point in position
   lock($eltName);
   return TRACK_TRAVERSALE_ACCEPT_ACTIVATE_PAYLOAD; #Lock all elments in route
 }
@@ -958,7 +953,7 @@ function lockRoute($s1, $s2) {
     }
     if ($dir === "U") {
       switch ($PT1[$elt]["element"]) {
-        case "SU":
+        //case "SU":(commented to Allow locking route over signal in one command)
         case "BSE":
           return TRACK_TRAVERSALE_ACCEPT_DO_NOTHING; # wrong end. No compound route support
         default:
@@ -966,7 +961,7 @@ function lockRoute($s1, $s2) {
       }
     } else {
       switch ($PT1[$elt]["element"]) {
-        case "SD":
+        //case "SD":(commented to Allow locking route over signal in one command)
         case "BSB":
           return TRACK_TRAVERSALE_ACCEPT_DO_NOTHING; # wrong end. No compound route support
         default:
@@ -988,6 +983,47 @@ function lockRoute($s1, $s2) {
   }
 }
 
+
+function setSignalState($signal, $state) {
+global $PT1;
+  $PT1[$signal]["state"]= $state;
+  $prettyState = "";
+  switch ($state) {
+    case E_STOP:
+      $prettyState = "E_STOP";
+      break;
+    case E_PROCEED:
+      $prettyState = "E_PROCEED";
+      break;
+    case E_PROCEEDPROCEED:
+      $prettyState = "E_PROCEEDPROCEED";
+      break;
+    default:
+      $prettyState = "UNKNOWN";
+      break;
+  }
+  RBC_IL_DebugPrint("Setting signal $signal in state $prettyState\n");
+}
+
+function openSignalsInRoute($destinationSignal) {
+  $dir = getSignalDirection($destinationSignal);
+  $revDir = getReverseDir($dir);
+  $elt = $destinationSignal;
+  $elt = getNextEltName($elt, $revDir);
+  $signalState = E_PROCEED;
+  while (isLocked($elt)) {
+    if ($elt == $destinationSignal) {
+      setSignalState($elt, E_STOP);
+    } else {
+      if (isSignalInDirection($elt, $dir)) {
+        setSignalState($elt, $signalState);
+        $signalState = E_PROCEEDPROCEED;
+      }
+      $elt = getNextEltName($elt, $revDir); //Look for element to release behind train
+      if ($elt == "") {break;}
+    }
+  }
+}
 
 // New train position detection function
 
@@ -1222,7 +1258,7 @@ global $PT1;
         //Should the direction/state of the train be considered?
         //Lock approach area
         foreach($approachArea as $approachElt) {
-          RBC_IL_DebugPrint("Locking ".$approachElt." in approach area\n");
+          RBC_IL_DebugPrint("Adding ".$approachElt." to approach area\n");
           lock($approachElt);
         }
         //Train gets the associated to route
@@ -1275,15 +1311,23 @@ global $PT1;
 
 function lock($eltName) {
 global $PT1;
+  RBC_IL_DebugPrint("Locking $eltName\n");
   $PT1[$eltName]["trackState"] = T_LOCKED;
   $PT1[$eltName]["locked"] = True;
 }
 
 function unlock($eltName) {
 global $PT1;
+  //Set track as cleared (unless occupied)
   if ($PT1[$eltName]["trackState"] == T_LOCKED) {
     $PT1[$eltName]["trackState"] = T_CLEAR; //Set to clear only if not occupied
   }
+  //Close signals
+  $type = $PT1[$eltName]["element"];
+  if ($type == "SU" or $type == "SD") {
+    setSignalState($eltName, E_STOP);
+  }
+  //Remove locked flag
   $PT1[$eltName]["locked"] = False;
 }
 
@@ -1371,16 +1415,18 @@ global $lockedRoutes;
       //route allocated to train see if recompute MA based on potential new balise reported by train
       if ($route["MA"]["bg"] != getTrainLRBG($trainID)) {
         RBC_IL_DebugPrint("Updating MA from balise ".$route["MA"]["bg"]." to balise ".getTrainLRBG($trainID)."\n");
-	$newMA = getMA($trainID, $signal);
-	if ($newMA["bg"] != "") {
-	  $lockedRoutes[$signal]["MA"] = getMA($trainID, $signal);
-	} else {
+	      $newMA = getMA($trainID, $signal);
+	      if ($newMA["bg"] != "") {
+	        $lockedRoutes[$signal]["MA"] = getMA($trainID, $signal);
+	      } else {
           RBC_IL_DebugPrint("Updating MA from balise ".$route["MA"]["bg"]." to balise ".getTrainLRBG($trainID)." failed. Keeping previous MA\n");
-	}
+	      }
       } else {
         //refresh MA for train in case it did not received it
         giveMAtoTrain($route["MA"], $trainID);
       }
+      //update Signals in case unset points prevented the function to set them (yes, something nicer could be imagined performancewise)
+      openSignalsInRoute($signal);
       //Perform Partial Release
       partialRelease($trainID, $signal);
     } else {
@@ -1457,6 +1503,7 @@ function setRoute($s1, $s2) {
       createNewRoute($s2);
       searchAndAssociateTrainToRoute($s2);
     }
+    openSignalsInRoute($s2);
   } else {
     RBC_IL_DebugPrint("Route from $s1 to $s2 cannot be locked\n");
   }
@@ -1496,6 +1543,17 @@ function startRouteRelease($s) {
   routeRelease($s);
 }
 
+function isSignal($eltName) {
+  switch ($PT1[$eltName]["element"]) {
+    case "SU":
+    case "BSE":
+    case "SD":
+    case "BSB":
+      return True;
+    default:
+      return False;
+  }
+}
 function isSignalInDirection($eltName, $dir) {
 global $PT1;
   switch ($PT1[$eltName]["element"]) {
@@ -2219,7 +2277,12 @@ global $HMI, $PT1, $emergencyStop;
     switch ($element["element"]) {
       case "SU":
       case "SD":
-        HMIindicationAll("signalState $name ".$element["state"]." ".$element["trackState"]." ".$displayedTrainID."\n");
+        if (isLockedRoute($name)) {
+          //13 is used in HMI to highlight destination signals
+          HMIindicationAll("signalState $name 13 ".$element["trackState"]." ".$displayedTrainID."\n");
+        } else {
+          HMIindicationAll("signalState $name ".$element["state"]." ".$element["trackState"]." ".$displayedTrainID."\n");
+        }
       break;
       case "PF":
       case "PT":
