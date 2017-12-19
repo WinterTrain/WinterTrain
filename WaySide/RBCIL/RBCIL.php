@@ -575,8 +575,24 @@ global $PT1, $EC;
       switch ($element["element"]) {
         case "SU":
         case "SD":
-          if ($element["state"] != E_STOP)  {
-            orderEC($addr, $index, $element["state"] == E_PROCEED ? O_PROCEED : O_PROCEEDPROCEED);
+          switch ($element["type"])  {
+            case "SE":
+            case "MS2":
+              if ($element["state"] == E_PROCEED or $element["state"] == E_PROCEEDPROCEED) {
+                orderEC($addr, $index, O_PROCEED);
+              } else {
+                orderEC($addr, $index, O_STOP);
+              }
+            break;
+            case "MS3":
+              if ($element["state"] == E_PROCEED) {
+                orderEC($addr, $index, O_PROCEED);
+              } elseif ($element["state"] == E_PROCEEDPROCEED) {
+                orderEC($addr, $index, O_PROCEEDPROCEED);
+              } else {
+                orderEC($addr, $index, O_STOP);
+              }
+            break;
           }
         break;
       }
