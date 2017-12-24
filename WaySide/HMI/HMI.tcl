@@ -14,15 +14,17 @@ set winX +50
 set winY +50
 set cWidth 1800
 set cHeight 350
+# Note, following color definitions may by overwritten by specifications in PT1 data
 set fColor blue       ;# failure color
 set tColor black      ;# Clear track, not locked in route
 set toColor red       ;# Occupied track, locked or not locked in route
 set tcColor green     ;# Clear track, locked in route
 set oColor lightgreen ;# signal open
 set oppColor lightgreen;# signal open proceed proceed
-set cColor red    ;# signal closed
-set dColor orangered        ;# destination signal
-set aColor green      ;# Select buttom for elements
+set cColor darkgrey    ;# signal closed
+set dColor red        ;# destination signal
+set aColor yellow      ;# Select buttom for elements
+set sColor orange  ;# Selected buttom
 set trIdColor blue      ;# Train ID when occupied
 set nColor grey
 set lColor black      ;# lines
@@ -550,9 +552,9 @@ global showLabel
 proc eStopInd {state} {
 global showLabel
   if {$state} {
-  .f.buttonStop configure -text "Release ES"
+  .f.buttonStop configure -text " - Emergency Stop, Release" 
   } else {
-  .f.buttonStop configure -text " - - Emergency STOP - - "
+  .f.buttonStop configure -text "  -- - Emergency STOP - - - "
   }
 }
 
@@ -652,7 +654,7 @@ global command aColor
 }
 
 proc selectSignal {ID} {
-global command aColor
+global command aColor sColor
   if {$command == "$ID"} {
       set command ""
       .f.canvas itemconfigure "$ID&&button" -fill "" -outline "" -activefill $aColor -activeoutline $aColor
@@ -665,7 +667,6 @@ global command aColor
         set command ""
         .f.buttonRelease configure -text "Release"
       sendCommand "rr $ID"
-# puts "Release $ID"
       }
       "_s" {
         set command ""
@@ -674,12 +675,11 @@ global command aColor
       }
       "" {
         set command $ID
-        .f.canvas itemconfigure "$ID&&button" -activefill "" -activeoutline "" -fill $aColor -outline $aColor
+        .f.canvas itemconfigure "$ID&&button" -activefill "" -activeoutline "" -fill $sColor -outline $sColor
       }
       default {
         #Asking RBC to set route if possible
         sendCommand "tr $command $ID"
-#        puts "Valgt: $command og $ID"
         .f.canvas itemconfigure "$command&&button" -fill "" -outline "" -activefill $aColor -activeoutline $aColor
         set command ""
       }

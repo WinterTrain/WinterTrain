@@ -38,6 +38,14 @@ struct elementType {
 #define PM_POL_RIGHT_DONE 3
 #define PM_THROW_LEFT 4
 
+#define SE_STOP 0
+#define SE_CHANGE_PROCEED 1
+#define SE_PROCEED 2
+#define SE_POL_STOP 3
+#define SE_CHANGE_STOP 4
+#define SE_POL_STOP_DONE 5
+
+
 // Indication
 #define UNSUPERVISED 0
 #define I_STOP 1
@@ -72,8 +80,8 @@ struct elementType {
 #define PM_POL_TIME 200
 
 // -------------------------------------------------------------------------------------- Variable
-const byte UdevicePin[N_UDEVICE] = UDEVICE_PIN; 
-const byte PdeviceOnMask[N_PDEVICE] = PDEVICE_ON_MASK; 
+const byte UdevicePin[N_UDEVICE] = UDEVICE_PIN;
+const byte PdeviceOnMask[N_PDEVICE] = PDEVICE_ON_MASK;
 const byte PdevicePolMask[N_PDEVICE] = PDEVICE_POL_MASK;
 const byte PdeviceReg[N_PDEVICE] = PDEVICE_REG;
 const byte LdeviceOnMask[N_LDEVICE] = LDEVICE_ON_MASK;
@@ -172,7 +180,7 @@ void checkTimer() {
     }
   }
 
-  // ------------------------------------------------------------- cancel signals due to missing order, control LX, control PM
+  // ------------------------------------------------------------- cancel signals due to missing order, control LX, control PM, control semaphoe
   for (byte index = 0; index < nextElement; index++) {
     element[index].timer -= deltaMillis;
     if (element[index].timer < 0) {
@@ -206,9 +214,36 @@ void checkTimer() {
           }
           break;
         case 21: // semaphore
-          Pdevice(element[index].deviceMajor, LOW, LOW);
-          element[index].order = S_STOP;
-          element[index].cStatus = I_STOP;
+          switch (element[index].state) {
+            case SE_POL_STOP: // activate polarity relay shortly before throw relay
+              Pdevice(element[index].deviceMajor, HIGH, HIGH);
+              element[index].state = SE_CHANGE_STOP;
+              element[index].timer = PM_THROW_TIME;
+              element[index].cStatus = I_STOP;
+              break;
+            case SE_CHANGE_STOP:
+              Pdevice(element[index].deviceMajor, HIGH, LOW);
+              element[index].state = SE_POL_STOP_DONE;
+              element[index].timer = PM_POL_TIME;
+              break;
+            case SE_POL_STOP_DONE:
+              Pdevice(element[index].deviceMajor, LOW, LOW);
+              element[index].state = SE_STOP;
+              element[index].timer = 0;
+              break;
+            case SE_CHANGE_PROCEED:
+              Pdevice(element[index].deviceMajor, LOW, LOW);
+              element[index].state = SE_PROCEED;
+              element[index].timer = CLOSE_TIMER;
+              element[index].cStatus = I_PROCEED;
+              break;
+            case SE_PROCEED:
+              Pdevice(element[index].deviceMajor, HIGH, LOW);
+              element[index].state = SE_POL_STOP;
+              element[index].timer = PM_POL_TIME;
+              element[index].cStatus = I_STOP;
+              break;
+          }
           break;
         case 40: // signal 2 aspect, 2 L-device
         case 42: // signal 3 aspect, 2 L-device
@@ -404,6 +439,18 @@ boolean AbusRecThis() {
                   Abus.toM[3] = 1; // invalid device number 1
                 }
                 break;
+              case 21: // Semaphor Signal
+                if (Abus.fromM[5] > 0 and Abus.fromM[5] <= N_PDEVICE) {
+                  element[nextElement].type = Abus.fromM[4];
+                  element[nextElement].deviceMajor = Abus.fromM[5];
+                  Pdevice(element[index].deviceMajor, HIGH, LOW);
+                  element[index].state = SE_POL_STOP;
+                  element[index].timer = PM_POL_TIME;
+                  element[index].cStatus = I_STOP;
+                } else {
+                  Abus.toM[3] = 1; // invalid device number 1
+                }
+                break;
               case 10: // Point without feedback, P-device
                 if (Abus.fromM[5] > 0 and Abus.fromM[5] <= N_PDEVICE) {
                   element[nextElement].type = Abus.fromM[4];
@@ -413,6 +460,7 @@ boolean AbusRecThis() {
                 }
                 break;
               // -------------------------------------------------------------------------------- L-device
+              // Reset output ------------------------------------------------------------------------------------------------ FIXME
               case 40: // Signal, 2 lantern, 2 aspects
               case 42: // Signal, 2 lantern, 3 aspects
                 if (Abus.fromM[5] > 0 and Abus.fromM[5] + 1 <= N_PDEVICE) {
@@ -478,6 +526,29 @@ void elementOrder(byte index, byte order) {
               Pdevice(element[index].deviceMajor, LOW, LOW);
               element[index].state = PM_IDLE;
               //            element[index].cStatus = ;--------------- efter hold skal status skiftes FIXME
+            }
+            break;
+        }
+        break;
+      case 21: // Semaphor Signal
+        switch (order) {
+          case S_STOP:
+            Pdevice(element[index].deviceMajor, HIGH, LOW);
+            element[index].state = SE_POL_STOP;
+            element[index].timer = PM_POL_TIME;
+            element[index].cStatus = I_STOP;
+            break;
+          case S_PROCEED:
+            switch (element[index].state) {
+              case SE_STOP:
+                Pdevice(element[index].deviceMajor, LOW, HIGH);
+                element[index].state = SE_CHANGE_PROCEED;
+                element[index].timer = PM_THROW_TIME;
+                element[index].cStatus = UNSUPERVISED;
+                break;
+              case SE_PROCEED:
+                element[index].timer = CLOSE_TIMER;
+                break;
             }
             break;
         }
@@ -630,7 +701,7 @@ void elementOrder(byte index, byte order) {
 void elementStatus() {
   Abus.toM[3] = nextElement;
   for (byte i = 0; i < nextElement; i++) { // skal være NextElement / 2  ------------------------------------------------------------------- FIXME
-// FIXME ved ulige antal configurerede elementer, mangler status for sidste element i status pakken.....
+    // FIXME ved ulige antal configurerede elementer, mangler status for sidste element i status pakken.....
     Abus.toM[i + 4] = element[2 * i + 1].cStatus << 4 | element[2 * i].cStatus;
   }
 }

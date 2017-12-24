@@ -96,7 +96,7 @@ $PT1 = [
     "majorDevice" => 3,
     "minorDevice" => 0,
     ],
-  "clamp" => "",
+  "clamp" => "L",
   "R" => ["name" => "BG03", "dist" => 50],
   "L" => ["name" => "BG04", "dist" => 40],
   "T" => ["name" => "BG05", "dist" => 1],
@@ -874,10 +874,10 @@ $HMI = [ //------------------------------------------------------------------ HM
   ],
   "scale" => "45",
   "color" => [
-    "aColor" => "orange",
-    "fColor" => "blue",
-    "oColor" => "lightgreen",
-    "cColor" => "red",
+//    "aColor" => "orange",
+//    "fColor" => "blue",
+//    "oColor" => "lightgreen",
+//    "cColor" => "red",
   ],
 ];
 
