@@ -99,7 +99,7 @@ define("O_RELEASE",19);
 
 // Physical status from EC
 define("S_UNSUPERVISED",0);
-define("S_CLOSED",1);
+define("S_STOP",1);
 define("S_PROCEED",2);
 define("S_PROCEEDPROCEED",3);
 define("S_VOID",10);   // No physical signal connected (i.e. type marker board)
@@ -581,7 +581,9 @@ global $PT1, $EC;
               if ($element["state"] == E_PROCEED or $element["state"] == E_PROCEEDPROCEED) {
                 orderEC($addr, $index, O_PROCEED);
               } else {
+if ($element["status"] != S_STOP) {
                 orderEC($addr, $index, O_STOP);
+}
               }
             break;
             case "MS3":

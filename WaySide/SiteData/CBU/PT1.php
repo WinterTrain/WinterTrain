@@ -25,11 +25,11 @@ $PT1 = [
 
 "S1" => [ // Signal, facing and ...
   "element" => "SU",
-  "type" => "MB",
+  "type" => "SE",
   "EC" => [
-    "addr" => 0,
-    "type" => 0,
-    "majorDevice" => 4,
+    "addr" => 153,
+    "type" => 21,
+    "majorDevice" => 1,
     ],
   "U" => ["name" => "BG03", "dist" => 1],
   "D" => ["name" => "BG01", "dist" => 1],
@@ -67,11 +67,11 @@ $PT1 = [
 
 "S2" => [ // Signal, facing and ...
   "element" => "SU",
-  "type" => "MB",
+  "type" => "SE",
   "EC" => [
-    "addr" => 0,
-    "type" => 0,
-    "majorDevice" => 4,
+    "addr" => 153,
+    "type" => 21,
+    "majorDevice" => 2,
     ],
   "U" => ["name" => "BG04", "dist" => 11],
   "D" => ["name" => "BG02", "dist" => 1],
@@ -91,9 +91,9 @@ $PT1 = [
 "P1" => [ // Point, trailing
   "element" => "PT",
   "EC" => [
-    "addr" => 152,
+    "addr" => 153,
     "type" => 10,
-    "majorDevice" => 3,
+    "majorDevice" => 4,
     "minorDevice" => 0,
     ],
   "clamp" => "",
@@ -124,11 +124,11 @@ $PT1 = [
 
 "S3" => [ // Signal, facing and ...
   "element" => "SD",
-  "type" => "MB",
+  "type" => "SE",
   "EC" => [
-    "addr" => 0,
-    "type" => 0,
-    "majorDevice" => 4,
+    "addr" => 153,
+    "type" => 21,
+    "majorDevice" => 3,
     ],
   "U" => ["name" => "BG07", "dist" => 1],
   "D" => ["name" => "BG06", "dist" => 1],
@@ -137,7 +137,7 @@ $PT1 = [
     "y" => 1,
     ],
   ],
-  
+
 // ------------------------------------------------------------------------------ Long side
 
 "BG07" => [ // Balises
@@ -496,7 +496,7 @@ $PT1 = [
   
 "S13" => [ // Signal, facing and ...
   "element" => "SU",
-  "type" => "LS1",
+  "type" => "MS2",
   "EC" => [
     "addr" => 150,
     "type" => 41,
@@ -520,7 +520,7 @@ $PT1 = [
 
 "S14" => [ // Signal, facing and ...
   "element" => "SD",
-  "type" => "LS1",
+  "type" => "MS2",
   "EC" => [
     "addr" => 150,
     "type" => 41,
@@ -574,7 +574,7 @@ $PT1 = [
   "EC" => [
     "addr" => 0,
     "type" => 0,
-    "majorDevice" => 0,
+    "majorDevice" => 3,
     ],
   "U" => ["name" => "BG32", "dist" => 1],
   "D" => ["name" => "BG31", "dist" => 10],
@@ -593,11 +593,11 @@ $PT1 = [
   
 "S16" => [ // Signal, facing and ...
   "element" => "SU",
-  "type" => "MB",
+  "type" => "MS2",
   "EC" => [
-    "addr" => 0,
-    "type" => 0,
-    "majorDevice" => 0,
+    "addr" => 150,
+    "type" => 41,
+    "majorDevice" => 1,
     ],
   "U" => ["name" => "BG33", "dist" => 10],
   "D" => ["name" => "BG32", "dist" => 1],
@@ -616,11 +616,11 @@ $PT1 = [
 
 "S17" => [ // Signal, facing and ...
   "element" => "SD",
-  "type" => "MB",
+  "type" => "MS2",
   "EC" => [
-    "addr" => 0,
-    "type" => 0,
-    "majorDevice" => 0,
+    "addr" => 150,
+    "type" => 41,
+    "majorDevice" => 3,
     ],
   "U" => ["name" => "BG34", "dist" => 1],
   "D" => ["name" => "BG33", "dist" => 10],
@@ -834,7 +834,7 @@ $HMI = [ //------------------------------------------------------------------ HM
       "l" => 1,
     ],
     "tr12" => [
-      "balises" => ["BG27",
+      "balises" => ["BG28",
               ],
       "or" => "s",
       "x" => 38,
@@ -874,10 +874,10 @@ $HMI = [ //------------------------------------------------------------------ HM
   ],
   "scale" => "45",
   "color" => [
-    "aColor" => "orange",
-    "fColor" => "blue",
-    "oColor" => "lightgreen",
-    "cColor" => "red",
+//    "aColor" => "orange",
+//    "fColor" => "blue",
+//    "oColor" => "lightgreen",
+//    "cColor" => "darkgrey",
   ],
 ];
 
