@@ -1,5 +1,7 @@
 #!/usr/bin/php
 <?php
+// WinterTrain, RBC/IL
+
 //--------------------------------------- Abus configuration
 $arduino = 0x33; // CBU Master, I2C addresse
 $ABUS = "";
@@ -684,7 +686,7 @@ global $EC, $PT1;
     $EC[$addr]["EConline"] = true;
     foreach ($EC[$addr]["index"] as $index => $name) {
       $element = &$PT1[$name];
-      $status = $index % 2 ? ((int)$data[$index/2 +4] & 0xF0) >> 4 : (int)$data[$index/2 +4] & 0x0F ;
+      $status = $index % 2 ? (int)$data[$index/2 +4] & 0x0F :  ((int)$data[$index/2 +4] & 0xF0) >> 4 ;
       switch ($element["element"]) {
         case "PT":
         case "PF":

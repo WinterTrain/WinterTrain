@@ -1,3 +1,7 @@
+// -------------------------------------------
+// WinterTrain Element Controller (EC)
+
+
 #include <AbusSlave.h>
 #include <JeeLib.h>
 #include <avr/wdt.h>
@@ -31,22 +35,7 @@ struct elementType {
 #define L_ACTIVATE 21 // LX
 #define L_DEACTIVATE 22
 
-// State
-#define PM_IDLE 0
-#define PM_POL_RIGHT 1
-#define PM_THROW_RIGHT 2
-#define PM_POL_RIGHT_DONE 3
-#define PM_THROW_LEFT 4
-
-#define SE_STOP 0
-#define SE_CHANGE_PROCEED 1
-#define SE_PROCEED 2
-#define SE_POL_STOP 3
-#define SE_CHANGE_STOP 4
-#define SE_POL_STOP_DONE 5
-
-
-// Indication
+// Status
 #define UNSUPERVISED 0
 #define I_STOP 1
 #define I_PROCEED 2
@@ -64,6 +53,21 @@ struct elementType {
 #define I_U_LEFT 6
 #define I_U_RIGHT_HOLDING 7
 #define I_U_LEFT_HOLDING 8
+
+// State machine
+//   Point machine
+#define PM_IDLE 0
+#define PM_POL_RIGHT 1
+#define PM_THROW_RIGHT 2
+#define PM_POL_RIGHT_DONE 3
+#define PM_THROW_LEFT 4
+//   Semafore signal
+#define SE_STOP 0
+#define SE_CHANGE_PROCEED 1
+#define SE_PROCEED 2
+#define SE_POL_STOP 3
+#define SE_CHANGE_STOP 4
+#define SE_POL_STOP_DONE 5
 
 // Radio packet type
 #define POSREP 10
@@ -92,6 +96,7 @@ void AbusRecBroadcast();
 boolean AbusRecThis();
 boolean blink, flash;
 boolean txMAWaiting, txModeWaiting, posRepValid[N_TRAIN];
+byte lc;
 
 byte MAPack[12], posPack[N_TRAIN][12]; // RF12 packets
 byte nTrain; // number of known trains
@@ -125,18 +130,28 @@ void loop() {
   rf12Transceive();
   Abus.poll();
   updateLPdevice();
-  blink = !blink;
-  digitalWrite(BLINK, blink);
+  lc++;
+  if (lc == 5) {
+    lc = 0;
+    blink = !blink;
+    digitalWrite(BLINK, blink);
+  }
   wdt_reset();
 }
 
 
 void initEC() { // Initialize EC
-  // P-device, L-device
-  for (byte b = 0; b < N_LREG + N_PREG; b++) shiftOut(DATA, CLK, MSBFIRST, 0);
+  // Reset all device
+  for (byte b = 0; b < N_LREG + N_PREG; b++) {
+    devReg[b] = 0;
+    shiftOut(DATA, CLK, MSBFIRST, 0);
+  }
   pulse(STROBE);
-
+  for (byte b = 0; b < sizeof(UdevicePin); b++) {
+    pinMode(UdevicePin[b], INPUT);
+  }
   // Data
+  nextElement = 0;
 }
 
 void checkTimer() {
@@ -180,40 +195,38 @@ void checkTimer() {
     }
   }
 
-  // ------------------------------------------------------------- cancel signals due to missing order, control LX, control PM, control semaphoe
+  // ------------------------------------------------------- Cancel signals due to missing order, control LX, control PM, control semaphore signal
   for (byte index = 0; index < nextElement; index++) {
     element[index].timer -= deltaMillis;
     if (element[index].timer < 0) {
       switch (element[index].type) {
         case 10: // point machine w/o position detector
           switch (element[index].state) {
-            case PM_POL_RIGHT: // activate polarity relay shortly before throw relay
+            case PM_POL_RIGHT: // polarity relay have been activated shortly so activate throw relay
               Pdevice(element[index].deviceMajor, HIGH, HIGH);
               element[index].state = PM_THROW_RIGHT;
               element[index].timer = (element[index].order == P_RIGHT_HOLD ? PM_THROW_HOLD_TIME : PM_THROW_TIME);
-              element[index].cStatus = (element[index].order == P_RIGHT_HOLD ? I_U_RIGHT_HOLDING : I_U_RIGHT);
               break;
             case PM_THROW_RIGHT:
               Pdevice(element[index].deviceMajor, HIGH, LOW);
               element[index].state = PM_POL_RIGHT_DONE;
               element[index].timer = PM_POL_TIME;
-              //              element[index].cStatus = ;
+              element[index].cStatus = I_U_RIGHT;
               break;
             case PM_POL_RIGHT_DONE:
               Pdevice(element[index].deviceMajor, LOW, LOW);
               element[index].state = PM_IDLE;
               element[index].timer = 0;
-              //              element[index].cState = ;
               break;
             case PM_THROW_LEFT:
               Pdevice(element[index].deviceMajor, LOW, LOW);
               element[index].state = PM_IDLE;
               element[index].timer = 0;
-              element[index].cStatus = (element[index].order == P_LEFT_HOLD ? I_U_LEFT_HOLDING : I_U_LEFT);
+              element[index].cStatus = I_U_LEFT;
               break;
           }
           break;
-        case 21: // semaphore
+        case 21: // semaphore signal
           switch (element[index].state) {
             case SE_POL_STOP: // activate polarity relay shortly before throw relay
               Pdevice(element[index].deviceMajor, HIGH, HIGH);
@@ -384,48 +397,60 @@ boolean AbusRecThis() {
       elementStatus();
       break;
     case 20: // Type 20, Configuration data
+      Abus.toM[3] = 0; // Set reply to configuration accepted
       switch (Abus.fromM[3]) { // Configuration command
         case 0: // -------------------------------------------------------------- Clear configuration
-          nextElement = 0;
-          Abus.toM[3] = 0;
+          initEC();
           break;
         case 1: // -------------------------------------------------------------- Add configuration
           if (nextElement < N_ELEMENT ) {
             switch (Abus.fromM[4]) { // element type
               // ------------------------------------------------------------------------- U-devices
               case 31: // Level crossing road signal
-              case 41: // Light signal, 2 aspect
                 if (Abus.fromM[5] > 0 and Abus.fromM[5] <= N_UDEVICE) {
                   element[nextElement].type = Abus.fromM[4];
                   element[nextElement].deviceMajor = Abus.fromM[5];
                   pinMode(UdevicePin[Abus.fromM[5] - 1], OUTPUT);
                   digitalWrite(UdevicePin[Abus.fromM[5] - 1], LOW);
+                  element[nextElement].cStatus = I_PASS;
+                } else {
+                  Abus.toM[3] = 1; // invalid device number 1
+                }
+                break;              case 41: // Light signal, 2 lantern, 2 aspect   ---------- single U-device
+                if (Abus.fromM[5] > 0 and Abus.fromM[5] <= N_UDEVICE) {
+                  element[nextElement].type = Abus.fromM[4];
+                  element[nextElement].deviceMajor = Abus.fromM[5];
+                  pinMode(UdevicePin[Abus.fromM[5] - 1], OUTPUT);
+                  digitalWrite(UdevicePin[Abus.fromM[5] - 1], LOW);
+                  element[nextElement].cStatus = I_STOP;
                 } else {
                   Abus.toM[3] = 1; // invalid device number 1
                 }
                 break;
-              case 43: // Light signal, 2 lantern, 3 aspect
+              case 43: // Light signal, 2 lantern, 3 aspect  ----------- 2 U-devies
                 if (Abus.fromM[5] > 0 and Abus.fromM[5] + 1 <= N_UDEVICE) {
                   element[nextElement].type = Abus.fromM[4];
                   element[nextElement].deviceMajor = Abus.fromM[5];
                   pinMode(UdevicePin[Abus.fromM[5] - 1], OUTPUT);
-                  digitalWrite(UdevicePin[Abus.fromM[5] - 1], LOW);
+                  digitalWrite(UdevicePin[Abus.fromM[5] - 1], HIGH);
                   pinMode(UdevicePin[Abus.fromM[5]], OUTPUT);
                   digitalWrite(UdevicePin[Abus.fromM[5]], LOW);
+                  element[nextElement].cStatus = I_STOP;
                 } else {
                   Abus.toM[3] = 1; // invalid device number 1
                 }
                 break;
-              case 45: // Light signal, 3 lantern, 3 aspecs
+              case 45: // Light signal, 3 lantern, 3 aspecs  --------- 3 U-devices
                 if (Abus.fromM[5] > 0 and Abus.fromM[5] + 2 <= N_UDEVICE) {
                   element[nextElement].type = Abus.fromM[4];
                   element[nextElement].deviceMajor = Abus.fromM[5];
                   pinMode(UdevicePin[Abus.fromM[5] - 1], OUTPUT);
-                  digitalWrite(UdevicePin[Abus.fromM[5] - 1], LOW);
+                  digitalWrite(UdevicePin[Abus.fromM[5] - 1], HIGH);
                   pinMode(UdevicePin[Abus.fromM[5]], OUTPUT);
                   digitalWrite(UdevicePin[Abus.fromM[5]], LOW);
                   pinMode(UdevicePin[Abus.fromM[5] + 1], OUTPUT);
                   digitalWrite(UdevicePin[Abus.fromM[5] + 1], LOW);
+                  element[nextElement].cStatus = I_STOP;
                 } else {
                   Abus.toM[3] = 1; // invalid device number 1
                 }
@@ -435,6 +460,7 @@ boolean AbusRecThis() {
                 if (Abus.fromM[5] > 0 and Abus.fromM[5] <= N_PDEVICE) {
                   element[nextElement].type = Abus.fromM[4];
                   element[nextElement].deviceMajor = Abus.fromM[5];
+                  element[nextElement].cStatus = UNSUPERVISED;
                 } else {
                   Abus.toM[3] = 1; // invalid device number 1
                 }
@@ -443,10 +469,10 @@ boolean AbusRecThis() {
                 if (Abus.fromM[5] > 0 and Abus.fromM[5] <= N_PDEVICE) {
                   element[nextElement].type = Abus.fromM[4];
                   element[nextElement].deviceMajor = Abus.fromM[5];
-                  Pdevice(element[index].deviceMajor, HIGH, LOW);
-                  element[index].state = SE_POL_STOP;
-                  element[index].timer = PM_POL_TIME;
-                  element[index].cStatus = I_STOP;
+                  Pdevice(element[nextElement].deviceMajor, HIGH, LOW);
+                  element[nextElement].state = SE_POL_STOP;
+                  element[nextElement].timer = PM_POL_TIME;
+                  element[nextElement].cStatus = I_STOP;
                 } else {
                   Abus.toM[3] = 1; // invalid device number 1
                 }
@@ -455,25 +481,42 @@ boolean AbusRecThis() {
                 if (Abus.fromM[5] > 0 and Abus.fromM[5] <= N_PDEVICE) {
                   element[nextElement].type = Abus.fromM[4];
                   element[nextElement].deviceMajor = Abus.fromM[5];
+                  element[nextElement].cStatus = UNSUPERVISED;
                 } else {
                   Abus.toM[3] = 1; // invalid device number 1
                 }
                 break;
               // -------------------------------------------------------------------------------- L-device
-              // Reset output ------------------------------------------------------------------------------------------------ FIXME
-              case 40: // Signal, 2 lantern, 2 aspects
-              case 42: // Signal, 2 lantern, 3 aspects
-                if (Abus.fromM[5] > 0 and Abus.fromM[5] + 1 <= N_PDEVICE) {
+              case 30: // Road signal, 1 lantern, 2 aspect
+                if (Abus.fromM[5] > 0 and Abus.fromM[5] <= N_LDEVICE) {
                   element[nextElement].type = Abus.fromM[4];
                   element[nextElement].deviceMajor = Abus.fromM[5];
+                  Ldevice(element[nextElement].deviceMajor, LOW);
+                  element[nextElement].cStatus = I_PASS;
+                } else {
+                  Abus.toM[3] = 1; // invalid device number 1
+                }
+                break;              
+              case 40: // Signal, 2 lantern, 2 aspects
+              case 42: // Signal, 2 lantern, 3 aspects
+                if (Abus.fromM[5] > 0 and Abus.fromM[5] + 1 <= N_LDEVICE) {
+                  element[nextElement].type = Abus.fromM[4];
+                  element[nextElement].deviceMajor = Abus.fromM[5];
+                  Ldevice(element[nextElement].deviceMajor, HIGH);
+                  Ldevice(element[nextElement].deviceMajor + 1, LOW);
+                  element[nextElement].cStatus = I_STOP;
                 } else {
                   Abus.toM[3] = 1; // invalid device number 1
                 }
                 break;
-              case 44: // Signal, 3 lantern, 3 aspects, L-device
-                if (Abus.fromM[5] > 0 and Abus.fromM[5] + 2 <= N_PDEVICE) {
+              case 44: // Signal, 3 lantern, 3 aspects
+                if (Abus.fromM[5] > 0 and Abus.fromM[5] + 2 <= N_LDEVICE) {
                   element[nextElement].type = Abus.fromM[4];
                   element[nextElement].deviceMajor = Abus.fromM[5];
+                  Ldevice(element[nextElement].deviceMajor, HIGH);
+                  Ldevice(element[nextElement].deviceMajor + 1, LOW);
+                  Ldevice(element[nextElement].deviceMajor + 2, LOW);
+                  element[nextElement].cStatus = I_STOP;
                 } else {
                   Abus.toM[3] = 1; // invalid device number 1
                 }
@@ -508,24 +551,25 @@ void elementOrder(byte index, byte order) {
             Pdevice(element[index].deviceMajor, HIGH, LOW);
             element[index].state = PM_POL_RIGHT;
             element[index].timer = PM_POL_TIME;
-            element[index].cStatus = UNSUPERVISED;
+            element[index].cStatus = I_U_RIGHT_HOLDING;
             break;
           case P_LEFT:
           case P_LEFT_HOLD:
             Pdevice(element[index].deviceMajor, LOW, HIGH);
             element[index].state = PM_THROW_LEFT;
             element[index].timer = (order == P_LEFT_HOLD ? PM_THROW_HOLD_TIME : PM_THROW_TIME);
-            element[index].cStatus = UNSUPERVISED;
+            element[index].cStatus = I_U_LEFT_HOLDING;
             break;
           case P_RELEASE:
             if (element[index].state == PM_THROW_RIGHT) {
               Pdevice(element[index].deviceMajor, HIGH, LOW);
               element[index].state = PM_POL_RIGHT_DONE;
               element[index].timer = PM_POL_TIME;
-            } else {
+              element[index].cStatus = I_U_RIGHT;
+            } else if (element[index].state == PM_THROW_LEFT) {
               Pdevice(element[index].deviceMajor, LOW, LOW);
               element[index].state = PM_IDLE;
-              //            element[index].cStatus = ;--------------- efter hold skal status skiftes FIXME
+              element[index].cStatus = I_U_LEFT;
             }
             break;
         }
@@ -544,7 +588,7 @@ void elementOrder(byte index, byte order) {
                 Pdevice(element[index].deviceMajor, LOW, HIGH);
                 element[index].state = SE_CHANGE_PROCEED;
                 element[index].timer = PM_THROW_TIME;
-                element[index].cStatus = UNSUPERVISED;
+                element[index].cStatus = I_PROCEED;
                 break;
               case SE_PROCEED:
                 element[index].timer = CLOSE_TIMER;
@@ -700,9 +744,8 @@ void elementOrder(byte index, byte order) {
 
 void elementStatus() {
   Abus.toM[3] = nextElement;
-  for (byte i = 0; i < nextElement; i++) { // skal være NextElement / 2  ------------------------------------------------------------------- FIXME
-    // FIXME ved ulige antal configurerede elementer, mangler status for sidste element i status pakken.....
-    Abus.toM[i + 4] = element[2 * i + 1].cStatus << 4 | element[2 * i].cStatus;
+  for (byte i = 0; i < nextElement; i +=2) {
+    Abus.toM[i/2 + 4] = element[i].cStatus << 4 | element[i + 1].cStatus;
   }
 }
 
@@ -735,7 +778,7 @@ void Pdevice(byte device, byte polarity, byte value) {
 
 
 void updateLPdevice() { // write device registers for L and P devices
-  for (byte b = 0; b < N_LREG + N_PREG; b++)  shiftOut(DATA, CLK, MSBFIRST, devReg[b]);
+  for (int b = N_LREG + N_PREG - 1; b >= 0; b--)  shiftOut(DATA, CLK, MSBFIRST, devReg[b]);
   pulse(STROBE);
 }
 
