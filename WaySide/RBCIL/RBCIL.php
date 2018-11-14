@@ -13,6 +13,7 @@ $MCePort = 9901;
 $HMIaddress = "0.0.0.0";
 $ABUS_GATEWAYaddress = "10.0.0.201";
 $ABUS_GATEWAYport = 9200;
+$RADIO_ADDR = "/dev/serial/by-path/"; // Path to JeeLink connected via USB
 
 // File names
 $RBCIL_CONFIG = "RBCILconf.php";
@@ -132,6 +133,7 @@ $clients = array();
 $clientsData = array();
 $inCharge = false;
 $inChargeMCe = false;
+$RadioBuf = "";
 
 //--------------------------------------- RBCIL variable
 $PT1 = array();
@@ -762,6 +764,10 @@ global $PT1, $EC, $now, $radioLinkAddr;
     }
   }
 }
+
+function receivedFromRadio($data) {
+
+)
 
 //------------------------------------------------------------------- RBC-IL
 // New helper functions for setting routes
@@ -2101,7 +2107,7 @@ global $now, $levelCrossings, $triggers, $PT1;
 
 //------------------------------------------------------------------------------------  Server
 function initServer() {
-global $HMIport, $MCePort, $HMIaddress, $listener, $listenerMCe;
+global $HMIport, $MCePort, $HMIaddress, $listener, $listenerMCe, $JEELINK_ADDR, $JeeLink;
 
   $listener = @stream_socket_server("tcp://$HMIaddress:".$HMIport, $errno, $errstr);
   if (!$listener) {
@@ -2115,6 +2121,8 @@ global $HMIport, $MCePort, $HMIaddress, $listener, $listenerMCe;
     die();
   }
   stream_set_blocking($listenerMCe,false);
+  $Radio = fopen($RADIO_ADDR,"r");
+  stream_set_blocking($Radio,false);
 }
 
 function Server() {
@@ -2122,6 +2130,7 @@ global $ABUS, $listener, $listenerMCe, $clients, $clientsData, $inCharge, $inCha
   $read = $clients;
   $read[] = $listener;
   $read[] = $listenerMCe;
+  $read[] = $Radio; 
   if ($ABUS == "genie") {
     global $fromGenie;
     $read[] = $fromGenie;
@@ -2159,6 +2168,13 @@ global $ABUS, $listener, $listenerMCe, $clients, $clientsData, $inCharge, $inCha
       } elseif ($ABUS == "genie" and $r == $fromGenie) {
         if ($data = fgets($r)) {
           AbusReceivedPacketGenie($data);
+        }
+      } elseif ($r == $Radio) {
+        $res = fgets($r);
+        $RadioBuf = $RadioBuf.$res;
+        if (false !== strpos($res,"\n")) {
+          receiveFromRadio($RadioBuf); // process data from radio
+          $RadioBuf = "";
         }
       } else { // exsisting client
         if ($data = fgets($r)) {
