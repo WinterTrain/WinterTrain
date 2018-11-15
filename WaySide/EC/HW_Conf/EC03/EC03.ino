@@ -5,15 +5,15 @@
 
 
 // Abus
-#define TXENABLE_PIN 3
+#define TXENABLE_PIN 6
 #define SLAVE_ADDRESS 203
 #define RECEIVE_TIMEOUT 10
 
 // General hardware
-#define CLK 10
-#define DATA 11
-#define STROBE 12
-#define BLINK 7
+#define CLK 9
+#define DATA 10
+#define STROBE 11
+#define BLINK 12
 
 // EC hardware
 #define N_ELEMENT 24 // max number of element allowed. Abus packet type 1 allows max 32 elements (due to max packet length of 20 byte) 
@@ -26,7 +26,7 @@
 #define PDEVICE_ON_MASK {}; // Mask to set device on, per device
 #define PDEVICE_POL_MASK {}; // Mask to set device reversed polarity, per device
 #define PDEVICE_REG {}; // Assignment of device to shift register
-#define LDEVICE_ON_MASK {}; // Mask to set device on, per device
+#define LDEVICE_ON_MASK }; // Mask to set device on, per device
 #define LDEVICE_REG {}; // Assignment of device to shift register
 
 // Capacity
