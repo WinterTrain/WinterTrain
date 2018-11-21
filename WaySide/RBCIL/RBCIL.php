@@ -13,7 +13,12 @@ $MCePort = 9901;
 $HMIaddress = "0.0.0.0";
 $ABUS_GATEWAYaddress = "10.0.0.201";
 $ABUS_GATEWAYport = 9200;
-$RADIO_ADDR = "/dev/serial/by-path/"; // Path to JeeLink connected via USB
+
+$radio = "USB";
+$RADIO_DEVICE = "/dev/serial/by-path/platform-3f980000.usb-usb-0:1.2:1.0-port0"; // Path to radio module (JeeLink) connected via USB
+// RF12 group
+$RF12GROUP = 101;
+$RBC_RADIO_ID = 10;
 
 // File names
 $RBCIL_CONFIG = "RBCILconf.php";
@@ -133,7 +138,7 @@ $clients = array();
 $clientsData = array();
 $inCharge = false;
 $inChargeMCe = false;
-$RadioBuf = "";
+$radioBuf = "";
 
 //--------------------------------------- RBCIL variable
 $PT1 = array();
@@ -161,7 +166,7 @@ $ATOallowed = 0;
 $testStep = 0;
 $testBg = "BG06";
 $testDist = "30";
-//--------------------------------------- System 
+//---------------------------------------------------------------------------------------------------------- System 
 cmdLineParam();
 if ($ABUS == "cbu") {
   include '/home/jabe/scripts/AbusMasterLib.php'; // must be included at global level
@@ -188,10 +193,10 @@ do {
     updateHMI();
     updateMCe();
   }
-  if ($ABUS == "cbu" and $timeoutUr <= $now) {
-    $urTimeout = $now + 60;
-    CBUupdate();
-  }
+//  if ($ABUS == "cbu" and $timeoutUr <= $now) {
+//    $urTimeout = $now + 60;
+//    CBUupdate();
+//  }
   Server();
 } while ($run);
 msgLog("Exitting...");
@@ -473,7 +478,7 @@ global $trainData, $emergencyStop, $debug;
 
 function sendMA($trainID, $authMode, $balise, $dist, $speed) {
 // Send mode and movement authorization. Request position report for same train from Abus Master
-global $radioLinkAddr;
+global $radioLinkAddr, $radioLink, $radio;
   $packet[2] = 03;
   $packet[3] = $trainID; 
   $packet[4] = $authMode;
@@ -481,7 +486,14 @@ global $radioLinkAddr;
   $packet[10] = $dist & 0xFF;
   $packet[11] = ($dist & 0xFF00) >> 8;
   $packet[12] = $speed;
-  AbusSendPacket($radioLinkAddr, $packet, 13);
+  if ($radio == "USB") {
+    fwrite($radioLink,"31 $trainID $authMode ");
+    for ($b = 0; $b < 5; $b++) 
+      fwrite($radioLink, hexdec($balise[$b])." ");
+    fwrite($radioLink, ($dist & 0xFF)." ".(($dist & 0xFF00) >> 8)." $speed 0s\n");
+  } else {
+    AbusSendPacket($radioLinkAddr, $packet, 13);
+  }
 }
 
 function checkTrainTimeout() {
@@ -639,7 +651,7 @@ function requestElementStatusEC($addr) {
 }
 
 function receivedFromEC($addr, $data) {
-global $EC;
+global $EC, $radio;
   if ($addr) {
     switch ($data[2]) { // packet type
       case 01: // status
@@ -660,7 +672,7 @@ global $EC;
         $EC[$addr]["N_PDEVICE"] = $data[11];
         break;  
       case 03: // position report
-        positionReport($data);
+        if ($radio == "ABUS") positionReport($data);
         break;
       case 20: // configuration
         if ($data[3] > 0) {
@@ -765,9 +777,21 @@ global $PT1, $EC, $now, $radioLinkAddr;
   }
 }
 
-function receivedFromRadio($data) {
+function receivedFromRadioLink($data) {
+global $debug;
+  $RF12_ID_MASK = 0x1f;
+  $POSREP = 10; 
 
-)
+  $res = explode(" ",$data);
+  if ($res[0] == "OK" and $res[2] == $POSREP) {
+    $packet[3] = 1; // report valid
+    $packet[4] = $res[1] & $RF12_ID_MASK;
+    for ($b = 3; $b < 12; $b++) {
+      $packet[$b + 2] = $res[$b];
+    }
+    positionReport($packet);
+  }
+}
 
 //------------------------------------------------------------------- RBC-IL
 // New helper functions for setting routes
@@ -2105,9 +2129,9 @@ global $now, $levelCrossings, $triggers, $PT1;
   }
 }
 
-//------------------------------------------------------------------------------------  Server
+//---------------------------------------------------------------------------------------------------------------------------  Server
 function initServer() {
-global $HMIport, $MCePort, $HMIaddress, $listener, $listenerMCe, $JEELINK_ADDR, $JeeLink;
+global $HMIport, $MCePort, $HMIaddress, $listener, $listenerMCe, $RADIO_LINK_PORT, $RADIO_DEVICE, $radioLink, $RF12GROUP, $RBC_RADIO_ID, $radio;
 
   $listener = @stream_socket_server("tcp://$HMIaddress:".$HMIport, $errno, $errstr);
   if (!$listener) {
@@ -2115,29 +2139,43 @@ global $HMIport, $MCePort, $HMIaddress, $listener, $listenerMCe, $JEELINK_ADDR, 
     die();
   }
   stream_set_blocking($listener,false);
+  
   $listenerMCe = @stream_socket_server("tcp://$HMIaddress:".$MCePort, $errno, $errstr);
   if (!$listenerMCe) {
     fwrite(STDERR,"Cannot create server socket for MCe connection: $errstr ($errno)\n");
     die();
   }
   stream_set_blocking($listenerMCe,false);
-  $Radio = fopen($RADIO_ADDR,"r");
-  stream_set_blocking($Radio,false);
+  
+  if ($radio == "USB") {
+    $radioLink = fopen($RADIO_DEVICE,"r+");
+    if (!$radioLink) {
+      fwrite(STDERR,"Cannot create server socket for radioLink: $errstr ($errno)\n");
+      die();
+    }
+    stream_set_blocking($radioLink,false);
+// init radioLink (JeeLink)
+    fwrite($radioLink,"{$RF12GROUP}g\n"); // Set radio group
+    fwrite($radioLink,"1q\n"); // Don't report bad packets
+    fwrite($radioLink,"{$RBC_RADIO_ID}i\n");
+  } else {
+    $radioLink = null;
+  }
 }
 
 function Server() {
-global $ABUS, $listener, $listenerMCe, $clients, $clientsData, $inCharge, $inChargeMCe;
+global $ABUS, $listener, $listenerMCe, $clients, $clientsData, $inCharge, $inChargeMCe, $radioLink, $radioBuf;
   $read = $clients;
   $read[] = $listener;
   $read[] = $listenerMCe;
-  $read[] = $Radio; 
+  $read[] = $radioLink; 
   if ($ABUS == "genie") {
     global $fromGenie;
     $read[] = $fromGenie;
   }
   $except = NULL;
   $write = NULL;
-  if (stream_select($read, $write, $except, 0, 500000 )) {
+  if (stream_select($read, $write, $except, 0, 1000000 )) {
     foreach ($read as $r) {
       if ($r == $listener) { // new HMI client
         if ($newClient = stream_socket_accept($listener,0,$clientName)) {
@@ -2169,16 +2207,16 @@ global $ABUS, $listener, $listenerMCe, $clients, $clientsData, $inCharge, $inCha
         if ($data = fgets($r)) {
           AbusReceivedPacketGenie($data);
         }
-      } elseif ($r == $Radio) {
-        $res = fgets($r);
-        $RadioBuf = $RadioBuf.$res;
+      } elseif ($r == $radioLink) { // ---------------------------- Radio Link
+        while ($res = fgets($r)) { // Get all available data
+        $radioBuf = $radioBuf.$res;
         if (false !== strpos($res,"\n")) {
-          receiveFromRadio($RadioBuf); // process data from radio
-          $RadioBuf = "";
+          receivedFromRadioLink($radioBuf); // process data from radio
+          $radioBuf = "";
+        }
         }
       } else { // exsisting client
         if ($data = fgets($r)) {
-//          print "ClientData: $data";
           switch ($clientsData[(int)$r]["type"]) {
             case "HMI":
               processCommand(trim($data),$r);
@@ -2492,7 +2530,7 @@ global $ABUS;
 //print_r($data);
 //sleep(1);
       if ($data[0] != 0) { // timeout
-        errLog("EC ($addr) Abus Time out: {$data[0]}\n");
+        errLog("EC ($addr) Abus Time out: {$data[0]}");
         $addr = false;
         $data = array();
       }

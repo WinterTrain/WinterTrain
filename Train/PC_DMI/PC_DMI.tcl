@@ -277,6 +277,7 @@ upvar ::dmiID LdmiID
 global trainIndex tty
 #puts "$LdmiID(2)\n"
   puts $tty "1l\n" 
+  puts $tty "101g\n"
   puts $tty "$LdmiID($trainIndex)\i\n"
 }
 
