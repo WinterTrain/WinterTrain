@@ -154,11 +154,10 @@ grid [ttk::label .f.trainName -textvariable train] -column 2 -row 10 -columnspan
 grid [ttk::button .f.buttonT -text "Switch Train" -command toggleTrain] -column 2 -row 11 -sticky e
 grid [ttk::button .f.buttonE -text "Exit" -command exit] -column 3 -row 11 -sticky e
 
-bind . "5" {set drive 5}
-bind . "4" {set drive 4}
-bind . "3" {set drive 3}
-bind . "2" {set drive 2}
-bind . "1" {set drive 1}
+bind . "4" {set drive 5}
+bind . "3" {set drive 4}
+bind . "2" {set drive 3}
+bind . "1" {set drive 2}
 bind . "0" {set drive 1}
 bind . <space> {set drive 1}
 bind . "b" {set dir 1} 

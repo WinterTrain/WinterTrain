@@ -354,9 +354,9 @@ void opMode() {
 boolean shuntBorder() {
   if (atShuntBorder) {
     if (borderDist >= 0) {
-      shuntBorderStop = nomDriveDir == UP and (borderDist < knownBalises[curBalise].curDist);
+      shuntBorderStop = (nomDriveDir == UP) && (borderDist < knownBalises[curBalise].curDist);
     } else {
-      shuntBorderStop = nomDriveDir == DOWN and (borderDist > knownBalises[curBalise].curDist);
+      shuntBorderStop = (nomDriveDir == DOWN) && (borderDist > knownBalises[curBalise].curDist);
     }
   } else {
     shuntBorderStop = false;;

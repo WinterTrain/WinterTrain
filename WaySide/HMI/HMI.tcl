@@ -8,6 +8,7 @@ set IPport 9900
 # Default configuration
 set trackWidth 0.15
 set lineWidth 0.05
+set markWidth 0.08
 set winWidth 1900
 set winHeight 800
 set winX +50
@@ -19,6 +20,8 @@ set fColor blue       ;# failure color
 set tColor black      ;# Clear track, not locked in route
 set toColor red       ;# Occupied track, locked or not locked in route
 set tcColor green     ;# Clear track, locked in route
+set clColor red       ;# point clamped
+set blColor orange       ;# point blocked
 set oColor lightgreen ;# signal open
 set oppColor lightgreen;# signal open proceed proceed
 set cColor darkgrey    ;# signal closed
@@ -135,12 +138,15 @@ proc point {name x y layout} {
   switch $layout {
     fr { ;# facing, right branch is diverging
       dLabel $x $y 1 0.1 $name "$name label"
-      dTrainIDLabel  $x $y 0.5 0.2 "TEST" "$name trainIdLabel"
+      dTrainIDLabel  $x $y 0.3 0.2 "TEST" "$name trainIdLabel"
       dTrack $x $y 0 0.5 1 0.5 "$name track"
       dTrack $x $y 1 0.5 1.5 0.5 "$name left"
       dTrack $x $y 1.5 0.5 2 0.5 "$name trackleft"
       dTrack $x $y 1 0.5 1.3 1.1 "$name right"
       dTrack $x $y 1.3 1.1 2 2.5 "$name trackright"
+      dMarkLine $x $y 0.5 0.3 1.5 0.3 "$name lockleft"
+      dMarkLine $x $y 0.5 0.7 0.9 0.7 "$name lockright"
+      dMarkLine $x $y 0.9 0.7 1.1 1.1 "$name lockright"
       dButton $x $y 1 0.5 0.4 $name selectPoint
     }
     fl { ;# facing, left branch is diverging
@@ -151,6 +157,9 @@ proc point {name x y layout} {
       dTrack $x $y 1.5 2.5 2 2.5 "$name trackright"
       dTrack $x $y 1 2.5 1.3 1.9 "$name left"
       dTrack $x $y 1.3 1.9 2 0.5 "$name trackleft"
+      dMarkLine $x $y 0.5 0.3 1.5 0.3 "$name lockleft"
+      dMarkLine $x $y 0.5 0.7 0.9 0.7 "$name lockright"
+      dMarkLine $x $y 0.9 0.7 1.1 1.1 "$name lockright"
       dButton $x $y 1 2.5 0.4 $name selectPoint
     }
     tl { ;# trailing, left branch is diverging
@@ -161,15 +170,23 @@ proc point {name x y layout} {
       dTrack $x $y 1 0.5 2 0.5 "$name track"
       dTrack $x $y 1 0.5 0.7 1.1 "$name left"
       dTrack $x $y 0.7 1.1 0 2.5 "$name trackleft"
+      dMarkLine $x $y 0.5 0.3 1.5 0.3 "$name lockright"
+      dMarkLine $x $y 1.5 0.7 1.1 0.7 "$name lockleft"
+      dMarkLine $x $y 1.1 0.7 0.9 1.1 "$name lockleft"
       dButton $x $y 1 0.5 0.4 $name selectPoint
     }
   }
 }
 
 proc trainFrame {index} {
-global nTrainFrame trainMAbalise trainMAdist entryFontSize
+global nTrainFrame trainMAbalise trainMAdist entryFontSize toState toMode toDrive toDir
+
+  set toMode($index) 5
+  set toDrive($index) 1
+  set toDir($index) 2
 
   incr nTrainFrame
+# ----------------- Frame for Train status
   grid [ttk::frame .f.fTrain.t$index -padding "3 3 12 12" -relief solid -borderwidth 2] -column [expr $index + 1] -row 1 -sticky nwes
   grid [ttk::label .f.fTrain.t$index.nameX -text "Train name"] -column 0 -row 0 -padx 5 -pady 5 -sticky we
   grid [ttk::label .f.fTrain.t$index.name -text "-----" -textvariable trainName($index)] -column 1 -row 0 -padx 5 -pady 5 -sticky we
@@ -187,10 +204,10 @@ global nTrainFrame trainMAbalise trainMAdist entryFontSize
   grid [ttk::label .f.fTrain.t$index.length -text "---" -textvariable trainLength($index)] -column 1 -row 4 -padx 5 -pady 5 -sticky we
   grid [ttk::label .f.fTrain.t$index.pwrX -text "PWR"] -column 2 -row 4 -padx 5 -pady 5 -sticky we
   grid [ttk::label .f.fTrain.t$index.pwr -text "---" -textvariable trainPWR($index)] -column 3 -row 4 -padx 5 -pady 5 -sticky we
-  grid [ttk::label .f.fTrain.t$index.maX -text "MA"] -column 0 -row 5 -padx 5 -pady 5 -sticky we
-  grid [ttk::entry .f.fTrain.t$index.maBalise -width 5 -textvariable trainMAbalise($index) -font "'Helvetica', $entryFontSize"] -column 1 -row 5 -padx 5 -pady 5 -sticky we
-  grid [ttk::entry .f.fTrain.t$index.maDistance -width 5 -textvariable trainMAdist($index) -font "'Helvetica', $entryFontSize"] -column 2 -row 5 -padx 5 -pady 5 -sticky we
-  grid [ttk::button .f.fTrain.t$index.maSend -text "Send" -command "sendMA $index"] -column 3 -row 5 -padx 5 -pady 5 -sticky we
+#  grid [ttk::label .f.fTrain.t$index.maX -text "MA"] -column 0 -row 5 -padx 5 -pady 5 -sticky we
+#  grid [ttk::entry .f.fTrain.t$index.maBalise -width 5 -textvariable trainMAbalise($index) -font "'Helvetica', $entryFontSize"] -column 1 -row 5 -padx 5 -pady 5 -sticky we
+#  grid [ttk::entry .f.fTrain.t$index.maDistance -width 5 -textvariable trainMAdist($index) -font "'Helvetica', $entryFontSize"] -column 2 -row 5 -padx 5 -pady 5 -sticky we
+#  grid [ttk::button .f.fTrain.t$index.maSend -text "Send" -command "sendMA $index"] -column 3 -row 5 -padx 5 -pady 5 -sticky we
   grid [ttk::label .f.fTrain.t$index.sr_allowedX -text "SR:"] -column 0 -row 7 -padx 5 -pady 5 -sticky we
   grid [ttk::checkbutton .f.fTrain.t$index.sr_allowed -variable sr($index) -command "setSR $index" ] -column 1 -row 7 -padx 5 -pady 5 -sticky we
   .f.fTrain.t$index.sr_allowed state disabled
@@ -206,8 +223,62 @@ global nTrainFrame trainMAbalise trainMAdist entryFontSize
   .f.fTrain.t$index.ato_allowed state disabled
   set trainMAbalise($index) ""
   set trainMAdist($index) ""
+  
+# ---------------- Frame for Remote take-over
+  grid [ttk::label .f.fTrain.t$index.toX -text "Remote take-over"] -column 0 -row 9 -padx 5 -pady 5 -sticky we
+  grid [ttk::label .f.fTrain.t$index.to -text "----" -textvariable toStatus($index)] -column 1 -columnspan 2 -row 9 -padx 5 -pady 5 -sticky we
+  grid [ttk::button .f.fTrain.t$index.reqTo -text "Request" -command "reqTo $index"] -column 2 -row 10 -padx 5 -pady 5 -sticky we
+  .f.fTrain.t$index.reqTo state disabled
+   grid [ttk::button .f.fTrain.t$index.relTo -text "Release" -command "relTo $index"] -column 3 -row 10 -padx 5 -pady 5 -sticky we
+  .f.fTrain.t$index.relTo state disabled
+   
+  grid [ttk::frame .f.fTrain.t$index.oMode -padding "3 3 12 12" ] -column 0 -row 10 -columnspan 2 -sticky nwes
+  grid [ttk::label .f.fTrain.t$index.oMode.modeOFFX -text "OFF "] -column 1 -row 0 -sticky we -padx 5 -pady 5
+  grid [ttk::label .f.fTrain.t$index.oMode.modeSRX -text "SR "] -column 2 -row 0 -sticky we -padx 5 -pady 5
+  grid [ttk::label .f.fTrain.t$index.oMode.modeSHX -text "SH "] -column 3 -row 0 -sticky we -padx 5 -pady 5
+  grid [ttk::label .f.fTrain.t$index.oMode.modeFSX -text "FS "] -column 4 -row 0 -sticky we -padx 5 -pady 5
+  grid [ttk::label .f.fTrain.t$index.oMode.modeATOX -text "ATO"] -column 5 -row 0 -sticky we -padx 5 -pady 5
+  grid [ttk::radiobutton .f.fTrain.t$index.oMode.modeOFF -value "5" -variable toMode($index) -command "txTo $index"] -column 1 -row 1
+  .f.fTrain.t$index.oMode.modeOFF state disabled
+  grid [ttk::radiobutton .f.fTrain.t$index.oMode.modeSR -value "1" -variable toMode($index) -command  "txTo $index"] -column 2 -row 1
+  .f.fTrain.t$index.oMode.modeSR state disabled
+  grid [ttk::radiobutton .f.fTrain.t$index.oMode.modeSH -value "2" -variable toMode($index) -command  "txTo $index"] -column 3 -row 1
+  .f.fTrain.t$index.oMode.modeSH state disabled
+  grid [ttk::radiobutton .f.fTrain.t$index.oMode.modeFS -value "3" -variable toMode($index) -command  "txTo $index"] -column 4 -row 1
+  .f.fTrain.t$index.oMode.modeFS state disabled
+  grid [ttk::radiobutton .f.fTrain.t$index.oMode.modeATO -value "4" -variable toMode($index) -command  "txTo $index"] -column 5 -row 1
+  .f.fTrain.t$index.oMode.modeATO state disabled
+
+  grid [ttk::frame .f.fTrain.t$index.oDrive -padding "3 3 12 12" ] -column 0 -row 11 -columnspan 2 -sticky nwes
+grid [ttk::label .f.fTrain.t$index.oDrive.driveSTOPX -text "S "] -column 0 -row 0 -sticky we
+grid [ttk::label .f.fTrain.t$index.oDrive.drive1X -text "1 "] -column 1 -row 0 -sticky we
+grid [ttk::label .f.fTrain.t$index.oDrive.drive2X -text "2 "] -column 2 -row 0 -sticky we
+grid [ttk::label .f.fTrain.t$index.oDrive.drive3X -text "3 "] -column 3 -row 0 -sticky we
+grid [ttk::label .f.fTrain.t$index.oDrive.drive4X -text "4 "] -column 4 -row 0 -sticky we
+grid [ttk::radiobutton .f.fTrain.t$index.oDrive.drive5 -value "5" -variable toDrive($index)  -command  "txTo $index"] -column 4 -row 1 -sticky we
+.f.fTrain.t$index.oDrive.drive5 state disabled
+grid [ttk::radiobutton .f.fTrain.t$index.oDrive.drive4 -value "4" -variable toDrive($index)  -command  "txTo $index"] -column 3 -row 1 -sticky we
+.f.fTrain.t$index.oDrive.drive4 state disabled
+grid [ttk::radiobutton .f.fTrain.t$index.oDrive.drive3 -value "3" -variable toDrive($index)  -command  "txTo $index"] -column 2 -row 1 -sticky we
+.f.fTrain.t$index.oDrive.drive3 state disabled
+grid [ttk::radiobutton .f.fTrain.t$index.oDrive.drive2 -value "2" -variable toDrive($index)  -command  "txTo $index"] -column 1 -row 1 -sticky we
+.f.fTrain.t$index.oDrive.drive2 state disabled
+grid [ttk::radiobutton .f.fTrain.t$index.oDrive.drive1 -value "1" -variable toDrive($index)  -command  "txTo $index"] -column 0 -row 1 -sticky we
+.f.fTrain.t$index.oDrive.drive1 state disabled
+
+#  grid [ttk::frame .f.fTrain.t$index.oDir -padding "3 3 12 12" ] -column 1 -row 11 -sticky nwes
+grid [ttk::label .f.fTrain.t$index.oDrive.dirRX -text "R "] -column 6 -row 0 -sticky we -padx 5 -pady 5
+grid [ttk::label .f.fTrain.t$index.oDrive.dirNX -text "N "] -column 7 -row 0 -sticky we -padx 5 -pady 5
+grid [ttk::label .f.fTrain.t$index.oDrive.dirFX -text "F"] -column 8 -row 0 -sticky we -padx 5 -pady 5
+grid [ttk::radiobutton .f.fTrain.t$index.oDrive.dirR -value "1" -variable toDir($index)  -command  "txTo $index"] -column 6 -row 1
+.f.fTrain.t$index.oDrive.dirR state disabled
+grid [ttk::radiobutton .f.fTrain.t$index.oDrive.dirN -value "2" -variable toDir($index)  -command  "txTo $index"] -column 7 -row 1
+.f.fTrain.t$index.oDrive.dirN state disabled
+grid [ttk::radiobutton .f.fTrain.t$index.oDrive.dirF -value "3" -variable toDir($index)  -command  "txTo $index"] -column 8 -row 1
+.f.fTrain.t$index.oDrive.dirF state disabled
+
 # Comment next line to allow maSend
-  .f.fTrain.t$index.maSend state disabled
+#  .f.fTrain.t$index.maSend state disabled
 }
 
 proc destroyTrainFrame {} {
@@ -234,6 +305,11 @@ global lineWidth lColor scale xOffset yOffset
   .f.canvas create line [expr $xOffset+($x+$x1)*$scale] [expr $yOffset+($y+$y1)*$scale] [expr $xOffset+($x+$x2)*$scale] [expr $yOffset+($y+$y2)*$scale] -fill $lColor -width [expr $lineWidth*$scale] -tags $tags -smooth raw
 }
 
+proc dMarkLine {x y x1 y1 x2 y2 {tags ""}} {
+global markWidth lColor scale xOffset yOffset
+  .f.canvas create line [expr $xOffset+($x+$x1)*$scale] [expr $yOffset+($y+$y1)*$scale] [expr $xOffset+($x+$x2)*$scale] [expr $yOffset+($y+$y2)*$scale] -fill $lColor -width [expr $markWidth*$scale] -tags $tags -smooth raw
+}
+
 proc dRectangle {x y x1 y1 x2 y2 {tags ""}} {
 global fColor scale xOffset yOffset
   .f.canvas create rectangle [expr $xOffset+($x+$x1)*$scale] [expr $yOffset+($y+$y1)*$scale] [expr $xOffset+($x+$x2)*$scale] [expr $yOffset+($y+$y2)*$scale] -fill $fColor -width 0 -tags $tags
@@ -254,13 +330,10 @@ global scale xOffset yOffset xColor
   .f.canvas create text [expr $xOffset+($x+$x1)*$scale] [expr $yOffset+($y+$y1)*$scale] -text $text -tags $tags -fill $xColor -state hidden
 }
 
-#>>JP:TRAIN_ID
-#draw Train ID when element is occupied
 proc dTrainIDLabel {x y x1 y1 text {tags ""}} { 
 global scale xOffset yOffset trIdColor
   .f.canvas create text [expr $xOffset+($x+$x1)*$scale] [expr $yOffset+($y+$y1)*$scale] -text $text -tags $tags -fill $trIdColor
 }
-#<<JP:TRAIN_ID
 
 proc dLabelStatic {x y x1 y1 text {tags ""}} { 
 global scale xOffset yOffset xColor
@@ -281,8 +354,30 @@ global xOffset yOffset scale cHeight cWidth showGrid
 
 #------------------------------------------------- indication handlers
 
-proc pointState {name state trackState {trainID ""}} {
-global fColor tColor toColor tcColor
+proc pointState {name state trackState lockState {trainID ""}} {
+global fColor tColor toColor tcColor clColor blColor
+  switch $lockState {
+    10 { ;# B_UNBLOCKED
+    .f.canvas itemconfigure "$name&&lockright" -state hidden
+    .f.canvas itemconfigure "$name&&lockleft" -state hidden
+    }
+    11 { ;# B_BLOCKED_RIGHT
+    .f.canvas itemconfigure "$name&&lockright" -state normal -fill $blColor
+    .f.canvas itemconfigure "$name&&lockleft" -state hidden
+    }
+    12 { ;# B_BLOCKED_LEFT
+    .f.canvas itemconfigure "$name&&lockright" -state hidden
+    .f.canvas itemconfigure "$name&&lockleft" -state normal -fill $blColor  
+    }
+    13 { ;# B_CLAMPED_RIGHT
+    .f.canvas itemconfigure "$name&&lockright" -state normal -fill $clColor
+    .f.canvas itemconfigure "$name&&lockleft" -state hidden
+    }
+    14 { ;# B_CLAMPED_LEFT
+    .f.canvas itemconfigure "$name&&lockright" -state hidden
+    .f.canvas itemconfigure "$name&&lockleft" -state normal -fill $clColor  
+    }
+  } 
   switch $state {
     20 { ;# left
     .f.canvas itemconfigure "$name&&right" -state hidden
@@ -506,8 +601,8 @@ global trainName trainLength
   set trainLength($trainIndex) $length
 }
 
-proc trainDataD {trainIndex mode balise distance speed nomDir pwr maAck valid} { ;# dynamic train data
-global trainMode trainPosition trainSpeed trainNomDir trainPWR trainACK trainValid
+proc trainDataD {trainIndex mode balise distance speed nomDir pwr maAck valid status} { ;# dynamic train data
+global trainMode trainPosition trainSpeed trainNomDir trainPWR trainACK trainValid toStatus
   set trainMode($trainIndex) $mode
   set trainPosition($trainIndex) "$balise $distance"
   set trainSpeed($trainIndex) $speed
@@ -515,6 +610,7 @@ global trainMode trainPosition trainSpeed trainNomDir trainPWR trainACK trainVal
   set trainPWR($trainIndex) $pwr
   set trainACK($trainIndex) $maAck
   set trainValid($trainIndex) $valid
+  set toStatus($trainIndex) $status
 }
 
 proc RBCversion {RBC PT1} {
@@ -576,21 +672,25 @@ if {$command == "_p"} {
   .f.buttonPoint configure -text "SPSK"
   .f.buttonRelease configure -text "Release"
   .f.buttonLX configure -text "Ovk"
+  .f.buttonARS configure -text "Ars"
+  .f.buttonPointBlock configure -text "Block"
   }
 }
 
-#proc buttonSignal {} {
-#global command
-#if {$command == "_s"} {
-#  set command ""
-#  .f.buttonSignal configure -text "Signal"
-#  } else {
-#  set command "_s"
-#  .f.buttonSignal configure -text "SIGNAL"
-#  .f.buttonPoint configure -text "Spsk"
-#  .f.buttonLX configure -text "Ovk"
-#  }
-#}
+proc buttonPointBlock {} {
+global command
+if {$command == "_pb"} {
+  set command ""
+  .f.buttonPointBlock configure -text "Block"
+  } else {
+  set command "_pb"
+  .f.buttonPointBlock configure -text "BLOCK"
+  .f.buttonPoint configure -text "Spsk"
+  .f.buttonRelease configure -text "Release"
+  .f.buttonLX configure -text "Ovk"
+  .f.buttonARS configure -text "Ars"
+  }
+}
 
 proc buttonRelease {} {
 global command
@@ -601,7 +701,9 @@ if {$command == "_r"} {
   set command "_r"
   .f.buttonRelease configure -text "RELEASE"
   .f.buttonPoint configure -text "Spsk"
+  .f.buttonPointBlock configure -text "Block"
   .f.buttonLX configure -text "Ovk"
+  .f.buttonARS configure -text "Ars"
   }
 }
 
@@ -614,7 +716,24 @@ if {$command == "_l"} {
   set command "_l"
   .f.buttonLX configure -text "OVK"
   .f.buttonPoint configure -text "Spsk"
+  .f.buttonPointBlock configure -text "Block"
   .f.buttonRelease configure -text "Release"
+  .f.buttonARS configure -text "Ars"
+  }
+}
+
+proc buttonARS {} {
+global command
+if {$command == "_ars"} {
+  set command ""
+  .f.buttonARS configure -text "Ars"
+  } else {
+  set command "_ars"
+  .f.buttonARS configure -text "ARS"
+  .f.buttonPointBlock configure -text "Block"
+  .f.buttonPoint configure -text "Spsk"
+  .f.buttonRelease configure -text "Release"
+  .f.buttonLX configure -text "Ovk"
   }
 }
 
@@ -626,7 +745,8 @@ global command aColor
   } else {
     switch $command {
       "_l" -
-      "_p" {
+      "_p" -
+      "_ars" {
       }
       "_r" {
         set command ""
@@ -677,6 +797,11 @@ global command aColor sColor
         set command $ID
         .f.canvas itemconfigure "$ID&&button" -activefill "" -activeoutline "" -fill $sColor -outline $sColor
       }
+      "_ars" {
+        set command ""
+        .f.buttonARS configure -text "Ars"
+        sendCommand "ars $ID"
+      }
       default {
         #Asking RBC to set route if possible
         sendCommand "tr $command $ID"
@@ -694,6 +819,11 @@ global command
       set command ""
       .f.buttonPoint configure -text "Spsk"
       sendCommand "pt $ID"
+    }
+    "_pb" {
+      set command ""
+      .f.buttonPointBlock configure -text "Block"
+      sendCommand "pb $ID"
     }
   }
 }
@@ -741,6 +871,19 @@ proc rlopr {} {
   sendCommand "Rl"
 }
 
+proc reqTo {trainIndex} {
+  sendCommand "reqTo $trainIndex"
+}
+
+proc relTo {trainIndex} {
+  sendCommand "relTo $trainIndex"
+}
+
+proc txTo {trainIndex} {
+global toMode toDrive toDir
+  sendCommand "txTo $trainIndex $toMode($trainIndex) $toDrive($trainIndex) $toDir($trainIndex)"
+}
+
 proc exitRBC {} {
   sendCommand "exitRBC"
 }
@@ -774,9 +917,10 @@ global showGrid
 proc disableButtons {} {
 global nTrainFrame
   .f.buttonPoint state disabled
-#  .f.buttonSignal state disabled
+  .f.buttonPointBlock state disabled
   .f.buttonRelease state disabled
   .f.buttonLX state disabled
+  .f.buttonARS state disabled
   .f.buttonStop state disabled
   .f.buttonERBC state disabled
   .f.buttonT state disabled
@@ -785,6 +929,22 @@ global nTrainFrame
     .f.fTrain.t$x.sh_allowed state disabled
     .f.fTrain.t$x.fs_allowed state disabled
     .f.fTrain.t$x.ato_allowed state disabled
+    .f.fTrain.t$x.reqTo state disabled
+    .f.fTrain.t$x.relTo state disabled
+    .f.fTrain.t$x.oMode.modeOFF state disabled
+    .f.fTrain.t$x.oMode.modeSR state disabled
+    .f.fTrain.t$x.oMode.modeSH state disabled
+    .f.fTrain.t$x.oMode.modeFS state disabled
+    .f.fTrain.t$x.oMode.modeATO state disabled
+    .f.fTrain.t$x.oDrive.drive5 state disabled
+    .f.fTrain.t$x.oDrive.drive4 state disabled
+    .f.fTrain.t$x.oDrive.drive3 state disabled
+    .f.fTrain.t$x.oDrive.drive2 state disabled
+    .f.fTrain.t$x.oDrive.drive1 state disabled
+    .f.fTrain.t$x.oDrive.dirR state disabled
+    .f.fTrain.t$x.oDrive.dirN state disabled
+    .f.fTrain.t$x.oDrive.dirF state disabled
+
   }
   .f.canvas itemconfigure button -activefill "" -activeoutline ""
 }
@@ -792,9 +952,11 @@ global nTrainFrame
 proc enableButtons {} {
 global aColor nTrainFrame
   .f.buttonPoint state !disabled
+  .f.buttonPointBlock state !disabled
 #  .f.buttonSignal state !disabled
   .f.buttonRelease state !disabled
   .f.buttonLX state !disabled
+  .f.buttonARS state !disabled
   .f.buttonStop state !disabled
   .f.buttonERBC state !disabled
   .f.buttonT state !disabled
@@ -803,6 +965,21 @@ global aColor nTrainFrame
     .f.fTrain.t$x.sh_allowed state !disabled
     .f.fTrain.t$x.fs_allowed state !disabled
     .f.fTrain.t$x.ato_allowed state !disabled
+    .f.fTrain.t$x.reqTo state !disabled
+    .f.fTrain.t$x.relTo state !disabled
+    .f.fTrain.t$x.oMode.modeOFF state !disabled
+    .f.fTrain.t$x.oMode.modeSR state !disabled
+    .f.fTrain.t$x.oMode.modeSH state !disabled
+    .f.fTrain.t$x.oMode.modeFS state !disabled
+    .f.fTrain.t$x.oMode.modeATO state !disabled
+    .f.fTrain.t$x.oDrive.drive5 state !disabled
+    .f.fTrain.t$x.oDrive.drive4 state !disabled
+    .f.fTrain.t$x.oDrive.drive3 state !disabled
+    .f.fTrain.t$x.oDrive.drive2 state !disabled
+    .f.fTrain.t$x.oDrive.drive1 state !disabled
+    .f.fTrain.t$x.oDrive.dirR state !disabled
+    .f.fTrain.t$x.oDrive.dirN state !disabled
+    .f.fTrain.t$x.oDrive.dirF state !disabled
   }
   .f.canvas itemconfigure button -activefill $aColor -activeoutline $aColor
 }
@@ -949,13 +1126,13 @@ grid [ttk::label .f.menu -text ""] -column 1 -row 1 -padx 5 -pady 5 -sticky we
 grid [ttk::label .f.response -textvariable response] -column 2 -columnspan 5 -row 6 -padx 5 -pady 5 -sticky we
 grid [ttk::label .f.status -textvariable status] -column 2 -row 5 -padx 5 -pady 5 -sticky we
 grid [ttk::label .f.versions -textvariable versions] -column 8 -columnspan 2 -row 5 -padx 5 -pady 5 -sticky e
-#grid [ttk::label .f.versionPT1 -textvariable PT1version] -column 7 -row 5 -padx 5 -pady 5 -sticky e
 grid [ttk::label .f.live -textvariable liveIndicator] -column 10 -row 5 -padx 5 -pady 5 -sticky e
-#grid [ttk::button .f.buttonSignal -text "Signal" -command buttonSignal] -column 2 -row 1 -sticky we
 grid [ttk::button .f.buttonRelease -text "Release" -command buttonRelease] -column 2 -row 1 -sticky we
 grid [ttk::button .f.buttonPoint -text "Spsk" -command buttonPoint] -column 3 -row 1 -sticky we
-grid [ttk::button .f.buttonLX -text "Ovk" -command buttonLX] -column 4 -row 1 -sticky we
-grid [ttk::button .f.buttonStop -text "" -command eStop] -column 5 -row 1 -sticky w
+grid [ttk::button .f.buttonPointBlock -text "Block" -command buttonPointBlock] -column 4 -row 1 -sticky we
+grid [ttk::button .f.buttonLX -text "Ovk" -command buttonLX] -column 5 -row 1 -sticky we
+grid [ttk::button .f.buttonARS -text "Ars" -command buttonARS] -column 6 -row 1 -sticky we
+grid [ttk::button .f.buttonStop -text "" -command eStop] -column 7 -row 1 -sticky w
 grid [ttk::button .f.buttonOpr -text "Request operation" -command rqopr] -column 7 -row 1 -sticky e
 grid [ttk::button .f.buttonShowGrid -text "Show Grid" -command showGrid] -column 8 -row 1 -sticky e
 grid [ttk::button .f.buttonShowLabel -text "Show Label" -command showLabel] -column 9 -row 1 -sticky e

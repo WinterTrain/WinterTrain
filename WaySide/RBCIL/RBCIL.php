@@ -22,9 +22,8 @@ $RBC_RADIO_ID = 10;
 
 // File names
 $RBCIL_CONFIG = "RBCILconf.php";
-#$PT1_DATA = "data/RBCIL_PT1.php";
-#$TRAIN_DATA = "data/RBCIL_TRAIN.php";
 $DATA_FILE = "../SiteData/CBU/CBU.php";
+//$DATA_FILE = "../SiteData/W57/W57.php";
 $ERRLOG = "Log/RBCIL_ErrLog.txt";
 $MSGLOG = "Log/RBCIL.log";
 
@@ -50,11 +49,18 @@ define("E_PROCEED",11);
 define("E_PROCEEDPROCEED",12);
 define("E_LEFT",20);        // Point, supervised left
 define("E_RIGHT",21);       // supervised right
-define("E_MOVING",22);      //   point is (supposed to be) moving
+define("E_MOVING",22);      //   point is (supposed to be) movingng
 define("E_LX_DEACTIVATED",50); // Normal state
 define("E_LX_WARNING",51); // Warning signals flashing
 define("E_LX_ACTIVATED",52); // 
 define("E_LX_OPENING",53); // Deaktiveret, opening
+// Interlocking Element blocking
+define("B_UNBLOCKED",10); // Element not blocked
+define("B_BLOCKED_RIGHT",11); 
+define("B_BLOCKED_LEFT",12);
+define("B_CLAMPED_RIGHT",13);
+define("B_CLAMPED_LEFT",14);
+define("B_BLOCKED_STOP",20);
 // Interlocking Element commands
 define("C_TOGGLE",10); // Points
 define("C_LEFT",20);
@@ -126,6 +132,7 @@ $MODE_TXT = [0 => "Udef", 1 => "SR", 2 => "SH", 3 => "FS", 4 => "ATO", 5 => "N",
 $DIR_TXT = [0 => "Udef", 1 => "Down", 2 => "Up", 3 => "Stop",];
 $PWR_TXT = [0 => "NoComm", 1 => "R", 2 => "L", 3 => "No PWR",];
 $ACK_TXT = [0 => "NO_MA", 1 => "MA_ACK"];
+$TOSTATE_TXT = [0 => "Udef.", 1 => "DMI", 2 => "Remote take-over", 3 => "Pending take-over", 4 => "Pending release"];
 
 //--------------------------------------- System variable
 $debug = FALSE; $background = FALSE; $run = true;
@@ -357,7 +364,7 @@ global $DATA_FILE, $trainData, $PT1_VERSION, $PT1, $HMI, $errorFound, $totalElem
 
   if (array_key_exists("", $PT1)) { unset($PT1[""]); } // delete any remaining template entry
   $totalElement = count($PT1);
-  foreach ($PT1 as $name => &$element) {  // Check each node and generate various lists
+  foreach ($PT1 as $name => &$element) {  // Check each node and generate various lists and states
     $element["checked"] = false;
     $element["routeState"] = R_IDLE;
     $element["trackState"] = T_CLEAR;
@@ -385,18 +392,36 @@ global $DATA_FILE, $trainData, $PT1_VERSION, $PT1, $HMI, $errorFound, $totalElem
       case "PF":
       case "PT":
         $points[] = $name;
-        switch($element["clamp"]) {
-        case "":
-          $element["state"] = E_UNSUPERVISED; // Logical state
-          $element["latestLie"] = E_RIGHT; // Just to start somewhere
-        break;
-        case "R":
-          $element["state"] = E_RIGHT;
-          $element["latestLie"] = E_RIGHT;
-        break;
-        case "L":
-          $element["state"] = E_LEFT;
-          $element["latestLie"] = E_LEFT;
+        switch($element["supervisionState"]) {
+          case "U": // Unsupervised
+            $element["state"] = E_UNSUPERVISED;
+            $element["expectedLie"] = E_RIGTH;
+            $element["blockingState"] = B_UNBLOCKED;
+          break;
+          case "S": // Suprvision state simulated
+            $element["state"] = E_RIGHT;
+            $element["expectedLie"] = E_RIGHT; 
+            $element["blockingState"] = B_UNBLOCKED;
+          break;
+          case "P": // real point machine
+            $element["state"] = E_UNSUPERVISED; // Logical state
+            $element["expectedLie"] = E_RIGHT; // Just to start somewhere
+            $element["blockingState"] = B_UNBLOCKED;
+          break;
+          case "CR": // Clamped right
+            $element["state"] = E_RIGHT;
+            $element["expectedLie"] = E_RIGHT;
+            $element["blockingState"] = B_CLAMPED_RIGHT;
+          break;
+          case "CL": // Clamped left
+            $element["state"] = E_LEFT;
+            $element["expectedLie"] = E_LEFT;
+            $element["blockingState"] = B_CLAMPED_LEFT;
+          break;
+          default:
+            print "Element $name: Unknown supervision state.\n";
+            $errorFound = true;
+          break;
         }
       break;
       case "SU":
@@ -404,10 +429,15 @@ global $DATA_FILE, $trainData, $PT1_VERSION, $PT1, $HMI, $errorFound, $totalElem
         $signals[] = $name;
         $element["state"] = E_STOP; // Logical state
         $element["status"] = $element["type"] == "MB" ? S_VOID : S_UNSUPERVISED; // Physical status from EC
+        $element["blockingState"] = B_UNBLOCKED;
       break;
       case "BSB":
       case "BSE":
         $bufferstops[] = $name;
+      break;
+      default:
+        print "Element $name: Unknown element.\n";
+        $errorFound = true;
       break;
     }
   }
@@ -704,13 +734,13 @@ global $EC, $PT1;
       switch ($element["element"]) {
         case "PT":
         case "PF":
-          if ($element["clamp"] == "") {
+          if ($element["supervisionState"] == "P") {
             switch ($element["EC"]["type"]) {
-              case 10: // point machine without feedback
+              case 10: // point machine without feedback FIXME check if state != expectedLie
                 if ($status == S_U_RIGHT) {
-                  $element["state"] = $element["latestLie"] = E_RIGHT;
+                  $element["state"] = E_RIGHT;
                 } else if ($status == S_U_LEFT) {
-                  $element["state"] = $element["latestLie"] = E_LEFT;
+                  $element["state"] = E_LEFT;
                 } else {
                   $element["state"] = E_UNSUPERVISED;
                 }
@@ -761,7 +791,7 @@ global $PT1, $EC, $now, $radioLinkAddr;
           break;
           case "PT":
           case "PF":
-            if ($element["clamp"] == "") {
+            if ($element["supervisionState"] == "P") {
               $PT1[$name]["state"] = E_UNSUPERVISED;
             }
           break;
@@ -807,7 +837,7 @@ function isMoveablePoint($eltName) {
   global $PT1;
   $type = $PT1[$eltName]["element"];
   if ($type == "PF" or $type == "PT") {
-    return  ($PT1[$eltName]["clamp"] == "");
+    return  ($PT1[$eltName]["supervisionState"] == "P" or $PT1[$eltName]["supervisionState"] == "S");
   } else {
     return False;
   }
@@ -934,7 +964,7 @@ global $PT1;
     $pos = $next["position"];
     RBC_IL_DebugPrint("Throwing point $eltName in position $pos\n");
     $point = &$PT1[$eltName];
-    pointThrow($point, $pos);
+    pointThrow($point, $pos); // Check return status, may be rejected FIXME
   }
   lock($eltName);
   return TRACK_TRAVERSALE_ACCEPT_ACTIVATE_PAYLOAD; #Lock all elments in route
@@ -1083,7 +1113,7 @@ function getEltLength($eltName) {
   switch ($elt["element"]) {
     case "PF":
     case "PT":
-        return ($elt["T"]["dist"] + ($elt["latestLie"] == E_RIGHT ? $elt["R"]["dist"]: $elt["L"]["dist"]));
+        return ($elt["T"]["dist"] + ($elt["expectedLie"] == E_RIGHT ? $elt["R"]["dist"]: $elt["L"]["dist"]));
     case "BSE":
         return $elt["D"]["dist"];
     case "BSB":
@@ -1743,6 +1773,7 @@ global $trainData, $trainIndex, $DATA_FILE, $SRallowed, $SHallowed, $FSallowed, 
     $train["prevBaliseName"] = "00:00:00:00:00";
     $train["prevDistance"] = 0;
     $train["dataValid"] = "VOID";
+    $train["toStatus"] = 0;
     $train["pr0"] = false;
     $train["validTimer"] = 0;
     $train["MAbalise"] = array(0,0,0,0,0);
@@ -1831,23 +1862,50 @@ global $trainIndex, $trainData, $balisesID, $SR_MAX_SPEED, $SH_MAX_SPEED, $ATO_M
 }
 
 
-function pointThrow(&$element, $lie) {
-  if ($element["trackState"] == T_CLEAR and $element["clamp"] == "") { // point may be thrown if clear and not clamped
-    $order = ($lie == C_TOGGLE ? ($element["latestLie"] == E_LEFT ? O_RIGHT : O_LEFT) : ($lie == C_RIGHT ? O_RIGHT : O_LEFT));
-    $element["state"] = E_MOVING;
-    switch ($element["EC"]["type"]) {
-      case 10: // point without feedback; no hold
-        orderEC($element["EC"]["addr"], $element["EC"]["index"], $order);
-        return true;
+function pointThrow(&$element, $newLie) {
+  if ($element["blockingState"] == B_UNBLOCKED) {
+    switch ($element["supervisionState"]) {
+    case "U": // Permanetly unsupervised
+      return true;
       break;
-      default: // type of point machine not assigned or not implemented
-      errLog("Point throw: type {$element["EC"]["type"]} not implemented");
+    case "CR": // Clamped right
+    case "CL": // Clamped left
+      return false;
+    break;
+    case "S": // Simulated
+      if ($element["trackState"] == T_CLEAR and $element["blockingState"] == B_UNBLOCKED) {
+        $element["state"] = $element["expectedLie"] = 
+          ($newLie == C_TOGGLE ? ($element["expectedLie"] == E_LEFT ? E_RIGHT : E_LEFT) : ($newLie == C_RIGHT ? E_RIGHT : E_LEFT));
+        return true;
+      } else {
         return false;
+      }
+    break;
+    case "P": // Point machine
+      if ($element["trackState"] == T_CLEAR and $element["blockingState"] == B_UNBLOCKED) {
+        $order = ($newLie == C_TOGGLE ? ($element["expectedLie"] == E_LEFT ? O_RIGHT : O_LEFT) : ($newLie == C_RIGHT ? O_RIGHT : O_LEFT));
+        $element["state"] = E_MOVING;
+        $element["expectedLie"] = 
+          ($newLie == C_TOGGLE ? ($element["expectedLie"] == E_LEFT ? E_RIGHT : E_LEFT) : ($newLie == C_RIGHT ? E_RIGHT : E_LEFT));
+        switch ($element["EC"]["type"]) {
+          case 10: // point without feedback; no hold
+            orderEC($element["EC"]["addr"], $element["EC"]["index"], $order);
+            return true;
+          break;
+          default: // type of point machine not assigned or not implemented
+          errLog("Point throw: Point machine type {$element["EC"]["type"]} not implemented");
+            return false;
+        }
+      } else {
+        return false;
+      }
+    break;
     }
   } else {
     return false;
   }
 }
+
 
 
 //Fake train for simulation purpose
@@ -1883,7 +1941,7 @@ global $testBg, $testDist, $trainData, $PT1;
 
 function processCommand($command, $from) { // process HMI command
 global $PT1, $clients, $clientsData, $inCharge, $trainData, $EC, $now, $balises, $run, $emergencyStop;
-//print ">$command< \n";
+print "HMI command: >$command< \n";
   $param = explode(" ",$command);
   switch ($param[0]) {
 /*  case "so": // signal order
@@ -1921,12 +1979,33 @@ global $PT1, $clients, $clientsData, $inCharge, $trainData, $EC, $now, $balises,
       HMIindication($from, "displayResponse {Rejected}\n");
     }
   break;
-  case "pt": // point order
+  case "pt": // point throw
     if ($from == $inCharge) {
       if (pointThrow($PT1[$param[1]], C_TOGGLE)) {
         HMIindication($from, "displayResponse {OK}\n");
       } else {
         HMIindication($from, "displayResponse {Point Throw Rejected}\n"); // to be detailed FIXME
+      }
+    } else {
+      HMIindication($from, "displayResponse {Rejected}\n");
+    }
+  break;
+  case "pb": // point toggle block
+    if ($from == $inCharge) {
+      switch ($PT1[$param[1]]["blockingState"]) {
+        case B_CLAMPED_LEFT:
+        case B_CLAMPED_RIGHT:
+          HMIindication($from, "displayResponse {Rejected}\n");
+        break;
+        case B_BLOCKED_LEFT:
+        case B_BLOCKED_RIGHT:
+          $PT1[$param[1]]["blockingState"] = B_UNBLOCKED;
+          HMIindication($from, "displayResponse {OK}\n");
+        break;
+        case B_UNBLOCKED:
+          $PT1[$param[1]]["blockingState"] = ($PT1[$param[1]]["expectedLie"] == E_RIGHT ? B_BLOCKED_RIGHT : B_BLOCKED_LEFT); 
+          HMIindication($from, "displayResponse {OK}\n");
+        break;
       }
     } else {
       HMIindication($from, "displayResponse {Rejected}\n");
@@ -2010,6 +2089,15 @@ global $PT1, $clients, $clientsData, $inCharge, $trainData, $EC, $now, $balises,
     if ($from == $inCharge) {
       setRoute($param[1], $param[2]);
     }
+  break;
+  case "reqTo":
+  print "Request take-over of train {$param[1]}\n";
+  break;
+  case "relTo":
+  print "Release take-over of train {$param[1]}\n";
+  break;
+  case "txTo":
+  print "Send to train {$param[1]} Mode: {$param[2]} Drive: {$param[3]} Dir: {$param[4]}\n";
   break;
   case "exitRBC":
     if ($from == $inCharge) {
@@ -2175,7 +2263,7 @@ global $ABUS, $listener, $listenerMCe, $clients, $clientsData, $inCharge, $inCha
   }
   $except = NULL;
   $write = NULL;
-  if (stream_select($read, $write, $except, 0, 1000000 )) {
+  if (stream_select($read, $write, $except, 0, 200000 )) {
     foreach ($read as $r) {
       if ($r == $listener) { // new HMI client
         if ($newClient = stream_socket_accept($listener,0,$clientName)) {
@@ -2266,7 +2354,7 @@ global $PT1, $HMI, $trainData, $VERSION, $PT1_VERSION;
     case "PF":
     case "PT":
       HMIindication($client,"point $name ".$element["HMI"]["x"]." ".$element["HMI"]["y"]." ".$element["HMI"]["or"]."\n");
-      HMIindication($client,"pointState $name ".$element["state"]." ".$element["trackState"]."\n");
+      HMIindication($client,"pointState $name ".$element["state"]." ".$element["trackState"]." ".$element["blockingState"]."\n");
     break;
     case "SU":
       HMIindication($client,"signal $name ".$element["HMI"]["x"]." ".$element["HMI"]["y"]." f\n");
@@ -2360,7 +2448,7 @@ global $HMI, $PT1, $emergencyStop;
       break;
       case "PF":
       case "PT":
-        HMIindicationAll("pointState $name ".$element["state"]." ".$element["trackState"]." ".$displayedTrainID."\n");
+        HMIindicationAll("pointState $name ".$element["state"]." ".$element["trackState"]." ".$element["blockingState"]." ".$displayedTrainID."\n");
       break;
       case "BSB":
       case "BSE":
@@ -2374,11 +2462,11 @@ global $HMI, $PT1, $emergencyStop;
 }
 
 function updateTrainDataHMI($index) {
-global $trainData, $MODE_TXT, $DIR_TXT, $PWR_TXT, $ACK_TXT;
+global $trainData, $MODE_TXT, $DIR_TXT, $PWR_TXT, $ACK_TXT, $TOSTATE_TXT;
   $train = $trainData[$index];
   HMIindicationAll("trainDataD ".$index." {".$MODE_TXT[$train["authMode"]]." (".$MODE_TXT[$train["reqMode"]].")} ".$train["baliseName"]." ".
         $train["distance"]." ".$train["speed"]." ".$DIR_TXT[$train["nomDir"]]." {".$PWR_TXT[$train["pwr"]]."} {".
-        $ACK_TXT[$train["MAreceived"]]."} ".$train["dataValid"]."\n");
+        $ACK_TXT[$train["MAreceived"]]."} ".$train["dataValid"]." {".$TOSTATE_TXT[$train["toStatus"]]."}\n");
 }
 
 function HMIindicationAll($msg) {// Send indication to all clients
