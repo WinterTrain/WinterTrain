@@ -15,7 +15,8 @@ $ABUS_GATEWAYaddress = "10.0.0.201";
 $ABUS_GATEWAYport = 9200;
 
 $radio = "USB";
-$RADIO_DEVICE = "/dev/serial/by-path/platform-3f980000.usb-usb-0:1.2:1.0-port0"; // Path to radio module (JeeLink) connected via USB
+$RADIO_DEVICE = "/dev/ttyUSB0";
+//$RADIO_DEVICE = "/dev/serial/by-path/platform-3f980000.usb-usb-0:1.2:1.0-port0"; // Path to radio module (JeeLink) connected via USB
 // RF12 group
 $RF12GROUP = 101;
 $RBC_RADIO_ID = 10;
@@ -30,14 +31,16 @@ $MSGLOG = "Log/RBCIL.log";
 // ------------------------------------------------------------------------ To be moved to conf. file
 $radioLinkAddr = 150;
 $SR_MAX_SPEED = 100;
-$SH_MAX_SPEED = 60;
+$SH_MAX_SPEED = 48;
 $ATO_MAX_SPEED = 50;
 $FS_MAX_SPEED = 50;
+$restorePos = true;
 
 // ---------------------------------------- Timing
 define("EC_TIMEOUT",5);
 define("TRAIN_DATA_TIMEOUT",5);
 define("LX_WARNING_TIME",2);
+define("POSITION_TIMEOUT", 10);
 
 // ----------------------------------------Enummerations
 // Route
@@ -506,7 +509,7 @@ global $trainData, $emergencyStop, $debug;
   }
 }
 
-function sendMA($trainID, $authMode, $balise, $dist, $speed) {
+function sendMA($trainID, $authMode, $balise, $dist, $speed) { // $balise as array
 // Send mode and movement authorization. Request position report for same train from Abus Master
 global $radioLinkAddr, $radioLink, $radio;
   $packet[2] = 03;
@@ -517,14 +520,27 @@ global $radioLinkAddr, $radioLink, $radio;
   $packet[11] = ($dist & 0xFF00) >> 8;
   $packet[12] = $speed;
   if ($radio == "USB") {
-    fwrite($radioLink,"31 $trainID $authMode ");
+    fwrite($radioLink,"31,$trainID,$authMode,");
     for ($b = 0; $b < 5; $b++) 
-      fwrite($radioLink, hexdec($balise[$b])." ");
-    fwrite($radioLink, ($dist & 0xFF)." ".(($dist & 0xFF00) >> 8)." $speed 0s\n");
+      fwrite($radioLink, hexdec($balise[$b]).",");
+    fwrite($radioLink, ($dist & 0xFF).",".(($dist & 0xFF00) >> 8).",$speed,0s\n"); // "0s" is broadcast
   } else {
     AbusSendPacket($radioLinkAddr, $packet, 13);
   }
 }
+
+function sendPosRestore($trainID, $balise, $distance) { // $balise as string!
+global $radioLinkAddr, $radioLink, $radio;
+  print "Position restore ID: $trainID, Balise: >$balise< Distance: $distance\n";
+  if ($radio == "USB") {
+    fwrite($radioLink,"33,$trainID,");
+    $baliseArray = explode(":", $balise);
+    for ($b = 0; $b < 5; $b++) 
+      fwrite($radioLink, hexdec($baliseArray[$b]).",");
+    fwrite($radioLink, ($distance & 0xFF).",".(($distance & 0xFF00) >> 8).",0s\n");
+  } else {
+    print "position restore via Abus not implemented\n";
+  }}
 
 function checkTrainTimeout() {
 global $trainData, $now;
@@ -811,7 +827,7 @@ function receivedFromRadioLink($data) {
 global $debug;
   $RF12_ID_MASK = 0x1f;
   $POSREP = 10; 
-
+//print "Data: >$data<\n";
   $res = explode(" ",$data);
   if ($res[0] == "OK" and $res[2] == $POSREP) {
     $packet[3] = 1; // report valid
@@ -1761,8 +1777,8 @@ global $trainData, $trainIndex, $DATA_FILE, $SRallowed, $SHallowed, $FSallowed, 
     $train["ATOallowed"] = $ATOallowed;
     $train["reqMode"] = M_UDEF;
     $train["authMode"] = M_N;
-    $train["balise"] = "00:00:00:00:00";
-    $train["baliseName"] = "(00:00:00:00:00)";
+    $train["balise"] = "00:00:00:00:00"; // change to array()?? FIXME
+    $train["baliseName"] = "(00:00:00:00:00)"; // PT1 name
     $train["distance"] = 0;
     $train["speed"] = 0;
     $train["nomDir"] = D_UDEF; // nominel driving direction (UP/DOWN)
@@ -1775,6 +1791,7 @@ global $trainData, $trainIndex, $DATA_FILE, $SRallowed, $SHallowed, $FSallowed, 
     $train["dataValid"] = "VOID";
     $train["toStatus"] = 0;
     $train["pr0"] = false;
+    $train["timeStamp"] = 0;
     $train["validTimer"] = 0;
     $train["MAbalise"] = array(0,0,0,0,0);
     $train["MAdist"] = 0;
@@ -1783,29 +1800,39 @@ global $trainData, $trainIndex, $DATA_FILE, $SRallowed, $SHallowed, $FSallowed, 
 }
 
 function positionReport($data) { // analyse received position report
-global $trainIndex, $trainData, $balisesID, $SR_MAX_SPEED, $SH_MAX_SPEED, $ATO_MAX_SPEED, $FS_MAX_SPEED, $now;
+global $trainIndex, $trainData, $balisesID, $SR_MAX_SPEED, $SH_MAX_SPEED, $ATO_MAX_SPEED, $FS_MAX_SPEED, $now, $posTimeout, $restorePos;
   if (isset($trainIndex[$data[4]])) {
     $index = $trainIndex[$data[4]];
     $train = &$trainData[$index];
+    $balise = sprintf("%02X:%02X:%02X:%02X:%02X",$data[5],$data[6],$data[7],$data[8],$data[9]);
+
     if ($data[3] == 1) { // valid report
-      if ($data[5] + $data[6] + $data[7] + $data[8] + $data[9] == 0) {
+      if ($balise == "01:00:00:00:01" or $balise == "00:00:00:00:00") {
         if (!$train["pr0"]) {
           $train["pr0"] = true;
-          errLog("Train ({$train["ID"]}): Position report 0:0:0:0:0");
+          errLog("Train ({$train["ID"]}): Position unknown by train: $balise");
+          if ($restorePos) {
+            if ($now - $train["timeStamp"] <= POSITION_TIMEOUT) {
+              errLog("Train ({$train["ID"]}): Position restored to: {$train["balise"]} {$train["distance"]}");
+              sendPosRestore($train["ID"], $train["balise"], $train["distance"]);
+            } else {
+              errLog("Train ({$train["ID"]}): Position not restored - outdated: ".date("Ymd H:i:s", $train["timeStamp"]));
+            }
+          }
         }
       } else {
         $train["pr0"] = false;
       }
+      $train["timeStamp"] = $now;
       $train["dataValid"] = "OK";
-      $train["validTimer"] = $now + TRAIN_DATA_TIMEOUT;
+      $train["validTimer"] = $now + TRAIN_DATA_TIMEOUT; 
       $train["distance"] = round(toSigned($data[10], $data[11]) * $train["wheelFactor"]);
       $train["speed"] = $data[12];
       $train["reqMode"] = $data[13] & 0x07;
       $train["nomDir"] = ($data[13] & 0x18) >> 3;
       $train["pwr"] = ($data[13] & 0x60) >> 5;
       $train["MAreceived"] = ($data[13] & 0x80) >> 7;
-      $train["balise"] = sprintf("%02X:%02X:%02X:%02X:%02X",$data[5],$data[6],$data[7],$data[8],$data[9]);
- //  printf("%02X:%02X:%02X:%02X:%02X\n",$data[5],$data[6],$data[7],$data[8],$data[9]);
+      $train["balise"] = $balise; // change to array()? FIXME
       if ($train["pwr"] == P_R) { // determin orientation of train front end
         $train["front"] = D_UP;
       } elseif ($train["pwr"] == P_L) {

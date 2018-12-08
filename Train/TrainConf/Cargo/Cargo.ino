@@ -12,15 +12,14 @@
 // Balises commanding "stop if in shunting"
 // Distance measured in tacometer pulses 
 
-#define N_SABALISES 14 // balise list for "stop if in shunting"
+#define N_SABALISES 12 // balise list for "stop if in shunting"
+// Distances are stated in "wheel turns".Train will start braking at that distance from the balise
 #define SA_BALISES { \
   /* End station */\
-  {{0x76, 0x00, 0x0C, 0x75, 0xE5}, -1},   /* BG01 (0 cm) */\
-  {{0x75, 0x00, 0x14, 0xD1, 0x25}, -1},   /* BG03 (0 cm) */\
-  {{0x73, 0x00, 0x56, 0xD9, 0xB2}, -1},   /* BG02 (0 cm) */\
-  {{0x76, 0x00, 0x0C, 0xFA, 0x7D}, -1},   /* BG04 (0 cm) */\
-  {{0x73, 0x00, 0x70, 0x3D, 0x8D}, -15},  /* BG05 (75 cm) */\
-  {{0x74, 0x00, 0x11, 0x07, 0x0B}, -19},  /* BG06 (95 cm) */\
+  {{0x74, 0x00, 0x11, 0x07, 0x0B}, -1},   /* BG01 (0 cm) */\
+  {{0x76, 0x00, 0x0C, 0xB7, 0x36}, -11},   /* BG03 (0 cm) */\
+  {{0x75, 0x00, 0x14, 0xD2, 0x51}, -26},   /* BG02 (0 cm) */\
+  {{0x74, 0x00, 0x15, 0x65, 0x29}, -34},   /* BG04 (0 cm) */\
   \
   /* Bar track */\
   {{0x74, 0x00, 0x11, 0x09, 0x64}, 120},  /* BG22 (601 cm) */\

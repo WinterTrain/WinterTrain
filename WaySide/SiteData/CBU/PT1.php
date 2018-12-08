@@ -110,15 +110,8 @@ $PT1 = [
 "BG05" => [ // Balises
   "element" => "BL",
   "ID" => "76:00:0C:E3:A8",
-  "U" => ["name" => "BG06", "dist" => 10],
-  "D" => ["name" => "P1", "dist" => 25],
-  ],
-
-"BG06" => [ // Balises
-  "element" => "BL",
-  "ID" => "74:00:11:07:0B",
   "U" => ["name" => "S3", "dist" => 1],
-  "D" => ["name" => "BG05", "dist" => 10],
+  "D" => ["name" => "P1", "dist" => 40],
   ],
 
 
@@ -128,10 +121,10 @@ $PT1 = [
   "EC" => [
     "addr" => 0,
     "type" => 0,
-    "majorDevice" => 3,
+    "majorDevice" => 1,
     ],
   "U" => ["name" => "BG07", "dist" => 1],
-  "D" => ["name" => "BG06", "dist" => 1],
+  "D" => ["name" => "BG05", "dist" => 1],
   "HMI" => [
     "x" => 5,
     "y" => 1,
@@ -142,18 +135,18 @@ $PT1 = [
 
 "BG07" => [ // Balises
   "element" => "BL",
-  "ID" => "",
-  "U" => ["name" => "S4", "dist" => 21],
-  "D" => ["name" => "S3", "dist" => 258],
+  "ID" => "73:00:56:A3:40",
+  "U" => ["name" => "S4", "dist" => 120],
+  "D" => ["name" => "S3", "dist" => 200],
   ],
   
 "S4" => [ // Signal, facing and ...
   "element" => "SU",
-  "type" => "MB",
+  "type" => "MS3",
   "EC" => [
-    "addr" => 0,
-    "type" => 0,
-    "majorDevice" => 0,
+    "addr" => 202,
+    "type" => 45,
+    "majorDevice" => 1,
     ],
   "U" => ["name" => "S5", "dist" => 15],
   "D" => ["name" => "BG07", "dist" => 1],
@@ -165,11 +158,11 @@ $PT1 = [
 
 "S5" => [ // Signal, facing and ...
   "element" => "SD",
-  "type" => "MB",
+  "type" => "MS3",
   "EC" => [
-    "addr" => 0,
-    "type" => 0,
-    "majorDevice" => 0,
+    "addr" => 202,
+    "type" => 45,
+    "majorDevice" => 4,
     ],
   "U" => ["name" => "BG08", "dist" => 1],
   "D" => ["name" => "S4", "dist" => 15],
@@ -181,11 +174,11 @@ $PT1 = [
 
 "BG08" => [ // Balises
   "element" => "BL",
-  "ID" => "74:00:15:50:C0",
-  "U" => ["name" => "S24", "dist" => 162],
-  "D" => ["name" => "S5", "dist" => 210],
+  "ID" => "73:00:56:9F:A1",
+  "U" => ["name" => "S24", "dist" => 180],
+  "D" => ["name" => "S5", "dist" => 170],
   ],
-  
+
 "S24" => [ // Signal, facing and ...
   "element" => "SU",
   "type" => "MB",
@@ -220,9 +213,9 @@ $PT1 = [
 
 "BG09" => [ // Balises
   "element" => "BL",
-  "ID" => "0:0:0:0:0",
-  "U" => ["name" => "S6", "dist" => 208],
-  "D" => ["name" => "S25", "dist" => 71],
+  "ID" => "76:00:0D:05:97",
+  "U" => ["name" => "S6", "dist" => 120],
+  "D" => ["name" => "S25", "dist" => 160],
   ],
 
 // ---------------------------------------------- Main Station
@@ -235,7 +228,7 @@ $PT1 = [
     "type" => 0,
     "majorDevice" => 0,
     ],
-  "U" => ["name" => "BG10", "dist" => 59],
+  "U" => ["name" => "BG10", "dist" => 20],
   "D" => ["name" => "BG09", "dist" => 1],
   "HMI" => [
     "x" => 18,
@@ -245,30 +238,23 @@ $PT1 = [
 
 "BG10" => [ // Balises
   "element" => "BL",
-  "ID" => "76:00:0D:03:82",
-  "U" => ["name" => "BG11", "dist" => 10],
-  "D" => ["name" => "S6", "dist" => 1],
-  ],
-  
-"BG11" => [ // Balises
-  "element" => "BL",
-  "ID" => "73:00:56:A6:71",
+  "ID" => "74:00:11:09:64",
   "U" => ["name" => "P2", "dist" => 10],
-  "D" => ["name" => "BG10", "dist" => 10],
+  "D" => ["name" => "S6", "dist" => 10],
   ],
   
 "P2" => [ // Point, Facing
   "element" => "PF",
   "EC" => [
-    "addr" => 0,
-    "type" => 0,
+    "addr" => 201,
+    "type" => 10,
     "majorDevice" => 2,
     "minorDevice" => 0,
     ],
-  "supervisionState" => "CL",
+  "supervisionState" => "P",
   "R" => ["name" => "BG13", "dist" => 40],
   "L" => ["name" => "BG12", "dist" => 40],
-  "T" => ["name" => "BG11", "dist" => 1],
+  "T" => ["name" => "BG10", "dist" => 1],
   "HMI" => [
     "or" => "fr",
     "x" => 20,
@@ -279,16 +265,9 @@ $PT1 = [
 
 "BG12" => [ // Balises
   "element" => "BL",
-  "ID" => "73:00:56:E4:D1",
-  "U" => ["name" => "BG14", "dist" => 10],
+  "ID" => "76:00:0C:A4:29",
+  "U" => ["name" => "S7", "dist" => 30],
   "D" => ["name" => "P2", "dist" => 2],
-  ],
- 
-"BG14" => [ // Balises
-  "element" => "BL",
-  "ID" => "76:00:0C:EC:E8",
-  "U" => ["name" => "S7", "dist" => 1],
-  "D" => ["name" => "BG12", "dist" => 11],
   ],
  
  "S7" => [ // Signal
@@ -300,7 +279,7 @@ $PT1 = [
     "majorDevice" => 0,
     ],
   "U" => ["name" => "VBG01", "dist" => 1],
-  "D" => ["name" => "BG14", "dist" => 9],
+  "D" => ["name" => "BG12", "dist" => 1],
   "HMI" => [
     "x" => 23,
     "y" => 1,
@@ -310,8 +289,8 @@ $PT1 = [
 "VBG01" => [ // Virtual Balises (Does not exist on the track, it acts as a track segment)
   "element" => "BL",
   "ID" => "99:99:99:99:01",
-  "U" => ["name" => "S9", "dist" => 72],
-  "D" => ["name" => "S7", "dist" => 72],
+  "U" => ["name" => "S9", "dist" => 140],
+  "D" => ["name" => "S7", "dist" => 140],
   ],
 
  "S9" => [ // Signal
@@ -332,29 +311,22 @@ $PT1 = [
   
 "BG16" => [ // Balises
   "element" => "BL",
-  "ID" => "73:00:56:C0:72",
-  "U" => ["name" => "BG17", "dist" => 10],
-  "D" => ["name" => "S9", "dist" => 4],
-  ],
-  
-"BG17" => [ // Balises
-  "element" => "BL",
-  "ID" => "73:00:56:93:AA",
-  "U" => ["name" => "P3", "dist" => 12],
-  "D" => ["name" => "BG16", "dist" => 9],
+  "ID" => "73:00:56:F0:55",
+  "U" => ["name" => "P3", "dist" => 10],
+  "D" => ["name" => "S9", "dist" => 10],
   ],
   
 
 "P3" => [ // Point, trailing
   "element" => "PT",
   "EC" => [
-    "addr" => 0,
-    "type" => 0,
+    "addr" => 201,
+    "type" => 10,
     "majorDevice" => 1,
     "minorDevice" => 0,
     ],
-  "supervisionState" => "CR",
-  "R" => ["name" => "BG17", "dist" => 46],
+  "supervisionState" => "P",
+  "R" => ["name" => "BG16", "dist" => 46],
   "L" => ["name" => "BG20", "dist" => 46],
   "T" => ["name" => "BG21", "dist" => 1],
   "HMI" => [
@@ -367,17 +339,11 @@ $PT1 = [
  
 "BG21" => [ // Balises
   "element" => "BL",
-  "ID" => "0:0:0:0:0",
-  "U" => ["name" => "BG22", "dist" => 10],
+  "ID" => "76:00:0D:0B:F7",
+  "U" => ["name" => "S11", "dist" => 30],
   "D" => ["name" => "P3", "dist" => 10],
   ],
-  
-"BG22" => [ // Balises
-  "element" => "BL",
-  "ID" => "74:00:11:09:64",
-  "U" => ["name" => "S11", "dist" => 21],
-  "D" => ["name" => "BG21", "dist" => 10],
-  ],
+
 
  "S11" => [ // Signal
   "element" => "SD",
@@ -388,7 +354,7 @@ $PT1 = [
     "majorDevice" => 0,
     ],
   "U" => ["name" => "BG24", "dist" => 1],
-  "D" => ["name" => "BG22", "dist" => 1],
+  "D" => ["name" => "BG21", "dist" => 1],
   "HMI" => [
     "x" => 31,
     "y" => 1,
@@ -399,18 +365,11 @@ $PT1 = [
 
 "BG13" => [ // Balises
   "element" => "BL",
-  "ID" => "74:00:15:0B:FB",
-  "U" => ["name" => "BG15", "dist" => 9],
+  "ID" => "76:00:0D:1A:2E",
+  "U" => ["name" => "S8", "dist" => 9],
   "D" => ["name" => "P2", "dist" => 2],
   ],
- 
-"BG15" => [ // Balises
-  "element" => "BL",
-  "ID" => "73:00:56:E3:9B",
-  "U" => ["name" => "S8", "dist" => 1],
-  "D" => ["name" => "BG13", "dist" => 9],
-  ],
- 
+
  "S8" => [ // Signal
   "element" => "SD",
   "type" => "MB",
@@ -420,7 +379,7 @@ $PT1 = [
     "majorDevice" => 0,
     ],
   "U" => ["name" => "BG18", "dist" => 1],
-  "D" => ["name" => "BG15", "dist" => 1],
+  "D" => ["name" => "BG13", "dist" => 1],
   "HMI" => [
     "x" => 23,
     "y" => 5,
@@ -429,9 +388,9 @@ $PT1 = [
 
 "BG18" => [ // Balises
   "element" => "BL",
-  "ID" => "76:00:0C:D2:BB",
-  "U" => ["name" => "S10", "dist" => 21],
-  "D" => ["name" => "S8", "dist" => 94],
+  "ID" => "99:99:99:99:99",
+  "U" => ["name" => "S10", "dist" => 110],
+  "D" => ["name" => "S8", "dist" => 120],
   ],
  
  "S10" => [ // Signal
@@ -452,7 +411,7 @@ $PT1 = [
 
 "BG19" => [ // Balises
   "element" => "BL",
-  "ID" => "74:00:10:E0:91",
+  "ID" => "74:00:15:55:26",
   "U" => ["name" => "P4", "dist" => 3],
   "D" => ["name" => "S10", "dist" => 1],
   ],
@@ -461,12 +420,12 @@ $PT1 = [
 "P4" => [ // Point, Facing
   "element" => "PF",
   "EC" => [
-    "addr" => 0,
-    "type" => 0,
-    "majorDevice" => 4,
+    "addr" => 201,
+    "type" => 10,
+    "majorDevice" => 3,
     "minorDevice" => 0,
     ],
-  "supervisionState" => "S",
+  "supervisionState" => "P",
   "R" => ["name" => "BG30", "dist" => 51],
   "L" => ["name" => "BG20", "dist" => 51],
   "T" => ["name" => "BG19", "dist" => 1],
@@ -479,7 +438,7 @@ $PT1 = [
 
 "BG20" => [ // Balises
   "element" => "BL",
-  "ID" => "0:0:0:0:0",
+  "ID" => "74:00:15:50:C0",
   "U" => ["name" => "P3", "dist" => 6],
   "D" => ["name" => "P4", "dist" => 2],
   ],
@@ -490,7 +449,7 @@ $PT1 = [
   "element" => "BL",
   "ID" => "76:00:0C:FC:CB",
   "U" => ["name" => "BG25", "dist" => 125],
-  "D" => ["name" => "S11", "dist" => 198],
+  "D" => ["name" => "S11", "dist" => 158],
   ],
   
 
@@ -498,7 +457,7 @@ $PT1 = [
 "BG25" => [ // Balises
   "element" => "BL",
   "ID" => "73:00:70:98:69",
-  "U" => ["name" => "S13", "dist" => 60],
+  "U" => ["name" => "S13", "dist" => 50],
   "D" => ["name" => "BG24", "dist" => 125],
   ],
   
@@ -546,7 +505,7 @@ $PT1 = [
   "element" => "BL",
   "ID" => "73:00:56:D9:B2",
   "U" => ["name" => "BG29", "dist" => 45],
-  "D" => ["name" => "S14", "dist" => 110],
+  "D" => ["name" => "S14", "dist" => 120],
   ],
 
 
@@ -571,17 +530,11 @@ $PT1 = [
 
 "BG30" => [ // Balises
   "element" => "BL",
-  "ID" => "74:00:10:CA:A1",
-  "U" => ["name" => "BG31", "dist" => 10],
+  "ID" => "76:00:0C:EC:E8",
+  "U" => ["name" => "S15", "dist" => 10],
   "D" => ["name" => "P4", "dist" => 3],
   ],
   
-"BG31" => [ // Balises
-  "element" => "BL",
-  "ID" => "74:00:10:E1:92",
-  "U" => ["name" => "S15", "dist" => 5],
-  "D" => ["name" => "BG30", "dist" => 10],
-  ],
   
 "S15" => [ // Signal, facing and ...
   "element" => "SD",
@@ -589,10 +542,10 @@ $PT1 = [
   "EC" => [
     "addr" => 0,
     "type" => 0,
-    "majorDevice" => 3,
+    "majorDevice" => 1,
     ],
   "U" => ["name" => "BG32", "dist" => 1],
-  "D" => ["name" => "BG31", "dist" => 10],
+  "D" => ["name" => "BG30", "dist" => 10],
   "HMI" => [
     "x" => 31,
     "y" => 5,
@@ -601,17 +554,17 @@ $PT1 = [
 
 "BG32" => [ // Balises
   "element" => "BL",
-  "ID" => "74:00:11:04:76",
-  "U" => ["name" => "S16", "dist" => 241],
-  "D" => ["name" => "S15", "dist" => 154],
+  "ID" => "73:00:56:C0:72",
+  "U" => ["name" => "S16", "dist" => 180],
+  "D" => ["name" => "S15", "dist" => 180],
   ],
   
 "S16" => [ // Signal, facing and ...
   "element" => "SU",
-  "type" => "MB",
+  "type" => "MS2",
   "EC" => [
-    "addr" => 0,
-    "type" => 0,
+    "addr" => 203,
+    "type" => 41,
     "majorDevice" => 1,
     ],
   "U" => ["name" => "BG33", "dist" => 10],
@@ -624,18 +577,18 @@ $PT1 = [
 
 "BG33" => [ // Balises
   "element" => "BL",
-  "ID" => "73:00:56:DC:08",
+  "ID" => "74:00:10:F3:3E",
   "U" => ["name" => "S17", "dist" => 5],
   "D" => ["name" => "S16", "dist" => 5],
   ],
 
 "S17" => [ // Signal, facing and ...
   "element" => "SD",
-  "type" => "MB",
+  "type" => "MS2",
   "EC" => [
-    "addr" => 0,
-    "type" => 0,
-    "majorDevice" => 3,
+    "addr" => 203,
+    "type" => 41,
+    "majorDevice" => 2,
     ],
   "U" => ["name" => "BG34", "dist" => 1],
   "D" => ["name" => "BG33", "dist" => 10],
@@ -647,15 +600,15 @@ $PT1 = [
 
 "BG34" => [ // Balises
   "element" => "BL",
-  "ID" => "73:00:56:9B:F4",
-  "U" => ["name" => "B3", "dist" => 70],
+  "ID" => "73:00:56:93:AA",
+  "U" => ["name" => "B3", "dist" => 50],
   "D" => ["name" => "S17", "dist" => 131],
   ],
 
 
 "B3" => [ // Bufferstop; end of direction up
   "element" => "BSE",
-  "D" => ["name" => "BG34", "dist" => 75],
+  "D" => ["name" => "BG34", "dist" => 50],
   "HMI" => [
     "x" => 39,
     "y" => 6,
@@ -792,7 +745,6 @@ $HMI = [ //------------------------------------------------------------------ HM
     ],
     "tr3" => [
       "balises" => ["BG12",
-                    "BG14"
               ],
       "or" => "s",
       "x" => 22,
@@ -816,7 +768,7 @@ $HMI = [ //------------------------------------------------------------------ HM
       "l" => 1,
     ],
     "tr6" => [
-      "balises" => ["BG13", "BG15"
+      "balises" => ["BG13"
               ],
       "or" => "d",
       "x" => 22,
@@ -825,7 +777,6 @@ $HMI = [ //------------------------------------------------------------------ HM
     ],
     "tr9" => [
       "balises" => ["BG16",
-                    "BG17"
                    ],
       "or" => "s",
       "x" => 28,
@@ -865,7 +816,7 @@ $HMI = [ //------------------------------------------------------------------ HM
       "l" => 1,
     ],
     "tr14" => [
-      "balises" => ["BG30", "BG31",
+      "balises" => ["BG30",
               ],
       "or" => "s",
       "x" => 30,

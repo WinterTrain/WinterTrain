@@ -235,7 +235,7 @@ global tty dmiPacket data speed nColor mode dir drive rColor yColor gColor bColo
      
       set d [expr $mode | ($dir << 3) | ($drive << 5)]
       if ($reply) {
-        puts $tty "20 $d 0 s\n"
+        puts $tty "20,$d,0s\n"
       }
       if {$debug} {
         puts "Send: 20 $d 0 s\n"
