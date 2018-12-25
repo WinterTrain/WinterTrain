@@ -1,12 +1,16 @@
 // Train specific configuration
-// ------------------------------------------- Circus Wagon
+// --------------------------------------------------- Cargo train
 
 // RF12
-#define OBU_ID 22 // RF12 node ID of train
-#define DMI_ID 23 // RF12 node ID of assigned DMI
+#define OBU_ID 20 // RF12 node ID of train
+#define DMI_ID 21 // RF12 node ID of assigned DMI
 
 // Capacity
 #define MAX_BALISES 8
+
+// Specific engineering ------------------------ Stop if in shunting
+// Balises commanding "stop if in shunting"
+// Distance measured in tacometer pulses 
 
 #define N_SABALISES 13 // balise list for "stop if in shunting"
 // Distances engineered in "wheel turns". OBU will start braking at that distance, allow for 80 cm braking distance
@@ -20,37 +24,35 @@
   \
   /* Bar track */\
   {{0x73, 0x00, 0x56, 0xD6, 0xF2}, 1},    /* BG29 (5 cm) */\
-  {{0x73, 0x00, 0x56, 0xD9, 0xB2}, 3},    /* BG28 (15 cm) */\
+  {{0x73, 0x00, 0x56, 0xD9, 0xB2}, 4},    /* BG28 (20 cm) */\
   {{0x73, 0x00, 0x70, 0x98, 0x69}, 44},   /* BG25 (220 cm) */\
   {{0x76, 0x00, 0x0C, 0xFC, 0xCB}, 94},   /* BG24 (470 cm) */\
 \
   /* Outside Bar */\
-  {{0x74, 0x00, 0x10, 0xE1, 0x92}, 124},  /* BG31 (619 cm) */\
-  {{0x74, 0x00, 0x11, 0x04, 0x76}, 90},   /* BG32 (449 cm) */\
-  {{0x73, 0x00, 0x56, 0xDC, 0x08}, 38},   /* BG33 (192 cm) */\
-  {{0x73, 0x00, 0x56, 0x9B, 0xF4}, 1},    /* BG34 */\
+  {{0x74, 0x00, 0x15, 0x65, 0x29}, 108},  /* BG30 (544 cm) */\
+  {{0x73, 0x00, 0x56, 0xC0, 0x72}, 68},   /* BG32 (343 cm) */\
+  {{0x74, 0x00, 0x10, 0xF3, 0x3E}, 29},   /* BG33 147 cm) */\
+  {{0x73, 0x00, 0x56, 0x93, 0xAA}, 1},    /* BG34 */\
 };
-
 
 // OBU HW assignment
 #define OBU_PIN_MOTOR 5         //  PWM signal to moter control. JeeNode port 2
-                                // Note: PWM frequency is set for pin 5 in setup()
+                                // Note: PWM frequency is set for port 5 in setup()
 #define OBU_PIN_REVERSE_DIR A1  // Direction control. JeeNode port 2
-#define OBU_PIN_TRACK_UP 4      // JeeNode port 1
-#define OBU_PIN_TRACK_DOWN A0   // JeeNode port 1
-//#define OBU_PIN_BLUE  A2      // Blue LED, JeeNode port 3
-#define OBU_PIN_OVERRIDE A2     // Override switch, JeeNode port 3
-#define OBU_PIN_WHEEL  6        // Wheel sensor  JeeNode port 3
-#define OBU_PIN_FLIGHT  A3      // Front light, JeeNode port 4
-#define OBU_PIN_RLIGHT  7       // Rear light, JeeNode port 4
+#define OBU_PIN_TRACK_UP A0     //  JeeNode port 1
+#define OBU_PIN_TRACK_DOWN 4    // JeeNode port 1
+#define OBU_PIN_BLUE A3
+#define OBU_PIN_WHEEL 7         // Wheel sensor  JeeNode port 4
+#define OBU_PIN_FLIGHT 6        // Front light
+#define OBU_PIN_RLIGHT A2       // Rear light
 
 // DMI HW assignment
-#define DMI_PIN_BLUE 4 
-#define DMI_PIN_RED 5 
-#define DMI_PIN_YELLOW A3 
+#define DMI_PIN_BLUE 4, 
+#define DMI_PIN_RED 5
+#define DMI_PIN_YELLOW A3
 #define DMI_PIN_GREEN 7
-#define DMI_PIN_MODE_SEL A0 
-#define DMI_PIN_DIR_SEL A1 
+#define DMI_PIN_MODE_SEL A0
+#define DMI_PIN_DIR_SEL A1
 #define DMI_PIN_DRIVE_SEL A2
 #define DMI_PIN_METER 6
 

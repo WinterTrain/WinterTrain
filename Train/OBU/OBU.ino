@@ -74,13 +74,15 @@ const byte GROUP = 101;
 #define OBU_POLL 20;
 #define DMI 21;
 #define MA_PACK 31
+#define RTO_PACK 32
+#define POSREST_PACK 33
 
 // -------------------------------------------- Type definition
 // Data type for "stop if in shunting" balises
 struct SAbaliseType {
   byte balise[5];
   int borderDist;
-//  byte borderDir; // In which nominel direction is the train approaching the border?
+  //  byte borderDir; // In which nominel direction is the train approaching the border?
 };
 
 struct posRepType {
@@ -126,6 +128,7 @@ byte dirOrder; // Resulting direction order (FORWARD, REVERSE, NEUTRAL)
 byte driveOrder; // Resulting driving order
 byte curBalise; // index to most recently read balise
 int distance; // Current distance (with sign) from train to EOA, given a valid MA
+boolean positionUnknown = true; // Position is unknown until first balise is read
 int tripMeter; //
 byte MAindex; // index to knownBalises of current MA
 byte driveLimit;
@@ -172,9 +175,9 @@ void setup() {
   overrideSH = !digitalRead(OBU_PIN_OVERRIDE);
 #endif
   nomDir = (DETECT_NOM_DIR == AUTO_DETECT ? (digitalRead(OBU_PIN_TRACK_UP) ? UP : DOWN) : DETECT_NOM_DIR);
-//  txDMI[0] = 22;
-//  txDMI[1] = MAJOR_VERSION;
-//  txDMI[2] = MINOR_VERSION;
+  //  txDMI[0] = 22;
+  //  txDMI[1] = MAJOR_VERSION;
+  //  txDMI[2] = MINOR_VERSION;
   knownBalises[0].balise[0] = 1;
   knownBalises[0].balise[1] = 0;
   knownBalises[0].balise[2] = 0;
@@ -198,10 +201,10 @@ void loop() {
     blnk = !blnk;
   }
 
-//  if (timerDMITimeout <= 0) {// ------------------------------ DMI lost
-//    timerDMITimeout = DMI_TIMEOUT;
-//    modeSel = 0; dirSel = 0; driveSel = 0;
-//  }
+  //  if (timerDMITimeout <= 0) {// ------------------------------ DMI lost
+  //    timerDMITimeout = DMI_TIMEOUT;
+  //    modeSel = 0; dirSel = 0; driveSel = 0;
+  //  }
 
   if (!DMIlost and timerModeTimeout <= 0) {// ------------------------------ DMI lost for long time
     DMIlost = true;
@@ -516,6 +519,7 @@ void checkBalise() {
   byte i;
   boolean hit;
   if (readBalise()) {
+    positionUnknown = false;
     for (i = 0; i < MAX_BALISES; i++) {
       hit = true;
       for (byte x = 0; x < 5; x++) {
@@ -586,7 +590,7 @@ void rf12Transceive() {
 
   if (rf12_recvDone() and rf12_crc == 0) {
     switch (rf12_hdr & ID_MASK) { // sender
-      case DMI_ID:
+      case DMI_ID: // DMI command
         // if rd12_data[0] == 20
         modeSel = rf12_data[1] & 0b00000111;
         dirSel = (rf12_data[1] & 0b00011000) >> 3;
@@ -601,7 +605,6 @@ void rf12Transceive() {
       case RBC_ID: // MA
         switch (rf12_data[0]) { // packet type
           case MA_PACK:
-          
             if (rf12_data[1] == OBU_ID) {
               authorisation = rf12_data[2] & 0x07; // authorized mode
               switch (authorisation) {
@@ -630,7 +633,7 @@ void rf12Transceive() {
                       knownBalises[MAindex].MAvalid = true;
                       knownBalises[MAindex].vMax = ( rf12_data[10] <= MAX_DRIVE ? rf12_data[10] : MAX_DRIVE);
                     } // else MA with unknown balise is ignored
-                  }
+                  } // else clear MA --------------------------------------------------- FIXME
                   break;
                 case SR:
                 case SH:
@@ -640,7 +643,17 @@ void rf12Transceive() {
               }
             }
             break;
-        }
+          case RTO_PACK: // Remte take-over
+            break;
+          case POSREST_PACK: // Position restore after reboot
+            if (positionUnknown and rf12_data[1] == OBU_ID) {
+              positionUnknown = false;
+              for (byte b = 0; b < 5; b++) knownBalises[0].balise[b] = rf12_data[b + 2];
+              knownBalises[0].curDist = word(rf12_data[8], rf12_data[7]);
+              sendPosition();
+            }
+            break;
+        } // switch packet type
         break;
     }
   }

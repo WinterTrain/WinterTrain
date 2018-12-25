@@ -2,7 +2,7 @@
 package require Tk
 
 set HMIversion 02P02
-set IPaddress 0.0.0.0
+set IPaddress 192.168.8.230
 set IPport 9900
 
 # Default configuration
@@ -157,9 +157,9 @@ proc point {name x y layout} {
       dTrack $x $y 1.5 2.5 2 2.5 "$name trackright"
       dTrack $x $y 1 2.5 1.3 1.9 "$name left"
       dTrack $x $y 1.3 1.9 2 0.5 "$name trackleft"
-      dMarkLine $x $y 0.5 0.3 1.5 0.3 "$name lockleft"
-      dMarkLine $x $y 0.5 0.7 0.9 0.7 "$name lockright"
-      dMarkLine $x $y 0.9 0.7 1.1 1.1 "$name lockright"
+      dMarkLine $x $y 0.5 2.8 1.5 2.8 "$name lockright"
+      dMarkLine $x $y 0.5 2.3 0.9 2.3 "$name lockleft"
+      dMarkLine $x $y 0.9 2.3 1.1 1.9 "$name lockleft"
       dButton $x $y 1 2.5 0.4 $name selectPoint
     }
     tl { ;# trailing, left branch is diverging
@@ -352,7 +352,7 @@ global xOffset yOffset scale cHeight cWidth showGrid
   }
 }
 
-#------------------------------------------------- indication handlers
+#--------------------------------------------------------------------------------------------------------- indication handlers
 
 proc pointState {name state trackState lockState {trainID ""}} {
 global fColor tColor toColor tcColor clColor blColor
@@ -1072,12 +1072,15 @@ foreach arg $argv {
     switch $arg {
     --help {
       puts "
+WinterTrain HMI
 Usage:
---grid: Display gridlines
---test: Do not enter event loop 
---IP <address>: Set server address
---d: Debug
+--grid          Display gridlines
+--test          Do not enter event loop 
+--IP <address>  Set server address
+--l             Set server address to localhost (127.0.0.1) 
+--d             Debug
 "
+      exit
       }
     --grid {
       set showGrid yes
@@ -1087,6 +1090,9 @@ Usage:
       }
     --IP {
       set reqIP yes
+      }
+    --l {
+      set IPaddress "127.0.0.1"
       }
     --d {
       set debug yes

@@ -24,8 +24,15 @@ $PT1 = [
 "02" => [ // Balises
   "element" => "BL",
   "ID" => "76:00:0C:E3:A8",
-  "U" => ["name" => "B", "dist" => 40],
+  "U" => ["name" => "T1", "dist" => 40],
   "D" => ["name" => "01", "dist" => 35],
+  ],
+
+"T1" => [ // Trigger, direcction up, for enforced point holding
+  "element" => "PHTU",
+  "U" => ["name" => "B", "dist" => 40],
+  "D" => ["name" => "02", "dist" => 35],
+  "holdPoint" => "P1", // Affected point
   ],
 
 "B" => [ // Signal, facing and ...
@@ -37,7 +44,7 @@ $PT1 = [
     "majorDevice" => 6,
     ],
   "U" => ["name" => "03", "dist" => 10],
-  "D" => ["name" => "02", "dist" => 0],
+  "D" => ["name" => "T1", "dist" => 0],
   "HMI" => [
     "x" => 3,
     "y" => 2,
@@ -98,7 +105,7 @@ $PT1 = [
   ],
 
 
-  "P1" => [ // Point, Facing
+"P1" => [ // Point, Facing
   "element" => "PF",
   "EC" => [
     "addr" => 0,
@@ -106,7 +113,8 @@ $PT1 = [
     "majorDevice" => 0,
     "minorDevice" => 0,
     ],
-  "supervisionState" => "CL",
+  "supervisionState" => "S",
+  "release" => "Y",
   "R" => ["name" => "06", "dist" => 0],
   "L" => ["name" => "07", "dist" => 0],
   "T" => ["name" => "D", "dist" => 0],

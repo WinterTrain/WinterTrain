@@ -317,8 +317,8 @@ grid [ttk::button .f.buttonLX -text "Ovk" -command buttonLX] -column 4 -row 1 -s
 grid [ttk::button .f.buttonOpr -text "Request operation" -command rqopr] -column 5 -row 1 -sticky e
 grid [ttk::button .f.buttonEHMI -text "Exit MCe" -command exit] -column 8 -row 1 -sticky e
 grid [ttk::button .f.buttonERBC -text "Exit RBC" -command exitRBC] -column 9 -row 1 -sticky e
-grid [ttk::button .f.buttonT1 -text "TEST1" -command test1] -column 2 -row 2 -sticky e
-grid [ttk::button .f.buttonT2 -text "TEST2" -command test2] -column 3 -row 2 -sticky e
+grid [ttk::button .f.buttonT1 -text "TrainData" -command test1] -column 2 -row 2 -sticky e
+grid [ttk::button .f.buttonT2 -text "LockedRoutes" -command test2] -column 3 -row 2 -sticky e
 grid [ttk::button .f.buttonT3 -text "TEST3" -command test3] -column 4 -row 2 -sticky e
 grid [ttk::button .f.buttonT4 -text "TEST4" -command test4] -column 5 -row 2 -sticky e
 
