@@ -96,7 +96,7 @@ $PT1 = [
     "majorDevice" => 1,
     "minorDevice" => 0,
     ],
-  "supervisionState" => "P",
+  "supervisionState" => "S",
   "R" => ["name" => "BG03", "dist" => 40],
   "L" => ["name" => "BG04", "dist" => 40],
   "T" => ["name" => "BG05", "dist" => 1],

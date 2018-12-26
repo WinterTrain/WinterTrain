@@ -14,7 +14,7 @@ $HMIaddress = "0.0.0.0";
 $ABUS_GATEWAYaddress = "10.0.0.201";
 $ABUS_GATEWAYport = 9200;
 
-$radio = "USB";
+$radio = "USB"; // USB, ABUS or "" (none)
 $RADIO_DEVICE = "/dev/ttyUSB0";
 //$RADIO_DEVICE = "/dev/null";
 //$RADIO_DEVICE = "/dev/serial/by-path/platform-3f980000.usb-usb-0:1.2:1.0-port0"; // Path to radio module (JeeLink) connected via USB
@@ -46,44 +46,47 @@ define("PUMP_TIMEOUT",4);
 
 // ----------------------------------------Enummerations
 // Route
-define("R_IDLE", 0);
+define("R_UNSUPERVISED", 0);
+define("R_IDLE", 1);
+define("R_LOCKED", 2);
 // Interlocking Element state
-define("E_UNSUPERVISED",0); // All
-define("E_STOP",10); //Signal
+define("E_UNSUPERVISED",0);       // All
+define("E_STOP",10);              //Signal
 define("E_PROCEED",11);
 define("E_PROCEEDPROCEED",12);
+define("E_STOP_FACING",13);       //Signal
 // 13 closed as destination
-define("E_LEFT",20);        // Point, supervised left
-define("E_RIGHT",21);       // supervised right
-define("E_MOVING",22);      //   point is (supposed to be) movingng
-define("E_LX_DEACTIVATED",50); // Normal state
-define("E_LX_WARNING",51); // Warning signals flashing
-define("E_LX_ACTIVATED",52); // 
-define("E_LX_OPENING",53); // Deaktiveret, opening
+define("E_LEFT",20);              // Point, supervised left
+define("E_RIGHT",21);             // supervised right
+define("E_MOVING",22);            //   point is (supposed to be) movingng
+define("E_LX_DEACTIVATED",50);    // Normal state
+define("E_LX_WARNING",51);        // Warning signals flashing
+define("E_LX_ACTIVATED",52);      // Barrier closed
+define("E_LX_OPENING",53);        // Deaktiveret, opening
 // Interlocking Element blocking
-define("B_UNBLOCKED",10); // Element not blocked
-define("B_BLOCKED_RIGHT",11); 
+define("B_UNBLOCKED",10);         // Element not blocked
+define("B_BLOCKED_RIGHT",11);     // Blocked via command
 define("B_BLOCKED_LEFT",12);
-define("B_CLAMPED_RIGHT",13);
+define("B_CLAMPED_RIGHT",13);     // Physically clamped, marked as clamped in PT1
 define("B_CLAMPED_LEFT",14);
 define("B_BLOCKED_STOP",20);
 // Interlocking Element commands
-define("C_TOGGLE",10); // Point throw commands
+define("C_TOGGLE",10);            // Point throw commands
 define("C_LEFT",20);
 define("C_RIGHT",21);
-define("C_HOLD",22); // Hold in expectedLie
-define("C_RELEASE",23); // Release held point
+define("C_HOLD",22);              // Hold in expectedLie
+define("C_RELEASE",23);           // Release held point
 // Direction
 define("D_UDEF",0);
 define("D_DOWN",1);
 define("D_UP",2);
 define("D_STOP",3);
 // Track status   // FIXME destinguish between locked clear and locked occupied
-define("T_UNSUPERVISED",0);
-define("T_OCCUPIED_DOWN",1);
+define("T_UNSUPERVISED",0);       // Track state unknown
+define("T_OCCUPIED_DOWN",1);      // Track occupied, train moving in direction down
 define("T_OCCUPIED_UP",2);
 define("T_OCCUPIED_STOP",3);
-define("T_LOCKED", 4);
+//define("T_LOCKED", 4);          // Route locking state implemented by $element["routeState"]
 define("T_CLEAR",5);
 // Train mode
 define("M_UDEF",0);
@@ -388,7 +391,7 @@ global $DATA_FILE, $trainData, $PT1_VERSION, $PT1, $HMI, $errorFound, $totalElem
     $element["routeState"] = R_IDLE;
     $element["trackState"] = T_CLEAR;
     $element["trainIDs"] = [];
-    $element["locked"] = False;
+//    $element["locked"] = False;
     switch ($element["element"]) {
       case "BL":
         $balises[] = $name;
@@ -460,6 +463,7 @@ global $DATA_FILE, $trainData, $PT1_VERSION, $PT1, $HMI, $errorFound, $totalElem
       break;
       case "BSB":
       case "BSE":
+        $element["state"] = E_STOP; // Logical state, used for HMI indication only
         $bufferstops[] = $name;
       break;
       default:
@@ -540,28 +544,35 @@ global $radioLinkAddr, $radioLink, $radio;
   $packet[10] = $dist & 0xFF;
   $packet[11] = ($dist & 0xFF00) >> 8;
   $packet[12] = $speed;
-  if ($radio == "USB") {
-    fwrite($radioLink,"31,$trainID,$authMode,");
-    for ($b = 0; $b < 5; $b++) 
-      fwrite($radioLink, hexdec($balise[$b]).",");
-    fwrite($radioLink, ($dist & 0xFF).",".(($dist & 0xFF00) >> 8).",$speed,0s\n"); // "0s" is broadcast
-  } else {
-    AbusSendPacket($radioLinkAddr, $packet, 13);
+  switch ($radio) {
+    case "USB":
+      fwrite($radioLink,"31,$trainID,$authMode,");
+      for ($b = 0; $b < 5; $b++) 
+        fwrite($radioLink, hexdec($balise[$b]).",");
+      fwrite($radioLink, ($dist & 0xFF).",".(($dist & 0xFF00) >> 8).",$speed,0s\n"); // "0s" is broadcast
+    break;
+    case "ABUS":
+      AbusSendPacket($radioLinkAddr, $packet, 13);
+    break;
   }
 }
 
 function sendPosRestore($trainID, $balise, $distance) { // $balise as string!
 global $radioLinkAddr, $radioLink, $radio;
 //    debugPrint ("Position restore ID: $trainID, Balise: >$balise< Distance: $distance");
-  if ($radio == "USB") {
-    fwrite($radioLink,"33,$trainID,");
-    $baliseArray = explode(":", $balise);
-    for ($b = 0; $b < 5; $b++) 
-      fwrite($radioLink, hexdec($baliseArray[$b]).",");
-    fwrite($radioLink, ($distance & 0xFF).",".(($distance & 0xFF00) >> 8).",0s\n");
-  } else {
-    print "position restore via Abus not implemented\n";
-  }}
+  switch ($radio) { 
+    case "USB":
+      fwrite($radioLink,"33,$trainID,");
+      $baliseArray = explode(":", $balise);
+      for ($b = 0; $b < 5; $b++) 
+        fwrite($radioLink, hexdec($baliseArray[$b]).",");
+      fwrite($radioLink, ($distance & 0xFF).",".(($distance & 0xFF00) >> 8).",0s\n");
+    break;
+    case "ABUS":
+      print "position restore via Abus not implemented\n";
+    break;
+  }
+}
 
 function checkTrainTimeout() {
 global $trainData, $now;
@@ -955,8 +966,7 @@ function trackRecTraverse($acceptionCriteria, #Name of function used to determin
                           $direction, #Direction of the traversal
                           &$sharedVar, #Varaible passed by reference to the payload
                           $stateMerger = "defaultStateMerger"){ #Name of function to help tuning the backpropagation of the action) {
-
-  if (call_user_func($acceptionCriteria, $element, $direction)) {
+  if (call_user_func($acceptionCriteria, $element, $direction, $previousElement)) {
     #The element is acceptable
     switch (call_user_func($terminalCriteria, $element, $direction)) {
       case TRACK_TRAVERSALE_ACCEPT_ACTIVATE_PAYLOAD:
@@ -969,7 +979,8 @@ function trackRecTraverse($acceptionCriteria, #Name of function used to determin
         #This is not the last element, search for next elements
         $state = TRACK_TRAVERSALE_REJECT;
         foreach (nextElements($element, $direction, $previousElement) as $next) {
-          $substate = trackRecTraverse($acceptionCriteria, $terminalCriteria, $payLoad, $next["name"], $element, $direction, $sharedVar, $stateMerger);
+          $substate = trackRecTraverse($acceptionCriteria, $terminalCriteria, $payLoad, $next["name"], $element, $direction, $sharedVar,
+            $stateMerger);
           if ($substate === TRACK_TRAVERSALE_ACCEPT_ACTIVATE_PAYLOAD) {
             call_user_func_array($payLoad, array($element, &$sharedVar, $direction, $next));
           }
@@ -987,7 +998,7 @@ function trackRecTraverse($acceptionCriteria, #Name of function used to determin
 
 #Test Looking for all next signal
 
-function acceptAll($element, $direction) { return True;}
+function acceptAll($element, $direction, $previousElement) { return True;}
 
 function addToListPayload($element, &$sharedVar, $direction, $next) {
   #Push $element into list
@@ -997,18 +1008,19 @@ function addToListPayload($element, &$sharedVar, $direction, $next) {
 
 function lockingPayload($eltName, &$sharedVar, $direction, $next) {
 global $PT1;
+//print_r($sharedVar);
   //Set point in position
   if (isMoveablePoint($eltName)) {
     $pos = $next["position"];
     RBC_IL_DebugPrint("Throwing point $eltName in position $pos");
     $point = &$PT1[$eltName];
-    pointThrow($point, $pos); // Check return status, may be rejected FIXME
+    pointThrow($point, $pos); // ----------------------------------------------------Check return status, might be rejected FIXME
   }
   lock($eltName);
   return TRACK_TRAVERSALE_ACCEPT_ACTIVATE_PAYLOAD; #Lock all elments in route
 }
 
-function findSignalsFrom($element, $direction) {
+function findSignalsFrom($element, $direction) { // FIXME use??
   $isTerminal = function($elt, $dir) use ($element) {
     global $PT1;
     if ($elt === $element) {
@@ -1056,6 +1068,7 @@ function getSignalDirection($element) {
 }
 
 function lockRoute($s1, $s2) {
+global $PT1;
   $direction = getSignalDirection($s1);
   if ($direction != getSignalDirection($s2)) {
     RBC_IL_DebugPrint("$s1 and $s2 are not in the same direction. Route does not exist");
@@ -1088,10 +1101,42 @@ function lockRoute($s1, $s2) {
     }
   };
 
-  $canBeLocked = function($element, $direction) use ($s1){
+  $canBeLocked = function($element, $direction, $previousElement) use ($s1){
+    global $PT1;
       if ($element == $s1) {return True;} //Train is allowed to already occupy it and it can be locked in ptrevious route or clear
-//      print "canBeLocked: element: $element isLocked:".isLocked($element)." isClear:".isClear($element)."\n";
-      return (!isLocked($element) and isClear($element));
+//      print "canBeLocked: element: $element, prev: $previousElement, direction: $direction isLocked:".isLocked($element)." isClear:".isClear($element)."\n";
+      if (isLocked($element) or !isClear($element)) {return false;} 
+      if ($direction == "U") {
+        if ($PT1[$element]["element"] == "PT") { 
+          return (($PT1[$element]["R"]["name"] == $previousElement and ($PT1[$element]["blockingState"] == B_UNBLOCKED or 
+                $PT1[$element]["blockingState"] == B_BLOCKED_RIGHT or $PT1[$element]["blockingState"] == B_CLAMPED_RIGHT)) or
+            ($PT1[$element]["L"]["name"] == $previousElement and ($PT1[$element]["blockingState"] == B_UNBLOCKED or 
+                $PT1[$element]["blockingState"] == B_BLOCKED_LEFT or $PT1[$element]["blockingState"] == B_CLAMPED_LEFT)));
+        }
+        return ($previousElement == "" or
+          ($PT1[$previousElement]["element"] != "PF") or
+          ($element == $PT1[$previousElement]["R"]["name"] and ($PT1[$previousElement]["blockingState"] == B_UNBLOCKED or 
+            $PT1[$previousElement]["blockingState"] == B_BLOCKED_RIGHT or
+            $PT1[$previousElement]["blockingState"] == B_CLAMPED_RIGHT)) or
+          ($element == $PT1[$previousElement]["L"]["name"] and ($PT1[$previousElement]["blockingState"] == B_UNBLOCKED or 
+             $PT1[$previousElement]["blockingState"] == B_BLOCKED_LEFT or
+            $PT1[$previousElement]["blockingState"] == B_CLAMPED_LEFT)));
+      } else {
+        if ($PT1[$element]["element"] == "PF") { 
+          return (($PT1[$element]["R"]["name"] == $previousElement and ($PT1[$element]["blockingState"] == B_UNBLOCKED or 
+                $PT1[$element]["blockingState"] == B_BLOCKED_RIGHT or $PT1[$element]["blockingState"] == B_CLAMPED_RIGHT)) or
+            ($PT1[$element]["L"]["name"] == $previousElement and ($PT1[$element]["blockingState"] == B_UNBLOCKED or 
+                $PT1[$element]["blockingState"] == B_BLOCKED_LEFT or $PT1[$element]["blockingState"] == B_CLAMPED_LEFT)));
+        }
+        return ($previousElement == "" or
+          ($PT1[$previousElement]["element"] != "PT") or
+          ($element == $PT1[$previousElement]["R"]["name"] and ($PT1[$previousElement]["blockingState"] == B_UNBLOCKED or 
+            $PT1[$previousElement]["blockingState"] == B_BLOCKED_RIGHT or
+            $PT1[$previousElement]["blockingState"] == B_CLAMPED_RIGHT)) or
+          ($element == $PT1[$previousElement]["L"]["name"] and ($PT1[$previousElement]["blockingState"] == B_UNBLOCKED or 
+            $PT1[$previousElement]["blockingState"] == B_BLOCKED_LEFT or
+            $PT1[$previousElement]["blockingState"] == B_CLAMPED_LEFT)));    
+      }
   };
   $dummy = array();
   if (trackRecTraverse($canBeLocked, $isTerminal, "lockingPayload", $s1,"", $direction, $dummy) == TRACK_TRAVERSALE_ACCEPT_ACTIVATE_PAYLOAD ) {
@@ -1110,6 +1155,9 @@ global $PT1;
     case E_STOP:
       $prettyState = "E_STOP";
       break;
+    case E_STOP_FACING:
+      $prettyState = "E_STOP_FACING";
+      break;
     case E_PROCEED:
       $prettyState = "E_PROCEED";
       break;
@@ -1123,26 +1171,26 @@ global $PT1;
   RBC_IL_DebugPrint("Setting signal $signal in state $prettyState");
 }
 
-function openSignalsInRoute($destinationSignal) { 
+function openSignalsInRoute($destinationSignal) {  // FIXME check for correct state of points in route
 global $PT1;
   $dir = getSignalDirection($destinationSignal);
   $revDir = getReverseDir($dir);
   $elt = $destinationSignal;
-  $elt = getNextEltName($elt, $revDir);
+//  $elt = getNextEltName($elt, $revDir);
   $signalState = E_PROCEED;
   while (isLocked($elt)) {
     if ($elt == $destinationSignal) {
-      setSignalState($elt, E_STOP);
+      setSignalState($elt, E_STOP_FACING);
     } else {
       if (isSignalInDirection($elt, $dir)) {
-        if ($PT1[$elt]["trackState"] == T_LOCKED) {
+        if ($PT1[$elt]["trackState"] == T_CLEAR) {
           setSignalState($elt, $signalState);
         }
         $signalState = E_PROCEEDPROCEED;
       }
-      $elt = getNextEltName($elt, $revDir); //Look for element to release behind train
-      if ($elt == "") {break;}
     }
+    $elt = getNextEltName($elt, $revDir); //Look for element to release(?) behind train
+    if ($elt == "") {break;}
   }
 }
 
@@ -1196,8 +1244,8 @@ function recUpdateTrainPosition(&$train, $dir, $x, $eltName, $trackState) {
       switch($elt["element"]) {
         case "SU":
         case "SD":
-          if ($elt["state"] != E_STOP) { 
-            $elt["state"] = E_STOP;
+          if ($elt["state"] == E_PROCEED or $elt["state"] == E_PROCEEDPROCEED) { // signal is open
+            $elt["state"] = E_STOP_FACING;
             if ($elt["EC"]["addr"] != 0) { // real signal
               orderEC($elt["EC"]["addr"], $elt["EC"]["index"], O_STOP);
             }
@@ -1297,7 +1345,7 @@ function getNextEltName($eltName, $dir) {
   if ($dir == "U") {
     switch ($elt["element"]) {
       case "PF":
-        if ($elt["state"] == E_RIGHT) {
+        if ($elt["state"] == E_RIGHT) { // FIXME "state" or "expectedLie"??
           return $elt["R"]["name"];
         } elseif ($elt["state"] == E_LEFT) {
           return $elt["L"]["name"];
@@ -1307,7 +1355,7 @@ function getNextEltName($eltName, $dir) {
          }
         break;
       case "PT":
-        return $elt["T"]["name"];
+        return $elt["T"]["name"]; // FIXME check for correct point state 
         break;
       case "BSE":
         RBC_IL_DebugPrint("Cannot find next element after  ".$eltName." : Buffer stop");
@@ -1330,7 +1378,7 @@ function getNextEltName($eltName, $dir) {
          }
         break;
       case "PF":
-        return $elt["T"]["name"];
+        return $elt["T"]["name"]; // FIXME check for correct point state
         break;
       case "BSB":
         RBC_IL_DebugPrint("Cannot find next element after  ".$eltName." : Buffer stop");
@@ -1461,7 +1509,7 @@ global $PT1;
 function isLocked($eltName) {
 global $PT1;
   //return ($PT1[$eltName]["trackState"] === T_LOCKED);
-  return ($PT1[$eltName]["locked"]);
+  return ($PT1[$eltName]["routeState"] == R_LOCKED);
 }
 
 function isClear($eltName) {
@@ -1472,26 +1520,26 @@ global $PT1;
 function lock($eltName) {
 global $PT1;
   RBC_IL_DebugPrint("Locking $eltName");
-  $PT1[$eltName]["trackState"] = T_LOCKED;
-  $PT1[$eltName]["locked"] = True;
+//  $PT1[$eltName]["trackState"] = T_LOCKED;
+  $PT1[$eltName]["routeState"] = R_LOCKED;
 }
 
 function unlock($eltName) {
 global $PT1;
   //Set track as cleared (unless occupied)
-  if ($PT1[$eltName]["trackState"] == T_LOCKED) {
-    $PT1[$eltName]["trackState"] = T_CLEAR; //Set to clear only if not occupied
-  }
+//  if ($PT1[$eltName]["trackState"] == T_LOCKED) {
+//    $PT1[$eltName]["trackState"] = T_CLEAR; //Set to clear only if not occupied
+//  }
   //Close signals
   $type = $PT1[$eltName]["element"];
-  if ($type == "SU" or $type == "SD") {
-    setSignalState($eltName, E_STOP);
+  if ($type == "SU" or $type == "SD" or $type == "BSB" or $type == "BSE" ) {
+    setSignalState($eltName, E_STOP); // FIXME send command to EC here in stead of in recUpdateTrainPosition???
   }
   //Remove locked flag
-  $PT1[$eltName]["locked"] = False;
+  $PT1[$eltName]["routeState"] = R_IDLE;
 }
 
-function isLockedRoute($s) {
+function isLockedRoute($s) { // signal is locked as destination of route
 global $lockedRoutes;
   foreach($lockedRoutes as $dest_sig => $route) {
     if ($dest_sig == $s) {
@@ -1982,29 +2030,27 @@ function pointThrow(&$element, $command) {
     return false;
   break;
   case "S": // Simulated
-    if ($element["trackState"] != T_CLEAR or $element["blockingState"] != B_UNBLOCKED) { return false;}
+    if ($element["trackState"] != T_CLEAR or $element["blockingState"] != B_UNBLOCKED or $element["routeState"] == R_LOCKED) { return false;}
       $element["state"] = $element["expectedLie"] = 
         ($command == C_TOGGLE ? ($element["expectedLie"] == E_LEFT ? E_RIGHT : E_LEFT) : ($command == C_RIGHT ? E_RIGHT : E_LEFT));
+    return true;
   break;
   case "P": // Point machine
     switch ($command) {
-      case C_RELEASE:
-        $order = O_RELEASE;
-      break; 
       case C_TOGGLE:
-        if ($element["trackState"] != T_CLEAR or $element["blockingState"] != B_UNBLOCKED) { return false;}
+        if ($element["trackState"] != T_CLEAR or $element["blockingState"] != B_UNBLOCKED or $element["routeState"] == R_LOCKED) { return false;}
         $order = ($element["expectedLie"] == E_LEFT ? O_RIGHT : O_LEFT);    
         $element["state"] = E_MOVING;
         $element["expectedLie"] = ($element["expectedLie"] == E_LEFT ? E_RIGHT : E_LEFT);
       break;
       case C_RIGHT:
-        if ($element["trackState"] != T_CLEAR or $element["blockingState"] != B_UNBLOCKED) { return false;}
+        if ($element["trackState"] != T_CLEAR or $element["blockingState"] != B_UNBLOCKED or $element["routeState"] == R_LOCKED) { return false;}
         $order = O_RIGHT;
         $element["state"] = E_MOVING;
         $element["expectedLie"] = E_RIGHT;
       break;
       case C_LEFT:
-        if ($element["trackState"] != T_CLEAR or $element["blockingState"] != B_UNBLOCKED) { return false;}
+        if ($element["trackState"] != T_CLEAR or $element["blockingState"] != B_UNBLOCKED or $element["routeState"] == R_LOCKED) { return false;}
         $order = O_LEFT;
         $element["state"] = E_MOVING;
         $element["expectedLie"] = E_LEFT;
@@ -2013,6 +2059,9 @@ function pointThrow(&$element, $command) {
         $order = ($element["expectedLie"] == E_RIGHT ? O_RIGHT_HOLD : O_LEFT_HOLD);
         $element["state"] = E_MOVING;
       break;
+      case C_RELEASE:
+        $order = O_RELEASE;
+      break; 
       default:
         return false;
     }
@@ -2068,20 +2117,6 @@ global $PT1, $clients, $clientsData, $inCharge, $trainData, $EC, $now, $balises,
   debugPrint ("HMI command: >$command<");
   $param = explode(" ",$command);
   switch ($param[0]) {
-/*  case "so": // signal order
-    if ($from == $inCharge) {
-// Control Signal State
-      $element = &$PT1[$param[1]];
-      $state = ($element["state"] == E_STOP ? E_PROCEED : E_STOP); // toggle state
-      $element["state"] = $state;
-      if ($element["type"] == "LS1") {
-        orderEC($element["EC"]["addr"], $element["EC"]["index"],$state == E_PROCEED ? O_PROCEED : O_STOP);
-      }
-      HMIindication($from, "displayResponse {OK}\n");
-    } else {
-      HMIindication($from, "displayResponse {Rejected}\n");
-    }
-  break; */
   case "rr": // releaseRoute
     if ($from == $inCharge) {
       startRouteRelease($param[1]);
@@ -2361,11 +2396,11 @@ global $HMIport, $MCePort, $HMIaddress, $listener, $listenerMCe, $RADIO_LINK_POR
 }
 
 function Server() {
-global $ABUS, $listener, $listenerMCe, $clients, $clientsData, $inCharge, $inChargeMCe, $radioLink, $radioBuf;
+global $ABUS, $listener, $listenerMCe, $clients, $clientsData, $inCharge, $inChargeMCe, $radioLink, $radioBuf, $radio;
   $read = $clients;
   $read[] = $listener;
   $read[] = $listenerMCe;
-  $read[] = $radioLink; 
+  if ($radio == "USB") $read[] = $radioLink; 
   if ($ABUS == "genie") {
     global $fromGenie;
     $read[] = $fromGenie;
@@ -2463,27 +2498,28 @@ global $PT1, $HMI, $trainData, $VERSION, $PT1_VERSION;
     case "PF":
     case "PT":
       HMIindication($client,"point $name ".$element["HMI"]["x"]." ".$element["HMI"]["y"]." ".$element["HMI"]["or"]."\n");
-      HMIindication($client,"pointState $name ".$element["state"]." ".$element["trackState"]." ".$element["blockingState"]."\n");
+      HMIindication($client,"pointState $name ".$element["state"]." ".$element["routeState"]." ".$element["trackState"]." ".
+        $element["blockingState"]."\n");
     break;
     case "SU":
       HMIindication($client,"signal $name ".$element["HMI"]["x"]." ".$element["HMI"]["y"]." f\n");
-      HMIindication($client,"signalState $name ".$element["state"]." ".$element["trackState"]."\n");
+      HMIindication($client,"signalState $name ".$element["state"]." ".$element["routeState"]." ".$element["trackState"]."\n");
     break;
     case "SD":
       HMIindication($client,"signal $name ".$element["HMI"]["x"]." ".$element["HMI"]["y"]." r\n");
-      HMIindication($client,"signalState $name ".$element["state"]." ".$element["trackState"]."\n");
+      HMIindication($client,"signalState $name ".$element["state"]." ".$element["routeState"]." ".$element["trackState"]."\n");
     break;
     case "BSB":
       HMIindication($client,"bufferStop $name ".$element["HMI"]["x"]." ".$element["HMI"]["y"]." b ".$element["HMI"]["l"]."\n");
-      HMIindication($client,"bufferStopState $name ".$element["trackState"]."\n");
+      HMIindication($client,"bufferStopState $name ".$element["state"]." ".$element["routeState"]." ".$element["trackState"]."\n");
     break;
     case "BSE":
       HMIindication($client,"bufferStop $name ".$element["HMI"]["x"]." ".$element["HMI"]["y"]." e ".$element["HMI"]["l"]."\n");
-      HMIindication($client,"bufferStopState $name ".$element["trackState"]."\n");
+      HMIindication($client,"bufferStopState $name ".$element["state"]." ".$element["routeState"]." ".$element["trackState"]."\n");
     break;
     case "LX":
       HMIindication($client,"levelcrossing $name ".$element["HMI"]["x"]." ".$element["HMI"]["y"]."\n");
-      HMIindication($client,"levelcrossingState $name ".$element["status"]." ".$element["trackState"]."\n");
+      HMIindication($client,"levelcrossingState $name ".$element["status"]." ".$element["routeState"]." ".$element["trackState"]."\n");
     break;
     }
   }
@@ -2491,7 +2527,7 @@ global $PT1, $HMI, $trainData, $VERSION, $PT1_VERSION;
 // HMI data
   foreach ($HMI["baliseTrack"] as $trackName => $baliseTrack) {
     HMIindication($client,"track $trackName ".$baliseTrack["x"]." ".$baliseTrack["y"]." ".$baliseTrack["l"]." ".$baliseTrack["or"]."\n");
-    HMIindication($client,"trState $trackName ".$baliseTrack["trackState"]." ".$baliseTrack["trainID"]."\n");
+    HMIindication($client,"trState $trackName ".$baliseTrack["routeState"]." ".$baliseTrack["trackState"]." ".$baliseTrack["trainID"]."\n");
   }
 // train data
   foreach ($trainData as $index => &$train) { // train data
@@ -2508,14 +2544,18 @@ global $PT1, $HMI, $trainData, $VERSION, $PT1_VERSION;
 function updateHMI() {
 global $HMI, $PT1, $emergencyStop;
   HMIindicationAll("eStopInd ".($emergencyStop ? "true" : "false")."\n");
-  foreach ($HMI["baliseTrack"] as $name => &$baliseTrack) {
+  foreach ($HMI["baliseTrack"] as $name => &$baliseTrack) { // compute indication of HMI track segment only representating balises
     $baliseTrack["trackState"] = T_CLEAR;
+    $baliseTrack["routeState"] = R_IDLE;
     $baliseTrack["trainID"] = "";
     foreach ($baliseTrack["balises"] as $baliseName ) {
+      if ($PT1[$baliseName]["routeState"] == R_LOCKED) {
+        $baliseTrack["routeState"] = R_LOCKED;
+      } 
       if ($PT1[$baliseName]["trackState"] != T_CLEAR) {
         switch ($baliseTrack["trackState"]) {
           case T_CLEAR:
-          case T_LOCKED:
+//          case T_LOCKED:
             $baliseTrack["trackState"] = $PT1[$baliseName]["trackState"];
           break;
           default:
@@ -2532,7 +2572,7 @@ global $HMI, $PT1, $emergencyStop;
         }
       }
     }
-    HMIindicationAll("trState $name ".$baliseTrack["trackState"]." ".$baliseTrack["trainID"]."\n"); //>>JP:TRAIN_ID
+    HMIindicationAll("trState $name ".$baliseTrack["routeState"]." ".$baliseTrack["trackState"]." ".$baliseTrack["trainID"]."\n");
   }
   unset($name);
   foreach ($PT1 as $name => $element) {
@@ -2548,23 +2588,27 @@ global $HMI, $PT1, $emergencyStop;
     switch ($element["element"]) {
       case "SU":
       case "SD":
-        if (isLockedRoute($name)) {
-          //13 is used in HMI to highlight destination signals FIXME
-          HMIindicationAll("signalState $name 13 ".$element["trackState"]." ".$displayedTrainID."\n");
-        } else {
-          HMIindicationAll("signalState $name ".$element["state"]." ".$element["trackState"]." ".$displayedTrainID."\n");
-        }
+//        if (isLockedRoute($name)) {
+//          //13 is used in HMI to highlight destination signals FIXME
+//          HMIindicationAll("signalState $name 13 ".$element["routeState"]." ".$element["trackState"]." ".$displayedTrainID."\n");
+//        } else {
+          HMIindicationAll("signalState $name ".$element["state"]." ".$element["routeState"]." ".$element["trackState"]." ".
+            $displayedTrainID."\n");
+//        }
       break;
       case "PF":
       case "PT":
-        HMIindicationAll("pointState $name ".$element["state"]." ".$element["trackState"]." ".$element["blockingState"]." ".$displayedTrainID."\n");
+        HMIindicationAll("pointState $name ".$element["state"]." ".$element["routeState"]." ".$element["trackState"]." ".
+          $element["blockingState"]." ".$displayedTrainID."\n");
       break;
       case "BSB":
       case "BSE":
-        HMIindicationAll("bufferStopState $name  ".$element["trackState"]." ".$displayedTrainID."\n");
+        HMIindicationAll("bufferStopState $name  ".$element["state"]." ".$element["routeState"]." ".$element["trackState"]." "
+          .$displayedTrainID."\n");
       break;
       case "LX":
-        HMIindicationAll("levelcrossingState $name ".$element["barrierStatus"]." ".$element["trackState"]." ".$displayedTrainID."\n"); // Not only barrier status FIXME
+        HMIindicationAll("levelcrossingState $name ".$element["barrierStatus"]." ".$element["routeState"]." ".$element["trackState"]." ".
+          $displayedTrainID."\n"); // Not only barrier status FIXME
       break;
     }
   }
@@ -2782,7 +2826,7 @@ global $VERSION, $PT1_VERSION;
 }
 
 function CmdLineParam() {
-global $debug, $background, $RBCIL_CONFIG, $DATA_FILE, $SYSTEM_NAME, $VERSION, $argv, $ABUS, $SRallowed, $SHallowed, $FSallowed, $ATOallowed, $doInitEC;
+global $debug, $background, $RBCIL_CONFIG, $DATA_FILE, $SYSTEM_NAME, $VERSION, $argv, $ABUS, $SRallowed, $SHallowed, $FSallowed, $ATOallowed, $doInitEC, $radio;
   if (in_array("-h",$argv)) {
     fwrite(STDERR,"Usage:
 -b, --background  start as daemon
@@ -2799,6 +2843,7 @@ global $debug, $background, $RBCIL_CONFIG, $DATA_FILE, $SYSTEM_NAME, $VERSION, $
 -sh               enable Shunt Mode for all trains
 -fs               enable Full Supervision Mode for all trains
 -ato              enable ATO Mode for all trains
+-nr               No radio - do not poll radio
 -ni               Not impl.: do not init EC
 ");
     exit();
@@ -2831,7 +2876,11 @@ global $debug, $background, $RBCIL_CONFIG, $DATA_FILE, $SYSTEM_NAME, $VERSION, $
       break;
     case "-n":
       $ABUS = "none";
-      fwrite(STDERR,"No Abus gateway selected\n");
+      fwrite(STDERR,"Warning: No Abus gateway selected\n");
+      break;
+    case "-nr":
+      $radio = "none";
+      fwrite(STDERR,"Warning: Radio polling disabled\n");
       break;
     case "-f":
       list(,$p) = each($argv);
@@ -2884,7 +2933,6 @@ global $debug, $background, $RBCIL_CONFIG, $DATA_FILE, $SYSTEM_NAME, $VERSION, $
       exit(1);
     }
   }
-  print "debug: $debug\n";
 }
 
 function prepareMainProgram() {

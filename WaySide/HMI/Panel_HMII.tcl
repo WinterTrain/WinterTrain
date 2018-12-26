@@ -1,6 +1,11 @@
 #!/usr/bin/wish
 package require Tk
 
+# Proof of concept: Operator panel in hardware
+
+set ttyName "/dev/ttyUSB0"
+set panelEnabled no
+
 set HMIversion 02P02
 set IPaddress 192.168.8.230
 set IPport 9900
@@ -16,23 +21,23 @@ set winY +50
 set cWidth 1800
 set cHeight 350
 # Note, following color definitions may by overwritten by specifications in PT1 data
-set fColor blue         ;# failure color
-set tColor black        ;# Clear track, not locked in route
-set toColor red         ;# Occupied track, locked or not locked in route
-set tcColor green       ;# Clear track, locked in route
-set clColor red         ;# point clamped
-set blColor orange      ;# point blocked
-set oColor lightgreen   ;# signal open
-set oppColor lightgreen ;# signal open proceed proceed
-set cColor darkgrey     ;# signal closed, not locked in route
-set dColor red          ;# signal closed, locked in route
-set aColor yellow       ;# Select buttom for elements
-set sColor orange       ;# Selected buttom
+set fColor blue       ;# failure color
+set tColor black      ;# Clear track, not locked in route
+set toColor red       ;# Occupied track, locked or not locked in route
+set tcColor green     ;# Clear track, locked in route
+set clColor red       ;# point clamped
+set blColor orange       ;# point blocked
+set oColor lightgreen ;# signal open
+set oppColor lightgreen;# signal open proceed proceed
+set cColor darkgrey    ;# signal closed
+set dColor red        ;# destination signal
+set aColor yellow      ;# Select buttom for elements
+set sColor orange  ;# Selected buttom
 set trIdColor blue      ;# Train ID when occupied
 set nColor grey
-set lColor black        ;# lines
-set xColor black        ;# text
-set mColor yellow       ;# barrier moving
+set lColor black      ;# lines
+set xColor black      ;# text
+set mColor yellow     ;# barrier moving
 set scale 45
 set xOffset 5
 set yOffset 10
@@ -47,7 +52,7 @@ set buttonFontSize 12
 
 set emergencyStop false
 
-#----------------------------------------------------------------------------------------------------------------- Display elements
+#----------------------------------------------------------------------------- Display elements
 proc label {text x y} {
   dLabelStatic $x $y 0 0 $text
 }
@@ -93,7 +98,7 @@ proc bufferStop {name x y layout {length 1}} {
     b {
       dLabel $x $y 0.5 0.9 $name "$name label"
       dTrack $x $y 0 0.5 $length 0.5 "$name track"
-      dTrack $x $y 0 0.3 0 0.7 "$name buffer"
+      dTrack $x $y 0 0.3 0 0.7 
       dTrainIDLabel  $x $y 0.5 0.2 "TEST" "$name trainIdLabel"
       dButton $x $y 0.3 0.5 0.4 $name selectBufferStop
     }
@@ -289,7 +294,7 @@ global nTrainFrame
   set nTrainFrame 0
 }
 
-#--------------------------------------------------------------------------------------------------------- Display procedures
+#-------------------------------------------------- Display proc
 proc dButton {x y x1 y1 rad name cmd} {
 global scale xOffset yOffset
   .f.canvas bind [.f.canvas create oval [expr $xOffset+($x+$x1-$rad)*$scale] [expr $yOffset+($y+$y1-$rad)*$scale] [expr $xOffset+($x+$x1+$rad)*$scale] [expr $yOffset+($y+$y1+$rad)*$scale] -fill "" -activefill ""  -outline "" -activeoutline "" -tags "button $name"] <1> "$cmd $name"
@@ -352,12 +357,15 @@ global xOffset yOffset scale cHeight cWidth showGrid
   }
 }
 
-#------------------------------------------------------------------------------------------------------------ indication handlers
+#--------------------------------------------------------------------------------------------------------- indication handlers
 
-proc pointState {name state routeState trackState lockState {trainID ""}} {
+proc pointState {name state trackState lockState {trainID ""}} {
 global fColor tColor toColor tcColor clColor blColor
+  if {$name == "P1"} {
+    writeTty "IP$state$trackState"
+  }
   switch $lockState {
-    10 { ;# B_UNBLOCKED / normal
+    10 { ;# B_UNBLOCKED
     .f.canvas itemconfigure "$name&&lockright" -state hidden
     .f.canvas itemconfigure "$name&&lockleft" -state hidden
     }
@@ -398,19 +406,8 @@ global fColor tColor toColor tcColor clColor blColor
       .f.canvas itemconfigure "$name&&trainIdLabel" -state hidden
     }
     5 { ;# Clear
+      .f.canvas itemconfigure "$name&&(track||trackleft||trackright||left||right)" -fill $tColor
       .f.canvas itemconfigure "$name&&trainIdLabel" -state hidden
-      if {$routeState != 2} { # not locked
-        .f.canvas itemconfigure "$name&&(track||trackleft||trackright||left||right)" -fill $tColor
-      } else {
-        switch $state {
-          20 {
-            .f.canvas itemconfigure "$name&&(track||trackleft||left)" -fill $tcColor
-          }
-          21 {
-            .f.canvas itemconfigure "$name&&(track||trackright||right)" -fill $tcColor
-          }
-        }
-      }
     }
     1 -
     2 -
@@ -426,7 +423,7 @@ global fColor tColor toColor tcColor clColor blColor
         }
       }
     }
-    4 { ;# Clear, locked in route // FIXME obsolete
+    4 { ;# Locked
       .f.canvas itemconfigure "$name&&trainIdLabel" -state hidden
       switch $state {
         20 {
@@ -440,7 +437,7 @@ global fColor tColor toColor tcColor clColor blColor
   }
 }
 
-proc levelcrossingState {name state routeState trackState {trainID ""}} {
+proc levelcrossingState {name state trackState {trainID ""}} {
 global fColor tColor toColor tcColor mColor lColor
   switch $state {
     0 { ;# Unsupervised
@@ -474,11 +471,7 @@ global fColor tColor toColor tcColor mColor lColor
       .f.canvas itemconfigure "$name&&(track||p||u)" -fill $fColor
     }
     5 { ;# Clear
-      if {$routeState != 2} { # not locked
-        .f.canvas itemconfigure "$name&&(track||p)" -fill $tColor
-      } else {
-        .f.canvas itemconfigure "$name&&(track||p)" -fill $tcColor      
-      }
+      .f.canvas itemconfigure "$name&&(track||p)" -fill $tColor
     }
     1 -
     2 -
@@ -492,25 +485,28 @@ global fColor tColor toColor tcColor mColor lColor
         }
       }
     }
-    4 { ;#Locked FIXME obsolete
+    4 { ;#Locked
       .f.canvas itemconfigure "$name&&(track||p)" -fill $tcColor
     }
   }
 }
-proc signalState {name state routeState trackState {trainID ""}} {
+proc signalState {name state trackState {trainID ""}} {
 global fColor oColor cColor toColor tcColor tColor oppColor dColor
+  if {$name == "S3"} {
+    writeTty "IS$state$trackState"
+  }
   switch $state {
-    13 { # E_STOP_FACING
+    13 {
     .f.canvas itemconfigure "$name&&aspect" -fill $dColor
     }
-    12 { # E_PROCEEDPROCEED
+    12 {
     .f.canvas itemconfigure "$name&&aspect" -fill $oppColor
     }
-    11 { # E_PROCEED
+    11 {
     .f.canvas itemconfigure "$name&&aspect" -fill $oColor
     }
-    10 { # E_STOP
-      .f.canvas itemconfigure "$name&&aspect" -fill $cColor
+    10 {
+    .f.canvas itemconfigure "$name&&aspect" -fill $cColor
     }
     0 {
     .f.canvas itemconfigure "$name&&aspect" -fill $fColor
@@ -522,12 +518,8 @@ global fColor oColor cColor toColor tcColor tColor oppColor dColor
       .f.canvas itemconfigure "$name&&trainIdLabel" -state hidden
     }
     5 { ;# Clear
+      .f.canvas itemconfigure "$name&&track" -fill $tColor
       .f.canvas itemconfigure "$name&&trainIdLabel" -state hidden
-      if {$routeState != 2} { # not locked
-        .f.canvas itemconfigure "$name&&track" -fill $tColor
-      } else {
-        .f.canvas itemconfigure "$name&&track" -fill $tcColor
-      }
     }
     1 -
     2 -
@@ -536,20 +528,17 @@ global fColor oColor cColor toColor tcColor tColor oppColor dColor
       .f.canvas itemconfigure "$name&&trainIdLabel" -text $trainID
       .f.canvas itemconfigure "$name&&trainIdLabel" -state normal
     }
-    4 { ;#Locked FIXME obsolete
+    4 { ;#Locked
       .f.canvas itemconfigure "$name&&track" -fill $tcColor
       .f.canvas itemconfigure "$name&&trainIdLabel" -state hidden
     }
   }
 }
 
-proc bufferStopState {name state routeState trackState {trainID ""}} {
-global fColor tColor tcColor toColor dColor
-  switch $state {
-    10 {
-        .f.canvas itemconfigure "$name&&buffer" -fill $tColor    }
-    13 {
-        .f.canvas itemconfigure "$name&&buffer" -fill $dColor    }
+proc bufferStopState {name trackState {trainID ""}} {
+global fColor tColor tcColor toColor
+  if {$name == "B1"} {
+    writeTty "IB0$trackState"
   }
   switch $trackState {
     0 { ;# Unsupervised
@@ -557,12 +546,8 @@ global fColor tColor tcColor toColor dColor
       .f.canvas itemconfigure "$name&&trainIdLabel" -state hidden
     }
     5 { ;# Clear
+      .f.canvas itemconfigure "$name&&track" -fill $tColor
       .f.canvas itemconfigure "$name&&trainIdLabel" -state hidden
-      if {$routeState != 2} { # not locked
-        .f.canvas itemconfigure "$name&&track" -fill $tColor
-      } else {
-        .f.canvas itemconfigure "$name&&track" -fill $tcColor
-      }
     }
     1 -
     2 -
@@ -571,7 +556,7 @@ global fColor tColor tcColor toColor dColor
       .f.canvas itemconfigure "$name&&trainIdLabel" -text $trainID
       .f.canvas itemconfigure "$name&&trainIdLabel" -state normal
     }
-    4 { ;#Locked FIXME obsolete
+    4 { ;#Locked
       .f.canvas itemconfigure "$name&&track" -fill $tcColor
       .f.canvas itemconfigure "$name&&trainIdLabel" -state hidden
     }
@@ -579,7 +564,7 @@ global fColor tColor tcColor toColor dColor
 }
 
 
-proc trState {name routeState trackState {trainID ""}} {
+proc trState {name trackState {trainID ""}} {
 global fColor tColor tcColor toColor
   switch $trackState {
     0 { ;# Unsupervised
@@ -587,11 +572,8 @@ global fColor tColor tcColor toColor
       .f.canvas itemconfigure "$name&&trainIdLabel" -state hidden
     }
     5 { ;# Clear
+      .f.canvas itemconfigure "$name&&track" -fill $tColor
       .f.canvas itemconfigure "$name&&trainIdLabel" -state hidden
-      if {$routeState != 2} { # not locked
-        .f.canvas itemconfigure "$name&&track" -fill $tColor
-      } else {
-        .f.canvas itemconfigure "$name&&track" -fill $tcColor      }
     }
     1 -
     2 -
@@ -600,7 +582,7 @@ global fColor tColor tcColor toColor
       .f.canvas itemconfigure "$name&&trainIdLabel" -text $trainID
       .f.canvas itemconfigure "$name&&trainIdLabel" -state normal
     }
-    4 { ;#Locked FIXME obsolete
+    4 { ;#Locked
       .f.canvas itemconfigure "$name&&track" -fill $tcColor
       .f.canvas itemconfigure "$name&&trainIdLabel" -state hidden
     }
@@ -686,7 +668,7 @@ global showLabel
   }
 }
 
-#--------------------------------------------------------------------------------------------------------------- command handlers
+#--------------------------------------------------------------------------------------------------- command handlers
 proc sendMA {index} {
 global trainMAbalise trainMAdist
 #  puts "SendMA $index $trainMAbalise($index) $trainMAdist($index) \n"
@@ -947,7 +929,8 @@ global showGrid
 }
 
 proc disableButtons {} {
-global nTrainFrame
+global nTrainFrame panelEnabled
+  set panelEnabled no
   .f.buttonPoint state disabled
   .f.buttonPointBlock state disabled
   .f.buttonRelease state disabled
@@ -982,7 +965,8 @@ global nTrainFrame
 }
 
 proc enableButtons {} {
-global aColor nTrainFrame
+global aColor nTrainFrame panelEnabled
+  set panelEnabled yes
   .f.buttonPoint state !disabled
   .f.buttonPointBlock state !disabled
 #  .f.buttonSignal state !disabled
@@ -1019,13 +1003,14 @@ global aColor nTrainFrame
 proc test { } {
   sendCommand "test"
 }
-#----------------------------------------------------------------------------------------------------------------- Communication
+#---------------------------------------------------- Communication
 proc openSocket {} {
 global server IPaddress IPport
   set server [socket -async $IPaddress $IPport]
   chan configure $server -blocking 0 -buffering line
   chan event $server writable writeHandler 
 }
+
 
 proc writeHandler {} {
 global server clientPassword
@@ -1053,6 +1038,30 @@ global server
   }
 }
 
+
+proc openTty {} {
+global ttyName tty
+  set tty [open $ttyName r+]
+  fconfigure $tty -mode 57600,n,8,1 -blocking false -buffering line
+  fileevent $tty readable readHandlerTty
+}
+
+proc readHandlerTty {} {
+global tty debug
+  if {[gets $tty line] >= 0 && $line != ""} {
+    if {$debug} {
+      puts "From panel: >$line<\n"
+    }
+  }
+}
+
+proc writeTty {line} {
+global debug
+  if {$debug} {
+    puts "To panel: >$line<\n"
+  }
+}
+
 proc processIndication {line} { ;# from Process indications from HMI server
 global debug
   if {$debug} {
@@ -1066,6 +1075,7 @@ proc sendCommand {line} { ;# Send command to HMI server
 global server
   catch {puts $server $line}
 }
+
 
 proc disconnected {} {
 global response status nColor nTrainFrame 
@@ -1189,6 +1199,7 @@ bind . <space> {eStop}
 dGrid
 disconnected
 openSocket
+openTty
 
 puts "WinterTrain HMI $HMIversion"
 if {$startLoop} {
