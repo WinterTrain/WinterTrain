@@ -67,11 +67,11 @@ $PT1 = [
 
 "S2" => [ // Signal, facing and ...
   "element" => "SU",
-  "type" => "MB",
+  "type" => "MS2",
   "EC" => [
-    "addr" => 0,
-    "type" => 0,
-    "majorDevice" => 2,
+    "addr" => 202,
+    "type" => 41,
+    "majorDevice" => 8,
     ],
   "U" => ["name" => "BG04", "dist" => 15],
   "D" => ["name" => "BG02", "dist" => 1],
@@ -96,7 +96,7 @@ $PT1 = [
     "majorDevice" => 1,
     "minorDevice" => 0,
     ],
-  "supervisionState" => "S",
+  "supervisionState" => "P",
   "R" => ["name" => "BG03", "dist" => 40],
   "L" => ["name" => "BG04", "dist" => 40],
   "T" => ["name" => "BG05", "dist" => 1],
@@ -117,11 +117,11 @@ $PT1 = [
 
 "S3" => [ // Signal, facing and ...
   "element" => "SD",
-  "type" => "MB",
+  "type" => "MS2",
   "EC" => [
-    "addr" => 0,
-    "type" => 0,
-    "majorDevice" => 1,
+    "addr" => 202,
+    "type" => 41,
+    "majorDevice" => 7,
     ],
   "U" => ["name" => "BG07", "dist" => 1],
   "D" => ["name" => "BG05", "dist" => 1],
@@ -296,8 +296,8 @@ $PT1 = [
 "VBG01" => [ // Virtual Balises (Does not exist on the track, it acts as a track segment)
   "element" => "BL",
   "ID" => "99:99:99:99:01",
-  "U" => ["name" => "S9", "dist" => 140],
-  "D" => ["name" => "S7", "dist" => 140],
+  "U" => ["name" => "S9", "dist" => 135],
+  "D" => ["name" => "S7", "dist" => 135],
   ],
 
  "S9" => [ // Signal
@@ -453,7 +453,7 @@ $PT1 = [
 
 // ----------------------------------------------------------------- Inside Bar
 
-"P3T" => [ // Balises
+"P3T" => [ // Point Hold Trigger
   "element" => "PHTD",
   "U" => ["name" => "BG24", "dist" => 1],
   "D" => ["name" => "S11", "dist" => 1],
@@ -465,7 +465,7 @@ $PT1 = [
   "element" => "BL",
   "ID" => "76:00:0C:FC:CB",
   "U" => ["name" => "BG25", "dist" => 125],
-  "D" => ["name" => "P3T", "dist" => 133],
+  "D" => ["name" => "P3T", "dist" => 125],
   ],
   
 
@@ -610,14 +610,14 @@ $PT1 = [
 "BG34" => [ // Balises
   "element" => "BL",
   "ID" => "73:00:56:93:AA",
-  "U" => ["name" => "B3", "dist" => 50],
+  "U" => ["name" => "B3", "dist" => 70],
   "D" => ["name" => "S17", "dist" => 175],
   ],
 
 
 "B3" => [ // Bufferstop; end of direction up
   "element" => "BSE",
-  "D" => ["name" => "BG34", "dist" => 50],
+  "D" => ["name" => "BG34", "dist" => 30],
   "HMI" => [
     "x" => 39,
     "y" => 6,

@@ -1,6 +1,11 @@
 #!/usr/bin/wish
 package require Tk
 
+
+
+set ttyName "/dev/ttyUSB0"
+set panelEnabled no ;# Enable test interface to operator panel prototype for proof of concept.
+
 set HMIversion 02P02
 set IPaddress 192.168.8.230
 set IPport 9900
@@ -100,7 +105,7 @@ proc bufferStop {name x y layout {length 1}} {
     e {
       dLabel $x $y [expr $length - 0.6] 0.9 $name "$name label"
       dTrack $x $y 0 0.5 $length 0.5 "$name track"
-      dTrack $x $y $length 0.3 $length 0.7 
+      dTrack $x $y $length 0.3 $length 0.7 "$name buffer"
       dTrainIDLabel  $x $y 0.5 0.2 "TEST" "$name trainIdLabel"
       dButton $x $y 0.7 0.5 0.4 $name selectBufferStop
     }
@@ -179,7 +184,7 @@ proc point {name x y layout} {
 }
 
 proc trainFrame {index} {
-global nTrainFrame trainMAbalise trainMAdist entryFontSize toState toMode toDrive toDir
+global nTrainFrame  trainMA entryFontSize toState toMode toDrive toDir
 
   set toMode($index) 5
   set toDrive($index) 1
@@ -204,10 +209,9 @@ global nTrainFrame trainMAbalise trainMAdist entryFontSize toState toMode toDriv
   grid [ttk::label .f.fTrain.t$index.length -text "---" -textvariable trainLength($index)] -column 1 -row 4 -padx 5 -pady 5 -sticky we
   grid [ttk::label .f.fTrain.t$index.pwrX -text "PWR"] -column 2 -row 4 -padx 5 -pady 5 -sticky we
   grid [ttk::label .f.fTrain.t$index.pwr -text "---" -textvariable trainPWR($index)] -column 3 -row 4 -padx 5 -pady 5 -sticky we
-#  grid [ttk::label .f.fTrain.t$index.maX -text "MA"] -column 0 -row 5 -padx 5 -pady 5 -sticky we
-#  grid [ttk::entry .f.fTrain.t$index.maBalise -width 5 -textvariable trainMAbalise($index) -font "'Helvetica', $entryFontSize"] -column 1 -row 5 -padx 5 -pady 5 -sticky we
-#  grid [ttk::entry .f.fTrain.t$index.maDistance -width 5 -textvariable trainMAdist($index) -font "'Helvetica', $entryFontSize"] -column 2 -row 5 -padx 5 -pady 5 -sticky we
-#  grid [ttk::button .f.fTrain.t$index.maSend -text "Send" -command "sendMA $index"] -column 3 -row 5 -padx 5 -pady 5 -sticky we
+  grid [ttk::label .f.fTrain.t$index.maX -text "MA"] -column 0 -row 6 -padx 5 -pady 5 -sticky we
+  grid [ttk::label .f.fTrain.t$index.maBalise -width 5 -textvariable trainMA($index)] -column 1 -columnspan 3 -row 6 -padx 5 -pady 5 -sticky we
+#  grid [ttk::label .f.fTrain.t$index.maDistance -width 5 -textvariable trainMAdist($index) -font "'Helvetica', $entryFontSize"] -column 2 -row 6 -padx 5 -pady 5 -sticky we
   grid [ttk::label .f.fTrain.t$index.sr_allowedX -text "SR:"] -column 0 -row 7 -padx 5 -pady 5 -sticky we
   grid [ttk::checkbutton .f.fTrain.t$index.sr_allowed -variable sr($index) -command "setSR $index" ] -column 1 -row 7 -padx 5 -pady 5 -sticky we
   .f.fTrain.t$index.sr_allowed state disabled
@@ -221,8 +225,8 @@ global nTrainFrame trainMAbalise trainMAdist entryFontSize toState toMode toDriv
   grid [ttk::label .f.fTrain.t$index.ato_allowedX -text "ATO:"] -column 2 -row 8 -padx 5 -pady 5 -sticky we
   grid [ttk::checkbutton .f.fTrain.t$index.ato_allowed -variable ato($index) -command "setATO $index" ] -column 3 -row 8 -padx 5 -pady 5 -sticky we
   .f.fTrain.t$index.ato_allowed state disabled
-  set trainMAbalise($index) ""
-  set trainMAdist($index) ""
+
+
   
 # ---------------- Frame for Remote take-over
   grid [ttk::label .f.fTrain.t$index.toX -text "Remote take-over"] -column 0 -row 9 -padx 5 -pady 5 -sticky we
@@ -277,8 +281,6 @@ grid [ttk::radiobutton .f.fTrain.t$index.oDrive.dirN -value "2" -variable toDir(
 grid [ttk::radiobutton .f.fTrain.t$index.oDrive.dirF -value "3" -variable toDir($index)  -command  "txTo $index"] -column 8 -row 1
 .f.fTrain.t$index.oDrive.dirF state disabled
 
-# Comment next line to allow maSend
-#  .f.fTrain.t$index.maSend state disabled
 }
 
 proc destroyTrainFrame {} {
@@ -355,7 +357,10 @@ global xOffset yOffset scale cHeight cWidth showGrid
 #------------------------------------------------------------------------------------------------------------ indication handlers
 
 proc pointState {name state routeState trackState lockState {trainID ""}} {
-global fColor tColor toColor tcColor clColor blColor
+global fColor tColor toColor tcColor clColor blColor panelEnabled
+  if {$panelEnabled && $name == "P1"} {
+    writeTty  [format "IP%02d%02d%02d" $state $routeState $trackState]
+  }
   switch $lockState {
     10 { ;# B_UNBLOCKED / normal
     .f.canvas itemconfigure "$name&&lockright" -state hidden
@@ -498,8 +503,11 @@ global fColor tColor toColor tcColor mColor lColor
   }
 }
 proc signalState {name state routeState trackState {trainID ""}} {
-global fColor oColor cColor toColor tcColor tColor oppColor dColor
-  switch $state {
+global fColor oColor cColor toColor tcColor tColor oppColor dColor panelEnabled
+  if {$panelEnabled && $name == "S3"} {
+    writeTty  [format "IS%02d%02d%02d" $state $routeState $trackState]
+  }
+    switch $state {
     13 { # E_STOP_FACING
     .f.canvas itemconfigure "$name&&aspect" -fill $dColor
     }
@@ -544,7 +552,10 @@ global fColor oColor cColor toColor tcColor tColor oppColor dColor
 }
 
 proc bufferStopState {name state routeState trackState {trainID ""}} {
-global fColor tColor tcColor toColor dColor
+global fColor tColor tcColor toColor dColor panelEnabled
+  if {$panelEnabled && $name == "B1"} {
+    writeTty [format "IB%02d%02d%02d" $state $routeState $trackState]
+  }
   switch $state {
     10 {
         .f.canvas itemconfigure "$name&&buffer" -fill $tColor    }
@@ -633,8 +644,8 @@ global trainName trainLength
   set trainLength($trainIndex) $length
 }
 
-proc trainDataD {trainIndex mode balise distance speed nomDir pwr maAck valid status} { ;# dynamic train data
-global trainMode trainPosition trainSpeed trainNomDir trainPWR trainACK trainValid toStatus
+proc trainDataD {trainIndex mode balise distance speed nomDir pwr maAck valid status MAbalise MAdist} { ;# dynamic train data
+global trainMode trainPosition trainSpeed trainNomDir trainPWR trainACK trainValid toStatus trainMA
   set trainMode($trainIndex) $mode
   set trainPosition($trainIndex) "$balise $distance"
   set trainSpeed($trainIndex) $speed
@@ -643,6 +654,7 @@ global trainMode trainPosition trainSpeed trainNomDir trainPWR trainACK trainVal
   set trainACK($trainIndex) $maAck
   set trainValid($trainIndex) $valid
   set toStatus($trainIndex) $status
+  set trainMA($trainIndex) "$MAbalise $MAdist"
 }
 
 proc RBCversion {RBC PT1} {
@@ -687,12 +699,6 @@ global showLabel
 }
 
 #--------------------------------------------------------------------------------------------------------------- command handlers
-proc sendMA {index} {
-global trainMAbalise trainMAdist
-#  puts "SendMA $index $trainMAbalise($index) $trainMAdist($index) \n"
-  sendCommand "MA $index $trainMAbalise($index) $trainMAdist($index)"
-  set trainMAdist($index) ""
-}
 
 proc buttonPoint {} {
 global command
@@ -1053,6 +1059,32 @@ global server
   }
 }
 
+proc openTty {} {
+global ttyName tty panelEnabled
+  if {$panelEnabled} {
+    set tty [open $ttyName r+]
+    fconfigure $tty -mode 57600,n,8,1 -blocking false -buffering line
+    fileevent $tty readable readHandlerTty
+  }
+}
+
+proc readHandlerTty {} {
+global tty debug
+  if {[gets $tty line] >= 0 && $line != ""} {
+    if {$debug} {
+      puts "From panel: >$line<\n"
+    }
+    sendCommand $line
+  }
+}
+
+proc writeTty {line} {
+global debug tty
+  if {$debug} {
+    puts "To panel: >$line<\n"
+  }
+  puts $tty $line
+}
 proc processIndication {line} { ;# from Process indications from HMI server
 global debug
   if {$debug} {
@@ -1110,6 +1142,7 @@ Usage:
 --test          Do not enter event loop 
 --IP <address>  Set server address
 --l             Set server address to localhost (127.0.0.1) 
+--p             Enable connection to HMI panel
 --d             Debug
 "
       exit
@@ -1125,6 +1158,9 @@ Usage:
       }
     --l {
       set IPaddress "127.0.0.1"
+      }
+    --p {
+      set panelEnabled yes
       }
     --d {
       set debug yes
@@ -1189,6 +1225,7 @@ bind . <space> {eStop}
 dGrid
 disconnected
 openSocket
+openTty
 
 puts "WinterTrain HMI $HMIversion"
 if {$startLoop} {

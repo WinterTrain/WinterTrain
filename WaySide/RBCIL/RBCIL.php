@@ -55,7 +55,6 @@ define("E_STOP",10);              //Signal
 define("E_PROCEED",11);
 define("E_PROCEEDPROCEED",12);
 define("E_STOP_FACING",13);       //Signal
-// 13 closed as destination
 define("E_LEFT",20);              // Point, supervised left
 define("E_RIGHT",21);             // supervised right
 define("E_MOVING",22);            //   point is (supposed to be) movingng
@@ -81,7 +80,7 @@ define("D_UDEF",0);
 define("D_DOWN",1);
 define("D_UP",2);
 define("D_STOP",3);
-// Track status   // FIXME destinguish between locked clear and locked occupied
+// Track status   
 define("T_UNSUPERVISED",0);       // Track state unknown
 define("T_OCCUPIED_DOWN",1);      // Track occupied, train moving in direction down
 define("T_OCCUPIED_UP",2);
@@ -127,13 +126,13 @@ define("S_UNSUPERVISED",0);
 define("S_STOP",1);
 define("S_PROCEED",2);
 define("S_PROCEEDPROCEED",3);
-define("S_VOID",10);   // No physical signal connected (i.e. type marker board)
+define("S_VOID",10);            // No physical signal connected (i.e. type marker board)
 define("S_BARRIER_CLOSED",1);
 define("S_BARRIER_OPEN",2);
-define("S_U_RIGHT",5); // Point, unsupervised, previous command was throw right
-define("S_U_LEFT",6);  // Point, unsupervised, previous command was throw left
-define("S_U_RIGHT_HOLDING",7); // Point, unsupervised, previous command was throw right, holding
-define("S_U_LEFT_HOLDING",8);  // Point, unsupervised, previous command was throw left, holding
+define("S_U_RIGHT",5);          // Point, unsupervised, previous command was throw right
+define("S_U_LEFT",6);           // Point, unsupervised, previous command was throw left
+define("S_U_RIGHT_HOLDING",7);  // Point, unsupervised, previous command was throw right, holding
+define("S_U_LEFT_HOLDING",8);   // Point, unsupervised, previous command was throw left, holding
 
 //Track traversal feedback
 define("TRACK_TRAVERSALE_REJECT", 0);
@@ -473,6 +472,7 @@ global $DATA_FILE, $trainData, $PT1_VERSION, $PT1, $HMI, $errorFound, $totalElem
     }
   }
   unset($element); // otherwise next foreach is not working, see PHP manual
+  
   print "Count of elements: $totalElement\n";
 // Find a beginning Bufferstop as starting point for checking the graph
   $start = "";
@@ -527,37 +527,38 @@ global $trainData, $emergencyStop;
     } else {
       sendMA($train["ID"], $train["authMode"], $train["MAbalise"], $train["MAdist"], $train["maxSpeed"]);
     }
-    if ($train["MAbalise"][0]) {
- //     debugPrint ("sendMA: Dist: ".$train["MAdist"]." Max: ".$train["maxSpeed"]);
-    }
-    $train["MAbalise"] = array(0,0,0,0,0); // Clear balise after each transmission
+    $train["dist"] = 0;
+    $train["MAbalise"] = "00:00:00:00:00"; // Clear balise after each transmission
+    $train["MAbaliseName"] = "(00:00:00:00:00)";
   }
 }
 
-function sendMA($trainID, $authMode, $balise, $dist, $speed) { // $balise as array
-// Send mode and movement authorization. Request position report for same train from Abus Master
-global $radioLinkAddr, $radioLink, $radio;
-  $packet[2] = 03;
-  $packet[3] = $trainID; 
-  $packet[4] = $authMode;
-  for ($b = 0; $b < 5; $b++) $packet[$b + 5] = hexdec($balise[$b]);
-  $packet[10] = $dist & 0xFF;
-  $packet[11] = ($dist & 0xFF00) >> 8;
-  $packet[12] = $speed;
+function sendMA($trainID, $authMode, $balise, $dist, $speed) { // $balise as : sep. string
+// Send mode and movement authorization. Request position report for same train from Abus Master / RadioLink
+global $radioLinkAddr, $radioLink, $radio, $trainData, $trainIndex;
+//print "SendMA: $trainID $balise $dist\n";
+  $baliseArray = explode(":",$balise);
+  $distTurn = round($dist / $trainData[$trainIndex[$trainID]]["wheelFactor"]);
   switch ($radio) {
     case "USB":
       fwrite($radioLink,"31,$trainID,$authMode,");
-      for ($b = 0; $b < 5; $b++) 
-        fwrite($radioLink, hexdec($balise[$b]).",");
-      fwrite($radioLink, ($dist & 0xFF).",".(($dist & 0xFF00) >> 8).",$speed,0s\n"); // "0s" is broadcast
+      for ($b = 0; $b < 5; $b++) fwrite($radioLink, hexdec($baliseArray[$b]).",");
+      fwrite($radioLink, ($distTurn & 0xFF).",".(($distTurn & 0xFF00) >> 8).",$speed,0s\n"); // "0s" is broadcast
     break;
     case "ABUS":
+      $packet[2] = 03;
+      $packet[3] = $trainID; 
+      $packet[4] = $authMode;
+      for ($b = 0; $b < 5; $b++) $packet[$b + 5] = hexdec($baliseArray[$b]);
+      $packet[10] = $distTurn & 0xFF;
+      $packet[11] = ($distTurn & 0xFF00) >> 8;
+      $packet[12] = $speed;
       AbusSendPacket($radioLinkAddr, $packet, 13);
     break;
   }
 }
 
-function sendPosRestore($trainID, $balise, $distance) { // $balise as string!
+function sendPosRestore($trainID, $balise, $distance) { 
 global $radioLinkAddr, $radioLink, $radio;
 //    debugPrint ("Position restore ID: $trainID, Balise: >$balise< Distance: $distance");
   switch ($radio) { 
@@ -584,7 +585,7 @@ global $trainData, $now;
   }
 }
 
-function receivedFromRadioLink($data) {  // received via USB
+function receivedFromRadioLink($data) {  // position report received via USB
   $RF12_ID_MASK = 0x1f;
   $POSREP = 10; 
   $res = explode(" ",$data);
@@ -614,7 +615,6 @@ global $EC;
   $EC[$addr]["N_PDEVICE"] = "*";
   resetEC($addr);
 }
-
 
 function initEC($specificEC = "") {
 global $PT1, $EC;
@@ -706,6 +706,7 @@ global $PT1, $EC;
     }
   }
 }
+
 function resetEC($addr) {
   $packet[2] = 20;
   $packet[3] = 00;
@@ -719,7 +720,7 @@ function configureEC($addr, $elementType, $majorDevice, $minorDevice = 0) {
   $packet[5] = $majorDevice;
   $packet[6] = $minorDevice;
   AbusSendPacket($addr, $packet, 7);
- }
+}
 
 function requestECstatus($addr) {
   $packet[2] = 02;
@@ -865,16 +866,13 @@ global $PT1, $EC, $now, $radioLinkAddr;
         }
       }
       if ($addr == $radioLinkAddr) {
-        // position report UDEF------------------------------------- FIXME
+        // position report from EC-link UDEF------------------------------------- FIXME
       }
     }
   }
 }
 
-
 //------------------------------------------------------------------- RBC-IL
-// New helper functions for setting routes
-
 function RBC_IL_DebugPrint($msg) {
 global $debug;
   if ($debug & 0x02) {
@@ -1020,7 +1018,7 @@ global $PT1;
   return TRACK_TRAVERSALE_ACCEPT_ACTIVATE_PAYLOAD; #Lock all elments in route
 }
 
-function findSignalsFrom($element, $direction) { // FIXME use??
+function findSignalsFrom($element, $direction) { // FIXME Currently not used
   $isTerminal = function($elt, $dir) use ($element) {
     global $PT1;
     if ($elt === $element) {
@@ -1146,7 +1144,6 @@ global $PT1;
   }
 }
 
-
 function setSignalState($signal, $state) {
 global $PT1;
   $PT1[$signal]["state"]= $state;
@@ -1171,12 +1168,12 @@ global $PT1;
   RBC_IL_DebugPrint("Setting signal $signal in state $prettyState");
 }
 
-function openSignalsInRoute($destinationSignal) {  // FIXME check for correct state of points in route
+function openSignalsInRoute($destinationSignal) {
+// FIXME check for correct state of points in route. Do not open if point not supervised in correct lie
 global $PT1;
   $dir = getSignalDirection($destinationSignal);
   $revDir = getReverseDir($dir);
   $elt = $destinationSignal;
-//  $elt = getNextEltName($elt, $revDir);
   $signalState = E_PROCEED;
   while (isLocked($elt)) {
     if ($elt == $destinationSignal) {
@@ -1189,12 +1186,10 @@ global $PT1;
         $signalState = E_PROCEEDPROCEED;
       }
     }
-    $elt = getNextEltName($elt, $revDir); //Look for element to release(?) behind train
+    $elt = getNextEltName($elt, $revDir); 
     if ($elt == "") {break;}
   }
 }
-
-// New train position detection function
 
 function getEltLength($eltName) {
   global $PT1;
@@ -1304,7 +1299,7 @@ function recUpdateTrainPosition(&$train, $dir, $x, $eltName, $trackState) {
         RBC_IL_DebugPrint("Invalidating postion in $eltName due to a=".$a." >= train[downFront]=".$train["downFront"]);
         return;
 */
-        recUpdateTrainPosition($train, $dir, $b, $elt[($elt["expectedLie"] == E_RIGHT ? "R" : "L")]["name"], $trackState);
+        recUpdateTrainPosition($train, $dir, $a, $elt[($elt["expectedLie"] == E_RIGHT ? "R" : "L")]["name"], $trackState);
         return;
       case "PF":
         recUpdateTrainPosition($train, $dir, $a, $elt["T"]["name"], $trackState);
@@ -1336,7 +1331,7 @@ function updateTrainPosition(&$train, $baliseName, $dist, $trackState) {
     $train["downEltDist"] = $train["downFront"];
   }
   recUpdateTrainPosition($train, "U", -$PT1[$baliseName]["D"]["dist"], $baliseName, $trackState);
-  recUpdateTrainPosition($train, "D", -$PT1[$baliseName]["D"]["dist"], $PT1[$baliseName]["D"]["name"], $trackState);
+  recUpdateTrainPosition($train, "D", -$PT1[$baliseName]["D"]["dist"], $PT1[$baliseName]["D"]["name"], $trackState); // ???
 }
 
 function getNextEltName($eltName, $dir) {
@@ -1355,7 +1350,7 @@ function getNextEltName($eltName, $dir) {
          }
         break;
       case "PT":
-        return $elt["T"]["name"]; // FIXME check for correct point state 
+        return $elt["T"]["name"];
         break;
       case "BSE":
         RBC_IL_DebugPrint("Cannot find next element after  ".$eltName." : Buffer stop");
@@ -1378,7 +1373,7 @@ function getNextEltName($eltName, $dir) {
          }
         break;
       case "PF":
-        return $elt["T"]["name"]; // FIXME check for correct point state
+        return $elt["T"]["name"]; 
         break;
       case "BSB":
         RBC_IL_DebugPrint("Cannot find next element after  ".$eltName." : Buffer stop");
@@ -1394,7 +1389,7 @@ function isKnownBalise($bgName) {
   return (($bgName != "00:00:00:00:00") and ($bgName !== "") ); //and (isset($PT1[$bgName]["ID"])));
 }
 
-function getMA($trainID, $signal) {
+function getMA($trainID, $signal) { // FIXME check for correct point state
   global $PT1, $trainData, $trainIndex;
   $train = $trainData[$trainIndex[$trainID]];
   RBC_IL_DebugPrint("Trying to build MA for train $trainID until signal $signal");
@@ -1433,8 +1428,6 @@ function getMA($trainID, $signal) {
     RBC_IL_DebugPrint($train["baliseName"]." is not linked. Cannot compute MA to $signal for train $trainID based on this balise");
   }
 }
-
-
 
 function searchTrainForRoute($routeDestinationSignal) {
 global $PT1;
@@ -1580,10 +1573,11 @@ global $trainData, $trainIndex;
 function giveMAtoTrain($MA, $trainID) {
 global $PT1, $trainData, $trainIndex;
   if (isset($PT1[$MA["bg"]]["ID"])) {
-    $trainData[$trainIndex[$trainID]]["MAbalise"] = explode(":", $PT1[$MA["bg"]]["ID"]);
-    $trainData[$trainIndex[$trainID]]["MAdist"] = round($MA["dist"] / $trainData[$trainIndex[$trainID]]["wheelFactor"]); //FIXME: Confirm that still ok to divide here
-    RBC_IL_DebugPrint("Giving MA from ".$PT1[$MA["bg"]]["ID"]." with distance ".
-      $trainData[$trainIndex[$trainID]]["MAdist"]." to train $trainID");
+    $trainData[$trainIndex[$trainID]]["MAbalise"] = $PT1[$MA["bg"]]["ID"];
+    $trainData[$trainIndex[$trainID]]["MAbaliseName"] = $MA["bg"];
+    $trainData[$trainIndex[$trainID]]["MAdist"] = $MA["dist"];
+    RBC_IL_DebugPrint("Giving MA from {$MA["bg"]} (".$PT1[$MA["bg"]]["ID"].") with distance ".
+      $MA["dist"]." cm to train $trainID");
   } else {
     RBC_IL_DebugPrint("Cannot send MA to train $trainID: balise {$MA["bg"]} has no ID set in PT1");
   }
@@ -1616,7 +1610,7 @@ global $trainData, $trainIndex;
 }
 
 //Try to allocate train to route without train / update MA of trains 
-function updateRoutesStatus() {
+function updateRoutesStatus() {// FIXME check for correct point state
 global $lockedRoutes;
   foreach($lockedRoutes as $signal => $route) {
     $trainID = $route["train"];
@@ -1643,7 +1637,6 @@ global $lockedRoutes;
       searchAndAssociateTrainToRoute($signal);
     }
   }
-
 }
 
 function checkIfRouteRelease($eltName) {
@@ -1699,9 +1692,8 @@ function setRoute($s1, $s2) {
   //If $s2 already locked do nothing
   if (isLocked($s2)) {
     RBC_IL_DebugPrint("Target signal $s2 is already locked. Aborting Route setting");
-    return;
+    return "Route rejected, $s2 already locked";
   }
-
   if (lockRoute($s1, $s2)) {
     //check if this is an extension
     if (isLockedRoute($s1)) {
@@ -1713,8 +1705,10 @@ function setRoute($s1, $s2) {
       searchAndAssociateTrainToRoute($s2);
     }
     openSignalsInRoute($s2);
+    return "OK";
   } else {
     RBC_IL_DebugPrint("Route from $s1 to $s2 cannot be locked");
+    return "Route rejected";
   }
 }
 
@@ -1763,6 +1757,7 @@ function isSignal($eltName) {
       return False;
   }
 }
+
 function isSignalInDirection($eltName, $dir) {
 global $PT1;
   switch ($PT1[$eltName]["element"]) {
@@ -1891,7 +1886,7 @@ global $trainData, $trainIndex, $DATA_FILE, $SRallowed, $SHallowed, $FSallowed, 
     $train["ATOallowed"] = $ATOallowed;
     $train["reqMode"] = M_UDEF;
     $train["authMode"] = M_N;
-    $train["balise"] = "00:00:00:00:00"; // change to array()?? FIXME
+    $train["balise"] = "00:00:00:00:00"; 
     $train["baliseName"] = "(00:00:00:00:00)"; // PT1 name
     $train["distance"] = 0;
     $train["speed"] = 0;
@@ -1907,11 +1902,13 @@ global $trainData, $trainIndex, $DATA_FILE, $SRallowed, $SHallowed, $FSallowed, 
     $train["pr0"] = false;
     $train["posTimeStamp"] = 0;
     $train["comTimeStamp"] = 0;
-    $train["MAbalise"] = array(0,0,0,0,0);
+    $train["MAbalise"] = "00:00:00:00:00";
+    $train["MAbaliseName"] = "(00:00:00:00:00)";
     $train["MAdist"] = 0;
     $trainIndex[$train["ID"]] = $index;
   }
 }
+
 function positionReport($data) { // analyse received position report
 global $trainIndex, $trainData, $balisesID, $SR_MAX_SPEED, $SH_MAX_SPEED, $ATO_MAX_SPEED, $FS_MAX_SPEED, $now, 
   $posTimeout, $restorePos, $PT1,$points;
@@ -1972,7 +1969,7 @@ global $trainIndex, $trainData, $balisesID, $SR_MAX_SPEED, $SH_MAX_SPEED, $ATO_M
                 date("Ymd H:i:s", $train["posTimeStamp"]));
             }
           }
-          $train["balise"] = $balise; // change to array()? FIXME
+          $train["balise"] = $balise;
           $train["baliseName"] = "(".$train["balise"].")";
           $train["posTimeStamp"] = $now;   
         }
@@ -1981,17 +1978,18 @@ global $trainIndex, $trainData, $balisesID, $SR_MAX_SPEED, $SH_MAX_SPEED, $ATO_M
         $train["posTimeStamp"] = $now;        
         $train["distance"] = round(toSigned($data[10], $data[11]) * $train["wheelFactor"]);
         $train["speed"] = $data[12];
-        $train["balise"] = $balise; // change to array()? FIXME
+        $train["balise"] = $balise; 
         // ----- track occupation
         if (isset($balisesID[$train["balise"]])) {
           $train["baliseName"] = $balisesID[$train["balise"]];
-          if ($train["prevBaliseName"] != "00:00:00:00:00") {  // FIXME 01:00:00:00:01 as well?
+          if ($train["prevBaliseName"] != "00:00:00:00:00" and $train["prevBaliseName"] != "01:00:00:00:01") {
             updateTrainPosition($train, $train["prevBaliseName"], $train["prevDistance"], T_CLEAR);
           }
-          updateTrainPosition($train, $train["baliseName"], $train["distance"], $train["nomDir"]); // mark by which direction train is moving
+          updateTrainPosition($train, $train["baliseName"], $train["distance"], $train["nomDir"]);
+            // mark by which direction (nomDir) train is moving
           $train["prevBaliseName"] = $train["baliseName"];
           $train["prevDistance"] = $train["distance"];
-          // At this stage occupation computation is stable so release pointHold where point is no longer occupied
+          // At this stage occupation computation is (supposed to be) stable so release pointHold where point is no longer occupied
           foreach ($points as $name) {
 //          print "Point $name: TrackState: {$PT1[$name]["trackState"]} | ";
             if ($PT1[$name]["trackState"] == T_CLEAR and $PT1[$name]["pointHeld"]) {
@@ -2003,6 +2001,7 @@ global $trainIndex, $trainData, $balisesID, $SR_MAX_SPEED, $SH_MAX_SPEED, $ATO_M
           }
         } else {
           $train["baliseName"] = "(".$train["balise"].")";
+          errLog("Unknown balise ({$train["balise"]}) reported by train {$train["ID"]}");
         }
       }
     } else { // void position report FIXME
@@ -2017,7 +2016,6 @@ global $trainIndex, $trainData, $balisesID, $SR_MAX_SPEED, $SH_MAX_SPEED, $ATO_M
     updateTrainDataHMI($index);
   } // else unknown trainID in posRep
 }
-
 
 function pointThrow(&$element, $command) {
  // Check if locked in route FIXME
@@ -2080,7 +2078,6 @@ function pointThrow(&$element, $command) {
   return false;
 }
 
-
 //Fake train for simulation purpose
 function moveTestTrain($dir, $dist) {
 global $testBg, $testDist, $trainData, $PT1;
@@ -2114,7 +2111,7 @@ global $testBg, $testDist, $trainData, $PT1;
 
 function processCommand($command, $from) { // process HMI command
 global $PT1, $clients, $clientsData, $inCharge, $trainData, $EC, $now, $balises, $run, $emergencyStop;
-  debugPrint ("HMI command: >$command<");
+//  debugPrint ("HMI command: >$command<");
   $param = explode(" ",$command);
   switch ($param[0]) {
   case "rr": // releaseRoute
@@ -2231,22 +2228,9 @@ global $PT1, $clients, $clientsData, $inCharge, $trainData, $EC, $now, $balises,
     $inCharge = false;
     HMIindication($from, "oprReleased\n");
   break;
-  case "MA":
-    if (false and $from == $inCharge) {
-      if (isset($param[2]) and isset($PT1[$param[2]]["ID"])) {
-        $trainData[$param[1]]["MAbalise"] = explode(":", $PT1[$param[2]]["ID"]);
-        $trainData[$param[1]]["MAdist"] = isset($param[3]) ? round($param[3] / $trainData[$param[1]]["wheelFactor"]) : 0;
-        HMIindication($from, "displayResponse {OK}\n");
-      } else { // unknown balise name
-        HMIindication($from, "displayResponse {Unknown balise}\n");
-      }
-    } else {
-      HMIindication($from, "displayResponse {Rejected}\n");
-    }
-  break;
   case "tr": // Try to lock the route
     if ($from == $inCharge) {
-      setRoute($param[1], $param[2]);
+      HMIindication($from, "displayResponse {".setRoute($param[1], $param[2])."}\n");
     }
   break;
   case "reqTo":
@@ -2617,9 +2601,10 @@ global $HMI, $PT1, $emergencyStop;
 function updateTrainDataHMI($index) {
 global $trainData, $MODE_TXT, $DIR_TXT, $PWR_TXT, $ACK_TXT, $TOSTATE_TXT;
   $train = $trainData[$index];
+
   HMIindicationAll("trainDataD ".$index." {".$MODE_TXT[$train["authMode"]]." (".$MODE_TXT[$train["reqMode"]].")} ".$train["baliseName"]." {".
         $train["distance"]."} {".$train["speed"]."} {".$DIR_TXT[$train["nomDir"]]."} {".$PWR_TXT[$train["pwr"]]."} {".
-        $ACK_TXT[$train["MAreceived"]]."} ".$train["dataValid"]." {".$TOSTATE_TXT[$train["toStatus"]]."}\n");
+        $ACK_TXT[$train["MAreceived"]]."} ".$train["dataValid"]." {".$TOSTATE_TXT[$train["toStatus"]]."} {".$train["MAbaliseName"]."} ".$train["MAdist"]."\n");
 }
 
 function HMIindicationAll($msg) {// Send indication to all clients
@@ -2704,7 +2689,6 @@ global $EC, $clients, $clientsData, $inChargeMCe, $run, $lockedRoutes, $trainDat
       errLog("Unknown MCe command: {$param[0]}");
   }
 }
-
 
 function MCeIndicationAll($msg) {// Send indication to all MCe clients
 global $clients, $clientsData;
