@@ -21,6 +21,9 @@ $RADIO_DEVICE = "/dev/ttyUSB0";
 // RF12 group
 $RF12GROUP = 101;
 $RBC_RADIO_ID = 10;
+$MaxAbusBuf = 20;
+$AbusMasterI2Caddress = 0x33; // Address of AbusMaster (arduino) connected to RasPI via I2C
+define("N_I2CSET",2);
 
 // File names
 $RBCIL_CONFIG = "RBCILconf.php";
@@ -43,6 +46,7 @@ define("TRAIN_COM_TIMEOUT",5);
 define("LX_WARNING_TIME",2);
 define("POSITION_TIMEOUT", 10);
 define("PUMP_TIMEOUT",4);
+define("EC_RETRY_DELAY", 120000); // delat before Abus retry in uS
 
 // ----------------------------------------Enummerations
 // Route
@@ -189,7 +193,7 @@ $testDist = "30";
 //---------------------------------------------------------------------------------------------------------- System 
 cmdLineParam();
 if ($ABUS == "cbu") {
-  include '/home/jabe/scripts/AbusMasterLib.php'; // must be included at global level
+//  include '/home/jabe/scripts/AbusMasterLib.php'; // must be included at global level
 }
 prepareMainProgram();
 versionInfo();
@@ -866,13 +870,13 @@ global $PT1, $EC, $now, $radioLinkAddr;
         }
       }
       if ($addr == $radioLinkAddr) {
-        // position report from EC-link UDEF------------------------------------- FIXME
+        // position report from EC-link UDEF FIXME
       }
     }
   }
 }
 
-//------------------------------------------------------------------- RBC-IL
+//---------------------------------------------------------------------------------------------------------------- RBC-IL
 function RBC_IL_DebugPrint($msg) {
 global $debug;
   if ($debug & 0x02) {
@@ -998,7 +1002,7 @@ function trackRecTraverse($acceptionCriteria, #Name of function used to determin
 
 function acceptAll($element, $direction, $previousElement) { return True;}
 
-function addToListPayload($element, &$sharedVar, $direction, $next) {
+function addToListPayload($element, &$sharedVar, $direction, $next) { // FIXME Currently not used
   #Push $element into list
   $sharedVar[] = $element;
   return TRACK_TRAVERSALE_ACCEPT_DO_NOTHING; #Only the terminal element must be added
@@ -1042,7 +1046,6 @@ function findSignalsFrom($element, $direction) { // FIXME Currently not used
       }
     }
   };
-
   $signals = array();
   trackRecTraverse("acceptAll", $isTerminal, "addToListPayload", $element,"", $direction, $signals);
   foreach ($signals as $sig) {
@@ -1274,7 +1277,7 @@ function recUpdateTrainPosition(&$train, $dir, $x, $eltName, $trackState) {
   if (($dir == "U") and ($b <= $train["upFront"])) {
     //keep looking up unless it was facing point
     switch ($elt["element"]) {
-      case "PF":
+      case "PF": // ----------FIXME position gets ambiguous if point is thrown behind the train before train reads a balise after the point
 /* JP:       //stop and invalidate position
         $train["positionUnambiguous"] = False;
         RBC_IL_DebugPrint("Invalidating postion in $eltName due to b=".$b." <= train[upFront]=".$train["upFront"]);
@@ -2018,7 +2021,6 @@ global $trainIndex, $trainData, $balisesID, $SR_MAX_SPEED, $SH_MAX_SPEED, $ATO_M
 }
 
 function pointThrow(&$element, $command) {
- // Check if locked in route FIXME
   switch ($element["supervisionState"]) {
   case "U": // Permanetly unsupervised
     return true;
@@ -2752,7 +2754,6 @@ global $ABUS;
       for ($b = 2; $b <$length; $b++) {
         $TXbuf .= sprintf("%02X",$packet[$b]);
       }
-    //print ">$TXbuf< \n";
       fwrite($toGenie,$TXbuf);
     break;
     case "cbu":
@@ -2762,8 +2763,6 @@ global $ABUS;
       for ($x = 0; $x < count($data); $x++) {
         $data[$x] = hexdec($data[$x]);
       }
-//print_r($data);
-//sleep(1);
       if ($data[0] != 0) { // timeout
         errLog("EC ($addr) Abus Time out: {$data[0]} Packet type: {$packet[2]}");
         $addr = false;
@@ -2773,6 +2772,38 @@ global $ABUS;
     break;
   }
 }
+
+function AbusGateway($AbusPackage, $PackageLength = 20) {
+global $MaxAbusBuf, $AbusMasterI2Caddress;
+
+//  fputs($gr,"1"); // flash green RasPI indicator
+
+  $cmd = "/usr/sbin/i2cset -y 1 $AbusMasterI2Caddress 101";
+  for ($x = 0; $x < count($AbusPackage); $x++) {
+    $cmd .= " ".$AbusPackage[$x];
+  }
+  $cmd .= " i";
+  $n = 0;
+  do {
+    if ($n > 0) {
+      errLog("AbusGateway retry $n");
+    }
+    exec($cmd,$output,$wStat);
+    usleep(120000); //  Afvent evt. timeout på Abus
+    $res = array();
+    for ($t = 0; $t < $PackageLength; $t++) {
+      exec("/usr/sbin/i2cget -y 1 $AbusMasterI2Caddress",$res,$rStat);
+      if ($rStat) errLog("AbusGateway: Error reading AbusMaster. Status: $rStat");
+    }
+    $n += 1;
+  } while ($wStat > 0 and $n < N_I2CSET);
+  if ($wStat) {
+    errLog("AbusGateway: Error writing AbusMaster. Status: $wStat after $n retry");
+  }
+//  fputs($gr,"0");
+  return $res;
+}
+
 
 function AbusReceivedPacketGenie($line) {
   debugPrint ("Abus: >$line<");
@@ -2958,6 +2989,8 @@ global $logFh, $errFh, $debug, $ERRLOG, $MSGLOG, $RBCIL_CONFIG, $DATAFh, $DATA_F
 
 function initMainProgram() {
 global $logFh, $errFh, $debug, $ERRLOG, $MSGLOG, $RBCIL_CONFIG, $DATAFh, $DATA_FILE, $ABUS, $background;
+
+//$gr = fopen("/sys/class/gpio/gpio17/value","w"); // green indicator at RasPI
   if (!($errFh = fopen($ERRLOG,"a"))) {
     fwrite(STDERR,"Warning: Cannot open Error log file: $ERRLOG\n");
     $errFh = fopen("/dev/null","w");
