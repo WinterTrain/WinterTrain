@@ -16,7 +16,7 @@
 #define BLINK 12
 
 // EC hardware
-#define N_ELEMENT 24 // max number of element allowed. Abus packet type 1 allows max 32 elements (due to max packet length of 20 byte) 
+#define N_ELEMENT 8 // max number of element allowed. Abus packet type 1 allows max 32 elements (due to max packet length of 20 byte) 
 #define N_UDEVICE 8
 #define N_LDEVICE 0
 #define N_LREG 0
