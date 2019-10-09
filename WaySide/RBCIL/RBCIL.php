@@ -1277,7 +1277,7 @@ function recUpdateTrainPosition(&$train, $dir, $x, $eltName, $trackState) {
   if (($dir == "U") and ($b <= $train["upFront"])) {
     //keep looking up unless it was facing point
     switch ($elt["element"]) {
-      case "PF": // ----------FIXME position gets ambiguous if point is thrown behind the train before train reads a balise after the point
+      case "PF": // --------------------FIXME position gets ambiguous if point is thrown behind the train before train reads a new balise
 /* JP:       //stop and invalidate position
         $train["positionUnambiguous"] = False;
         RBC_IL_DebugPrint("Invalidating postion in $eltName due to b=".$b." <= train[upFront]=".$train["upFront"]);
