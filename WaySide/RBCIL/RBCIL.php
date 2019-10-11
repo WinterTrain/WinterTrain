@@ -109,6 +109,9 @@ define("IL_P_RIGHT",10);
 define("IL_P_LEFT",11);
 define("IL_LX_ACTIVATE",12);
 define("IL_LX_DEACTIVATE",13);
+// TMS
+define("ARS_DISABLED",0);
+define("ARS_ENABLED",1);
 
 // -------------------------------------- EC enummerations
 // Order
@@ -463,6 +466,7 @@ global $DATA_FILE, $trainData, $PT1_VERSION, $PT1, $HMI, $errorFound, $totalElem
         $element["state"] = E_STOP; // Logical state
         $element["status"] = $element["type"] == "MB" ? S_VOID : S_UNSUPERVISED; // Physical status from EC
         $element["blockingState"] = B_UNBLOCKED;
+        $element["arsState"] = ARS_ENABLED; 
       break;
       case "BSB":
       case "BSE":
@@ -2250,6 +2254,20 @@ global $PT1, $clients, $clientsData, $inCharge, $trainData, $EC, $now, $balises,
       print "Not impl. Send to train {$param[1]} Mode: {$param[2]} Drive: {$param[3]} Dir: {$param[4]}\n";
     }
   break;
+  case "ars": // Toggle ARS for signal
+    if ($from == $inCharge) {
+      switch ($PT1[$param[1]]["arsState"]) {
+        case ARS_ENABLED:
+          $PT1[$param[1]]["arsState"] = ARS_DISABLED;
+        break;
+        case ARS_DISABLED:
+          $PT1[$param[1]]["arsState"] = ARS_ENABLED;
+        break;
+      }
+    } else {
+      HMIindication($from, "displayResponse {Rejected}\n");
+    }
+  break;
   case "test": 
     print "TEST: no function assigned\n";
   break;
@@ -2472,9 +2490,9 @@ global $PT1, $HMI, $trainData, $VERSION, $PT1_VERSION;
   foreach ($HMI["color"] as $param => $color) {
     HMIindication($client,"set ::$param $color\n");  
   }
-  if (isset($HMI["scale"])) {
-    HMIindication($client,"set ::scale ".$HMI["scale"]."\n");
-  }
+//  if (isset($HMI["scale"])) {    // HMI scale to be set by HMI only
+//    HMIindication($client,"set ::scale ".$HMI["scale"]."\n");
+//  }
   foreach ($HMI["label"] as $label) {
     HMIindication($client,"label {".$label["text"]."} ".$label["x"]." ".$label["y"]."\n");  
   }
@@ -2489,11 +2507,11 @@ global $PT1, $HMI, $trainData, $VERSION, $PT1_VERSION;
     break;
     case "SU":
       HMIindication($client,"signal $name ".$element["HMI"]["x"]." ".$element["HMI"]["y"]." f\n");
-      HMIindication($client,"signalState $name ".$element["state"]." ".$element["routeState"]." ".$element["trackState"]."\n");
+      HMIindication($client,"signalState $name ".$element["state"]." ".$element["routeState"]." ".$element["trackState"]." ".$element["arsState"]." \n");
     break;
     case "SD":
       HMIindication($client,"signal $name ".$element["HMI"]["x"]." ".$element["HMI"]["y"]." r\n");
-      HMIindication($client,"signalState $name ".$element["state"]." ".$element["routeState"]." ".$element["trackState"]."\n");
+      HMIindication($client,"signalState $name ".$element["state"]." ".$element["routeState"]." ".$element["trackState"]." ".$element["arsState"]." \n");
     break;
     case "BSB":
       HMIindication($client,"bufferStop $name ".$element["HMI"]["x"]." ".$element["HMI"]["y"]." b ".$element["HMI"]["l"]."\n");
@@ -2578,7 +2596,7 @@ global $HMI, $PT1, $emergencyStop;
 //          //13 is used in HMI to highlight destination signals FIXME
 //          HMIindicationAll("signalState $name 13 ".$element["routeState"]." ".$element["trackState"]." ".$displayedTrainID."\n");
 //        } else {
-          HMIindicationAll("signalState $name ".$element["state"]." ".$element["routeState"]." ".$element["trackState"]." ".
+          HMIindicationAll("signalState $name ".$element["state"]." ".$element["routeState"]." ".$element["trackState"]." ".$element["arsState"]."  ".
             $displayedTrainID."\n");
 //        }
       break;
@@ -2927,6 +2945,10 @@ global $debug, $background, $RBCIL_CONFIG, $DATA_FILE, $SYSTEM_NAME, $VERSION, $
     case "-b":
     case "--background" :
       $background = TRUE;
+    break;
+    case "-d":
+      $debug = 0x07;
+      fwrite(STDERR,"Debug, all\n");
     break;
     case "-dg":
     case "--debug";

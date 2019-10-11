@@ -6,7 +6,7 @@ package require Tk
 set ttyName "/dev/ttyUSB0"
 set panelEnabled no ;# Enable test interface to operator panel prototype for proof of concept.
 
-set HMIversion 02P02
+set HMIversion 03P01  
 set IPaddress 192.168.8.230
 set IPport 9900
 
@@ -18,8 +18,9 @@ set winWidth 1900
 set winHeight 800
 set winX +50
 set winY +50
-set cWidth 1800
+set cWidth 1600
 set cHeight 350
+
 # Note, following color definitions may by overwritten by specifications in PT1 data
 set fColor blue         ;# failure color
 set tColor black        ;# Clear track, not locked in route
@@ -38,6 +39,7 @@ set nColor grey
 set lColor black        ;# lines
 set xColor black        ;# text
 set mColor yellow       ;# barrier moving
+set arsColor yellow     ;# ARS disabled
 set scale 45
 set xOffset 5
 set yOffset 10
@@ -118,6 +120,7 @@ proc signal {name x y layout} {
       dLabel $x $y 0.4 1.6 $name "$name label"
       dTrack $x $y 0 0.5 2 0.5 "$name track"
       dTrainIDLabel  $x $y 0.7 0.2 "TEST" "$name trainIdLabel"
+      dRectangle $x $y 0.9 0.9 1.9 1.5 "$name ars"
       dLine $x $y 0.4 0.5 0.4 1.2 $name
       dLine $x $y 0.4 1.2 1 1.2 $name
       dArcL $x $y 1.2 1.2 0.2 "$name aspect"
@@ -129,6 +132,7 @@ proc signal {name x y layout} {
       dLabel $x $y 1.5 0.4 $name "$name label"
       dTrack $x $y 0 1.5 2 1.5 "$name track"
       dTrainIDLabel  $x $y 0.5 1.2 "TEST" "$name trainIdLabel"
+      dRectangle $x $y 1.1 1.1 0.1 0.5 "$name ars"
       dLine $x $y 1.6 1.5 1.6 0.8 $name
       dLine $x $y 1 0.8 1.6 0.8 $name
       dArcR $x $y 0.8 0.8 0.2 "$name aspect"
@@ -196,19 +200,30 @@ global nTrainFrame  trainMA entryFontSize toState toMode toDrive toDir
   grid [ttk::label .f.fTrain.t$index.nameX -text "Train name"] -column 0 -row 0 -padx 5 -pady 5 -sticky we
   grid [ttk::label .f.fTrain.t$index.name -text "-----" -textvariable trainName($index)] -column 1 -row 0 -padx 5 -pady 5 -sticky we
   grid [ttk::label .f.fTrain.t$index.valid -text "VOID" -textvariable trainValid($index)] -column 3 -row 0 -padx 5 -pady 5 -sticky we
-  grid [ttk::label .f.fTrain.t$index.modeX -text "Mode:"] -column 0 -row 1 -padx 5 -pady 5 -sticky we
-  grid [ttk::label .f.fTrain.t$index.mode -text "--" -textvariable trainMode($index)] -column 1 -row 1 -padx 5 -pady 5 -sticky we
-  grid [ttk::label .f.fTrain.t$index.ack -text "--" -textvariable trainACK($index)] -column 3 -row 1 -padx 5 -pady 5 -sticky we
-  grid [ttk::label .f.fTrain.t$index.positionX -text "Position:"] -column 0 -row 2 -padx 5 -pady 5 -sticky we
-  grid [ttk::label .f.fTrain.t$index.position -text "--- ---" -textvariable trainPosition($index)] -column 1 -columnspan 3 -row 2 -padx 5 -pady 5 -sticky we
-  grid [ttk::label .f.fTrain.t$index.speedX -text "Speed"] -column 0 -row 3 -padx 5 -pady 5 -sticky we
-  grid [ttk::label .f.fTrain.t$index.speed -text "---" -textvariable trainSpeed($index)] -column 1 -row 3 -padx 5 -pady 5 -sticky we
-  grid [ttk::label .f.fTrain.t$index.dirX -text "Dir"] -column 2 -row 3 -padx 5 -pady 5 -sticky we
-  grid [ttk::label .f.fTrain.t$index.dir -text "---" -textvariable trainNomDir($index)] -column 3 -row 3 -padx 5 -pady 5 -sticky we
-  grid [ttk::label .f.fTrain.t$index.lengthX -text "Length"] -column 0 -row 4 -padx 5 -pady 5 -sticky we
-  grid [ttk::label .f.fTrain.t$index.length -text "---" -textvariable trainLength($index)] -column 1 -row 4 -padx 5 -pady 5 -sticky we
-  grid [ttk::label .f.fTrain.t$index.pwrX -text "PWR"] -column 2 -row 4 -padx 5 -pady 5 -sticky we
-  grid [ttk::label .f.fTrain.t$index.pwr -text "---" -textvariable trainPWR($index)] -column 3 -row 4 -padx 5 -pady 5 -sticky we
+
+  grid [ttk::label .f.fTrain.t$index.tnX -text "Running number"] -column 0 -row 1 -padx 5 -pady 5 -sticky we
+  grid [ttk::entry .f.fTrain.t$index.trn -textvariable trainRunningNumber($index) -width 1] -column 1 -row 1 -padx 5 -pady 5 -sticky we
+  .f.fTrain.t$index.trn state disabled
+  grid [ttk::button .f.fTrain.t$index.trnSet -text "Set" -command "trnSet $index"] -column 2 -row 1 -padx 5 -pady 5 -sticky we
+  .f.fTrain.t$index.trnSet state disabled
+  
+  grid [ttk::label .f.fTrain.t$index.modeX -text "Mode:"] -column 0 -row 2 -padx 5 -pady 5 -sticky we
+  grid [ttk::label .f.fTrain.t$index.mode -text "--" -textvariable trainMode($index)] -column 1 -row 2 -padx 5 -pady 5 -sticky we
+  grid [ttk::label .f.fTrain.t$index.ack -text "--" -textvariable trainACK($index)] -column 3 -row 2 -padx 5 -pady 5 -sticky we
+
+  grid [ttk::label .f.fTrain.t$index.positionX -text "Position:"] -column 0 -row 3 -padx 5 -pady 5 -sticky we
+  grid [ttk::label .f.fTrain.t$index.position -text "--- ---" -textvariable trainPosition($index)] -column 1 -columnspan 3 -row 3 -padx 5 -pady 5 -sticky we
+
+  grid [ttk::label .f.fTrain.t$index.speedX -text "Speed"] -column 0 -row 4 -padx 5 -pady 5 -sticky we
+  grid [ttk::label .f.fTrain.t$index.speed -text "---" -textvariable trainSpeed($index)] -column 1 -row 4 -padx 5 -pady 5 -sticky we
+  grid [ttk::label .f.fTrain.t$index.dirX -text "Dir"] -column 2 -row 4 -padx 5 -pady 5 -sticky we
+  grid [ttk::label .f.fTrain.t$index.dir -text "---" -textvariable trainNomDir($index)] -column 3 -row 4 -padx 5 -pady 5 -sticky we
+
+  grid [ttk::label .f.fTrain.t$index.lengthX -text "Length"] -column 0 -row 5 -padx 5 -pady 5 -sticky we
+  grid [ttk::label .f.fTrain.t$index.length -text "---" -textvariable trainLength($index)] -column 1 -row 5 -padx 5 -pady 5 -sticky we
+  grid [ttk::label .f.fTrain.t$index.pwrX -text "PWR"] -column 2 -row 5 -padx 5 -pady 5 -sticky we
+  grid [ttk::label .f.fTrain.t$index.pwr -text "---" -textvariable trainPWR($index)] -column 3 -row 5 -padx 5 -pady 5 -sticky we
+
   grid [ttk::label .f.fTrain.t$index.maX -text "MA"] -column 0 -row 6 -padx 5 -pady 5 -sticky we
   grid [ttk::label .f.fTrain.t$index.maBalise -width 5 -textvariable trainMA($index)] -column 1 -columnspan 3 -row 6 -padx 5 -pady 5 -sticky we
 #  grid [ttk::label .f.fTrain.t$index.maDistance -width 5 -textvariable trainMAdist($index) -font "'Helvetica', $entryFontSize"] -column 2 -row 6 -padx 5 -pady 5 -sticky we
@@ -343,14 +358,16 @@ global scale xOffset yOffset xColor
 }
 
 proc dGrid {} {
-global xOffset yOffset scale cHeight cWidth showGrid
+global xOffset yOffset scale cHeight cWidth showGrid nXGrid nYGrid
   set showGrid no
+  set nXGrid [expr $cWidth / $scale]
+  set nYGrid [expr $cHeight / $scale]
   .f.buttonShowGrid configure -text "Show Grid"
-  for {set x $xOffset} {$x < $cWidth} {set x [expr $x + $scale]} {
-    .f.canvas create line $x $yOffset $x $cHeight -fill grey -width 1 -tags grid -state hidden
+  for {set x 0} {$x < $nXGrid} {incr x} {
+    .f.canvas create line [expr $xOffset+$x*$scale] $yOffset [expr $xOffset+$x*$scale] $cHeight -fill grey -width 1 -tags grid -state hidden
   }
-  for {set y $yOffset} {$y < $cHeight} {set y [expr $y + $scale]} {
-    .f.canvas create line $xOffset $y $cWidth $y -fill grey -width 1 -tags grid -state hidden
+  for {set y 0} {$y < $nYGrid} {incr y} {
+    .f.canvas create line $xOffset [expr $yOffset+$y*$scale] $cWidth [expr $yOffset+$y*$scale] -fill grey -width 1 -tags grid -state hidden
   }
 }
 
@@ -502,12 +519,12 @@ global fColor tColor toColor tcColor mColor lColor
     }
   }
 }
-proc signalState {name state routeState trackState {trainID ""}} {
-global fColor oColor cColor toColor tcColor tColor oppColor dColor panelEnabled
+proc signalState {name state routeState trackState arsState {trainID ""}} {
+global nColor fColor oColor cColor toColor tcColor tColor oppColor dColor arsColor panelEnabled
   if {$panelEnabled && $name == "S3"} {
     writeTty  [format "IS%02d%02d%02d" $state $routeState $trackState]
   }
-    switch $state {
+  switch $state {
     13 { # E_STOP_FACING
     .f.canvas itemconfigure "$name&&aspect" -fill $dColor
     }
@@ -547,6 +564,15 @@ global fColor oColor cColor toColor tcColor tColor oppColor dColor panelEnabled
     4 { ;#Locked FIXME obsolete
       .f.canvas itemconfigure "$name&&track" -fill $tcColor
       .f.canvas itemconfigure "$name&&trainIdLabel" -state hidden
+    }
+  }
+  switch $arsState {
+    0 { ;# ARS disabled
+      .f.canvas itemconfigure "$name&&ars" -fill $arsColor
+      .f.canvas itemconfigure "$name&&ars" -state normal
+    }
+    1 { ;# ARS enabled
+      .f.canvas itemconfigure "$name&&ars" -state hidden
     }
   }
 }
@@ -909,6 +935,11 @@ proc rlopr {} {
   sendCommand "Rl"
 }
 
+proc trnSet {trainIndex} {
+global trainRunningNumber
+  sendCommand "trnSet $trainIndex $trainRunningNumber($trainIndex)"
+}
+
 proc reqTo {trainIndex} {
   sendCommand "reqTo $trainIndex"
 }
@@ -967,6 +998,8 @@ global nTrainFrame
     .f.fTrain.t$x.sh_allowed state disabled
     .f.fTrain.t$x.fs_allowed state disabled
     .f.fTrain.t$x.ato_allowed state disabled
+    .f.fTrain.t$x.trn state disabled
+    .f.fTrain.t$x.trnSet state disabled
     .f.fTrain.t$x.reqTo state disabled
     .f.fTrain.t$x.relTo state disabled
     .f.fTrain.t$x.oMode.modeOFF state disabled
@@ -1003,6 +1036,8 @@ global aColor nTrainFrame
     .f.fTrain.t$x.sh_allowed state !disabled
     .f.fTrain.t$x.fs_allowed state !disabled
     .f.fTrain.t$x.ato_allowed state !disabled
+    .f.fTrain.t$x.trn state !disabled
+    .f.fTrain.t$x.trnSet state !disabled
     .f.fTrain.t$x.reqTo state !disabled
     .f.fTrain.t$x.relTo state !disabled
     .f.fTrain.t$x.oMode.modeOFF state !disabled
@@ -1088,7 +1123,7 @@ global debug tty
 proc processIndication {line} { ;# from Process indications from HMI server
 global debug
   if {$debug} {
-    puts "Modtaget: $line"
+    puts "Recieved: $line"
   }
   rotate
   eval $line
@@ -1127,14 +1162,18 @@ set startLoop yes
 set debug no
 
 set reqIP no
+set reqScale no
 foreach arg $argv {
-  puts $arg
   if {$reqIP} {
     set IPaddress $arg
     set reqIP no
   } else {
-    switch $arg {
-    --help {
+    if {$reqScale} {
+    set scale $arg
+    set reqScale no
+    } else {
+      switch $arg {
+      --help {
       puts "
 WinterTrain HMI
 Usage:
@@ -1143,31 +1182,36 @@ Usage:
 --IP <address>  Set server address
 --l             Set server address to localhost (127.0.0.1) 
 --p             Enable connection to HMI panel
+--scale <int>   Set scaling factor
 --d             Debug
 "
-      exit
-      }
-    --grid {
-      set showGrid yes
-      }
-    --test {
-      set startLoop no
-      }
-    --IP {
-      set reqIP yes
-      }
-    --l {
-      set IPaddress "127.0.0.1"
-      }
-    --p {
-      set panelEnabled yes
-      }
-    --d {
-      set debug yes
-      }
-    default {
-      puts "Unknown option: $arg"  
-      exit  
+        exit
+        }
+      --grid {
+        set showGrid yes
+        }
+      --test {
+        set startLoop no
+        }
+      --IP {
+        set reqIP yes
+        }
+      --scale {
+        set reqScale yes
+        }
+      --l {
+        set IPaddress "127.0.0.1"
+        }
+      --p {
+        set panelEnabled yes
+        }
+      --d {
+        set debug yes
+        }
+      default {
+        puts "Unknown option: $arg"  
+        exit  
+        }
       }
     }
   }
@@ -1218,7 +1262,7 @@ grid [tk::canvas .f.canvas -scrollregion "0 0 $cWidth $cHeight" -yscrollcommand 
 grid [tk::scrollbar .f.sbh -orient horizontal -command ".f.canvas xview"] -column 2 -columnspan 12 -row 4 -sticky we
 grid [tk::scrollbar .f.sbv -orient vertical -command ".f.canvas yview"] -column 0 -row 3 -sticky ns
 
-grid [ttk::frame .f.fTrain -padding "3 3 3 3" -relief solid -borderwidth 2] -column 1 -row 7 -columnspan 8 -sticky nwes
+grid [ttk::frame .f.fTrain -padding "3 3 3 3" -relief solid -borderwidth 2] -column 1 -row 7 -columnspan 12 -sticky nwes
 
 bind . <space> {eStop}
 
