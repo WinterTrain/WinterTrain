@@ -14,7 +14,7 @@ set IPport 9900
 set trackWidth 0.15
 set lineWidth 0.05
 set markWidth 0.08
-set winWidth 1900
+set winWidth 1800
 set winHeight 800
 set winX +50
 set winY +50
@@ -188,11 +188,12 @@ proc point {name x y layout} {
 }
 
 proc trainFrame {index} {
-global nTrainFrame  trainMA entryFontSize toState toMode toDrive toDir
+global nTrainFrame  trainMA entryFontSize toState toMode toDrive toDir trnSetValue
 
   set toMode($index) 5
   set toDrive($index) 1
   set toDir($index) 2
+  set trnSetValue($index) ""
 
   incr nTrainFrame
 # ----------------- Frame for Train status
@@ -202,9 +203,10 @@ global nTrainFrame  trainMA entryFontSize toState toMode toDrive toDir
   grid [ttk::label .f.fTrain.t$index.valid -text "VOID" -textvariable trainValid($index)] -column 3 -row 0 -padx 5 -pady 5 -sticky we
 
   grid [ttk::label .f.fTrain.t$index.tnX -text "Running number"] -column 0 -row 1 -padx 5 -pady 5 -sticky we
-  grid [ttk::entry .f.fTrain.t$index.trn -textvariable trainRunningNumber($index) -width 1] -column 1 -row 1 -padx 5 -pady 5 -sticky we
-  .f.fTrain.t$index.trn state disabled
-  grid [ttk::button .f.fTrain.t$index.trnSet -text "Set" -command "trnSet $index"] -column 2 -row 1 -padx 5 -pady 5 -sticky we
+  grid [ttk::label .f.fTrain.t$index.trn -textvariable trainTRN($index)] -column 1 -row 1 -padx 5 -pady 5 -sticky we
+  grid [ttk::entry .f.fTrain.t$index.trnInp -textvariable trnSetValue($index) -width 1] -column 2 -row 1 -padx 5 -pady 5 -sticky we
+  .f.fTrain.t$index.trnInp state disabled
+  grid [ttk::button .f.fTrain.t$index.trnSet -text "Set" -command "trnSet $index"] -column 3 -row 1 -padx 5 -pady 5 -sticky we
   .f.fTrain.t$index.trnSet state disabled
   
   grid [ttk::label .f.fTrain.t$index.modeX -text "Mode:"] -column 0 -row 2 -padx 5 -pady 5 -sticky we
@@ -670,8 +672,8 @@ global trainName trainLength
   set trainLength($trainIndex) $length
 }
 
-proc trainDataD {trainIndex mode balise distance speed nomDir pwr maAck valid status MAbalise MAdist} { ;# dynamic train data
-global trainMode trainPosition trainSpeed trainNomDir trainPWR trainACK trainValid toStatus trainMA
+proc trainDataD {trainIndex mode balise distance speed nomDir pwr maAck valid status MAbalise MAdist trn} { ;# dynamic train data
+global trainMode trainPosition trainSpeed trainNomDir trainPWR trainACK trainValid toStatus trainMA trainTRN
   set trainMode($trainIndex) $mode
   set trainPosition($trainIndex) "$balise $distance"
   set trainSpeed($trainIndex) $speed
@@ -681,6 +683,7 @@ global trainMode trainPosition trainSpeed trainNomDir trainPWR trainACK trainVal
   set trainValid($trainIndex) $valid
   set toStatus($trainIndex) $status
   set trainMA($trainIndex) "$MAbalise $MAdist"
+  set trainTRN($trainIndex) $trn
 }
 
 proc RBCversion {RBC PT1} {
@@ -936,8 +939,9 @@ proc rlopr {} {
 }
 
 proc trnSet {trainIndex} {
-global trainRunningNumber
-  sendCommand "trnSet $trainIndex $trainRunningNumber($trainIndex)"
+global trnSetValue
+  sendCommand "trnSet $trainIndex $trnSetValue($trainIndex)"
+  set trnSetValue($trainIndex) ""
 }
 
 proc reqTo {trainIndex} {
@@ -998,7 +1002,7 @@ global nTrainFrame
     .f.fTrain.t$x.sh_allowed state disabled
     .f.fTrain.t$x.fs_allowed state disabled
     .f.fTrain.t$x.ato_allowed state disabled
-    .f.fTrain.t$x.trn state disabled
+    .f.fTrain.t$x.trnInp state disabled
     .f.fTrain.t$x.trnSet state disabled
     .f.fTrain.t$x.reqTo state disabled
     .f.fTrain.t$x.relTo state disabled
@@ -1036,7 +1040,7 @@ global aColor nTrainFrame
     .f.fTrain.t$x.sh_allowed state !disabled
     .f.fTrain.t$x.fs_allowed state !disabled
     .f.fTrain.t$x.ato_allowed state !disabled
-    .f.fTrain.t$x.trn state !disabled
+    .f.fTrain.t$x.trnInp state !disabled
     .f.fTrain.t$x.trnSet state !disabled
     .f.fTrain.t$x.reqTo state !disabled
     .f.fTrain.t$x.relTo state !disabled
@@ -1231,38 +1235,48 @@ global liveT live liveTxt liveIndicator liveC
 
 ttk::style configure TButton -font "'Helvetica', $buttonFontSize"
 ttk::style configure TLabel -font "'Helvetica', $labelFontSize"
-#ttk::style configure TEntry -font "'Helvetica', 24"  // virker ikke jf web
+# ttk::style configure TEntry -font "'Helvetica', 16"  ;#// virker ikke jf web
 
 wm title . "WinterTrain HMI $HMIversion"
-wm geometry . $winWidth\x$winHeight$winX$winY
+wm geometry . "=$winWidth\x$winHeight"
+
 grid columnconfigure . 0 -weight 1; grid rowconfigure . 0 -weight 1
 
 grid [ttk::frame .f -padding "3 3 12 12"] -column 0 -row 0 -sticky nwes
-grid columnconfigure .f 6 -weight 1; grid rowconfigure .f 3 -weight 1
+grid columnconfigure .f all -weight 1
+grid rowconfigure .f 3 -weight 1
 
-grid [ttk::label .f.menu -text ""] -column 1 -row 1 -padx 5 -pady 5 -sticky we
-grid [ttk::label .f.response -textvariable response] -column 2 -columnspan 5 -row 6 -padx 5 -pady 5 -sticky we
-grid [ttk::label .f.status -textvariable status] -column 2 -row 5 -padx 5 -pady 5 -sticky we
-grid [ttk::label .f.versions -textvariable versions] -column 8 -columnspan 2 -row 5 -padx 5 -pady 5 -sticky e
-grid [ttk::label .f.live -textvariable liveIndicator] -column 10 -row 5 -padx 5 -pady 5 -sticky e
-grid [ttk::button .f.buttonRelease -text "Release" -command buttonRelease] -column 2 -row 1 -sticky we
-grid [ttk::button .f.buttonPoint -text "Spsk" -command buttonPoint] -column 3 -row 1 -sticky we
-grid [ttk::button .f.buttonPointBlock -text "Block" -command buttonPointBlock] -column 4 -row 1 -sticky we
-grid [ttk::button .f.buttonLX -text "Ovk" -command buttonLX] -column 5 -row 1 -sticky we
-grid [ttk::button .f.buttonARS -text "Ars" -command buttonARS] -column 6 -row 1 -sticky we
-grid [ttk::button .f.buttonStop -text "" -command eStop] -column 7 -row 1 -sticky w
-grid [ttk::button .f.buttonOpr -text "Request operation" -command rqopr] -column 7 -row 1 -sticky e
-grid [ttk::button .f.buttonShowGrid -text "Show Grid" -command showGrid] -column 8 -row 1 -sticky e
-grid [ttk::button .f.buttonShowLabel -text "Show Label" -command showLabel] -column 9 -row 1 -sticky e
-grid [ttk::button .f.buttonEHMI -text "Exit HMI" -command exit] -column 10 -row 1 -sticky e
-grid [ttk::button .f.buttonERBC -text "Exit RBC" -command exitRBC] -column 11 -row 1 -sticky e
-grid [ttk::button .f.buttonT -text "TEST" -command test] -column 12 -row 1 -sticky e
+# Buttons
+grid [ttk::button .f.buttonRelease -text "Release" -command buttonRelease] -column 2 -row 2 -sticky we
+grid [ttk::button .f.buttonPoint -text "Spsk" -command buttonPoint] -column 3 -row 2 -sticky we
+grid [ttk::button .f.buttonPointBlock -text "Block" -command buttonPointBlock] -column 4 -row 2 -sticky we
+grid [ttk::button .f.buttonLX -text "Ovk" -command buttonLX] -column 5 -row 2 -sticky we
+grid [ttk::button .f.buttonARS -text "Ars" -command buttonARS] -column 6 -row 2 -sticky we
+grid [ttk::button .f.buttonStop -text "" -command eStop] -column 7 -row 2 -sticky w
 
+# Track Layout
 grid [tk::canvas .f.canvas -scrollregion "0 0 $cWidth $cHeight" -yscrollcommand ".f.sbv set" -xscrollcommand ".f.sbh set"] -sticky nwes -column 2 -columnspan 12 -row 3
-grid [tk::scrollbar .f.sbh -orient horizontal -command ".f.canvas xview"] -column 2 -columnspan 12 -row 4 -sticky we
+grid [tk::scrollbar .f.sbh -orient horizontal -command ".f.canvas xview"] -column 2 -columnspan 14 -row 4 -sticky we
 grid [tk::scrollbar .f.sbv -orient vertical -command ".f.canvas yview"] -column 0 -row 3 -sticky ns
 
-grid [ttk::frame .f.fTrain -padding "3 3 3 3" -relief solid -borderwidth 2] -column 1 -row 7 -columnspan 12 -sticky nwes
+# Status and response
+grid [ttk::frame .f.fStatus -padding "3 3 3 3"] -column 1 -columnspan 14 -row 5 -sticky nwes
+grid [ttk::label .f.fStatus.status -textvariable status] -column 2 -row 7 -padx 5 -pady 5 -sticky w
+grid [ttk::label .f.fStatus.live -textvariable liveIndicator] -column 1 -row 7 -padx 5 -pady 5 -sticky e
+grid [ttk::label .f.fStatus.response -textvariable response] -column 1 -columnspan 3 -row 8 -padx 5 -pady 5 -sticky w
+
+# HMI commands
+grid [ttk::button .f.buttonOpr -text "Request operation" -command rqopr] -column 8 -row 6 -sticky e
+grid [ttk::button .f.buttonShowGrid -text "Show Grid" -command showGrid] -column 9 -row 6 -sticky e
+grid [ttk::button .f.buttonShowLabel -text "Show Label" -command showLabel] -column 10 -row 6 -sticky e
+grid [ttk::button .f.buttonEHMI -text "Exit HMI" -command exit] -column 11 -row 6 -sticky e
+grid [ttk::button .f.buttonERBC -text "Exit RBC" -command exitRBC] -column 12 -row 6 -sticky e
+grid [ttk::button .f.buttonT -text "TEST" -command test] -column 13 -row 6 -sticky e
+
+# Train data
+grid [ttk::frame .f.fTrain -padding "3 3 3 3" -relief solid -borderwidth 2] -column 1 -row 9 -columnspan 14 -sticky nwes
+
+grid [ttk::label .f.versions -textvariable versions] -column 2 -columnspan 6  -row 10 -padx 5 -pady 5 -sticky w
 
 bind . <space> {eStop}
 

@@ -7,9 +7,10 @@ $arduino = 0x33; // CBU Master, I2C addresse
 $ABUS = "";
 
 //--------------------------------------- Default Configuration
-$VERSION = "02P03";  // What does this mean with git?? FIXME
+$VERSION = "03P01";  // What does this mean with git?? FIXME
 $HMIport = 9900;
 $MCePort = 9901;
+$TMSport = 9903;
 $HMIaddress = "0.0.0.0";
 $ABUS_GATEWAYaddress = "10.0.0.201";
 $ABUS_GATEWAYport = 9200;
@@ -165,6 +166,7 @@ $clients = array();
 $clientsData = array();
 $inCharge = false;
 $inChargeMCe = false;
+$tmsClient = false;
 $radioBuf = "";
 
 //--------------------------------------- RBCIL variable
@@ -1912,6 +1914,7 @@ global $trainData, $trainIndex, $DATA_FILE, $SRallowed, $SHallowed, $FSallowed, 
     $train["MAbalise"] = "00:00:00:00:00";
     $train["MAbaliseName"] = "(00:00:00:00:00)";
     $train["MAdist"] = 0;
+    $train["trn"] = "";
     $trainIndex[$train["ID"]] = $index;
   }
 }
@@ -2268,6 +2271,10 @@ global $PT1, $clients, $clientsData, $inCharge, $trainData, $EC, $now, $balises,
       HMIindication($from, "displayResponse {Rejected}\n");
     }
   break;
+  case "trnSet":
+    $trainData[$param[1]]["trn"] = $param[2];
+    // send trn to TMS                        FIXME
+  break;
   case "test": 
     print "TEST: no function assigned\n";
   break;
@@ -2367,7 +2374,7 @@ global $now, $levelCrossings, $triggers, $PT1;
 
 //---------------------------------------------------------------------------------------------------------------------------  Server
 function initServer() {
-global $HMIport, $MCePort, $HMIaddress, $listener, $listenerMCe, $RADIO_LINK_PORT, $RADIO_DEVICE, $radioLink, $RF12GROUP, $RBC_RADIO_ID, $radio;
+global $HMIport, $MCePort, $TMSport, $HMIaddress, $listener, $listenerMCe, $listenerTMS, $RADIO_LINK_PORT, $RADIO_DEVICE, $radioLink, $RF12GROUP, $RBC_RADIO_ID, $radio;
 
   $listener = @stream_socket_server("tcp://$HMIaddress:".$HMIport, $errno, $errstr);
   if (!$listener) {
@@ -2382,6 +2389,13 @@ global $HMIport, $MCePort, $HMIaddress, $listener, $listenerMCe, $RADIO_LINK_POR
     die();
   }
   stream_set_blocking($listenerMCe,false);
+  
+  $listenerTMS = @stream_socket_server("tcp://$HMIaddress:".$TMSport, $errno, $errstr);
+  if (!$listenerTMS) {
+    fwrite(STDERR,"Cannot create server socket for TMS connection: $errstr ($errno)\n");
+    die();
+  }
+  stream_set_blocking($listenerTMS,false);
   
   if ($radio == "USB") {
     $radioLink = fopen($RADIO_DEVICE,"r+");
@@ -2400,10 +2414,11 @@ global $HMIport, $MCePort, $HMIaddress, $listener, $listenerMCe, $RADIO_LINK_POR
 }
 
 function Server() {
-global $ABUS, $listener, $listenerMCe, $clients, $clientsData, $inCharge, $inChargeMCe, $radioLink, $radioBuf, $radio;
+global $ABUS, $listener, $listenerMCe, $clients, $clientsData, $inCharge, $inChargeMCe, $listenerTMS, $tmsClient, $radioLink, $radioBuf, $radio;
   $read = $clients;
   $read[] = $listener;
   $read[] = $listenerMCe;
+  $read[] = $listenerTMS;
   if ($radio == "USB") $read[] = $radioLink; 
   if ($ABUS == "genie") {
     global $fromGenie;
@@ -2439,6 +2454,17 @@ global $ABUS, $listener, $listenerMCe, $clients, $clientsData, $inCharge, $inCha
         } else {
           fatalError("MCe: accept failed");
         }
+      } elseif ($r == $listenerTMS) { // new TMS Client
+        if ($newClient = stream_socket_accept($listenerMCe,0,$clientName)) {
+          msgLog("TMS Client $clientName signed in");
+          if (!$tmsClient) { // Only one TMC client
+            $tmsClients = $newClient;
+          } else {
+            fatalError("TMS already signed in");
+          }
+        } else {
+          fatalError("MCe: accept failed");
+        }
       } elseif ($ABUS == "genie" and $r == $fromGenie) {
         if ($data = fgets($r)) {
           AbusReceivedPacketGenie($data);
@@ -2464,12 +2490,17 @@ global $ABUS, $listener, $listenerMCe, $clients, $clientsData, $inCharge, $inCha
         } else { // Connection closed by client
           msgLog("Client ".stream_socket_get_name($r,true)." signed out");
           fclose($r);
-          unset($clientsData[(int)$r]);
-          unset($clients[array_search($r, $clients, TRUE)]);
-          if ($r == $inCharge) {
-            $inCharge = false;
-          } elseif ($r == $inChargeMCe) {
-            $inCharge = false;
+          if ($r == $tmsClient) {
+            $tmsClient = false;
+            msgLog("TMS client signed out");
+          } else {
+            unset($clientsData[(int)$r]);
+            unset($clients[array_search($r, $clients, TRUE)]);
+            if ($r == $inCharge) {
+              $inCharge = false;
+            } elseif ($r == $inChargeMCe) {
+              $inCharge = false;
+            }
           }
         }
       }
@@ -2624,7 +2655,7 @@ global $trainData, $MODE_TXT, $DIR_TXT, $PWR_TXT, $ACK_TXT, $TOSTATE_TXT;
 
   HMIindicationAll("trainDataD ".$index." {".$MODE_TXT[$train["authMode"]]." (".$MODE_TXT[$train["reqMode"]].")} ".$train["baliseName"]." {".
         $train["distance"]."} {".$train["speed"]."} {".$DIR_TXT[$train["nomDir"]]."} {".$PWR_TXT[$train["pwr"]]."} {".
-        $ACK_TXT[$train["MAreceived"]]."} ".$train["dataValid"]." {".$TOSTATE_TXT[$train["toStatus"]]."} {".$train["MAbaliseName"]."} ".$train["MAdist"]."\n");
+        $ACK_TXT[$train["MAreceived"]]."} ".$train["dataValid"]." {".$TOSTATE_TXT[$train["toStatus"]]."} {".$train["MAbaliseName"]."} {".$train["MAdist"]."} {".$train["trn"]."}\n");
 }
 
 function HMIindicationAll($msg) {// Send indication to all clients
@@ -2859,12 +2890,12 @@ global $VERSION, $PT1_VERSION;
 }
 
 function CmdLineParam() {
-global $debug, $background, $RBCIL_CONFIG, $DATA_FILE, $SYSTEM_NAME, $VERSION, $argv, $ABUS, $SRallowed, $SHallowed, $FSallowed, $ATOallowed, $doInitEC, $radio;
+global $debug, $background, $RBCIL_CONFIG, $DATA_FILE, $VERSION, $argv, $ABUS, $SRallowed, $SHallowed, $FSallowed, $ATOallowed, $doInitEC, $radio;
   if (in_array("-h",$argv)) {
     fwrite(STDERR,"Usage:
 -b, --background  start as daemon
 -c                select CBUMaster as Abus gateway
--f <conf_file>    configuration of $SYSTEM_NAME
+-f <conf_file>    configuration of RBCIL
 -g                select GenieMaster as Abus gateway 
 -n                do not connect to Abus gateway
 -D <Data_file>    PT1 and Train data
