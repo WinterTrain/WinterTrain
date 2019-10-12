@@ -166,7 +166,7 @@ $clients = array();
 $clientsData = array();
 $inCharge = false;
 $inChargeMCe = false;
-$tmsClient = false;
+$inChargeTMS = false;
 $radioBuf = "";
 
 //--------------------------------------- RBCIL variable
@@ -212,6 +212,9 @@ initServer();
 do {
   $now = time();
   if ($now != $pollTimeout) { // every 1 second
+if($inChargeTMS) {
+  fwrite($inChargeTMS,"RBC $now\n");
+}
     $pollTimeout = $now;
     checkECtimeout();
     checkTrainTimeout();
@@ -2272,7 +2275,7 @@ global $PT1, $clients, $clientsData, $inCharge, $trainData, $EC, $now, $balises,
     }
   break;
   case "trnSet":
-    $trainData[$param[1]]["trn"] = $param[2];
+    $trainData[$param[1]]["trn"] = isset($param[2]) ? $param[2] : "";
     // send trn to TMS                        FIXME
   break;
   case "test": 
@@ -2414,7 +2417,7 @@ global $HMIport, $MCePort, $TMSport, $HMIaddress, $listener, $listenerMCe, $list
 }
 
 function Server() {
-global $ABUS, $listener, $listenerMCe, $clients, $clientsData, $inCharge, $inChargeMCe, $listenerTMS, $tmsClient, $radioLink, $radioBuf, $radio;
+global $ABUS, $listener, $listenerMCe, $clients, $clientsData, $inCharge, $inChargeMCe, $inChargeTMS, $listenerTMS, $radioLink, $radioBuf, $radio;
   $read = $clients;
   $read[] = $listener;
   $read[] = $listenerMCe;
@@ -2455,15 +2458,25 @@ global $ABUS, $listener, $listenerMCe, $clients, $clientsData, $inCharge, $inCha
           fatalError("MCe: accept failed");
         }
       } elseif ($r == $listenerTMS) { // new TMS Client
-        if ($newClient = stream_socket_accept($listenerMCe,0,$clientName)) {
-          msgLog("TMS Client $clientName signed in");
-          if (!$tmsClient) { // Only one TMC client
-            $tmsClients = $newClient;
+          if ($newClient = stream_socket_accept($listenerTMS,0,$clientName)) {
+        if (!$inChargeTMS) { // Only one TMC client
+            $inChargeTMS = $newClient;
+            $clients[] = $newClient;
+            $clientsData[(int)$newClient] = [
+            "addr" => $clientName,
+            "signIn" => date("Ymd H:i:s"),
+            "inChargeSince" => "",
+            "type" => "TMS"];
+            
+            msgLog("TMS Client $clientName signed in");
+            
+            fwrite($newClient,"Hello this is RBCIL\n");
           } else {
-            fatalError("TMS already signed in");
+            fclose($newClient);
+            errLog("TMS already signed in");
           }
         } else {
-          fatalError("MCe: accept failed");
+          fatalError("TMS: accept failed");
         }
       } elseif ($ABUS == "genie" and $r == $fromGenie) {
         if ($data = fgets($r)) {
@@ -2486,21 +2499,21 @@ global $ABUS, $listener, $listenerMCe, $clients, $clientsData, $inCharge, $inCha
             case "MCe":
               processCommandMCe(trim($data),$r);
             break;
+            case "TMS":
+        print "Received: >$data<\n";
+            break;
           }
         } else { // Connection closed by client
           msgLog("Client ".stream_socket_get_name($r,true)." signed out");
           fclose($r);
-          if ($r == $tmsClient) {
-            $tmsClient = false;
-            msgLog("TMS client signed out");
-          } else {
-            unset($clientsData[(int)$r]);
-            unset($clients[array_search($r, $clients, TRUE)]);
-            if ($r == $inCharge) {
-              $inCharge = false;
-            } elseif ($r == $inChargeMCe) {
-              $inCharge = false;
-            }
+          unset($clientsData[(int)$r]);
+          unset($clients[array_search($r, $clients, TRUE)]);
+          if ($r == $inCharge) {
+            $inCharge = false;
+          } elseif ($r == $inChargeMCe) {
+            $inChargeMCe = false;
+          } elseif ($r == $inChargeTMS) {
+            $inChargeTMS = false;
           }
         }
       }

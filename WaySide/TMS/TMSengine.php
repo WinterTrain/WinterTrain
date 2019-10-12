@@ -4,8 +4,9 @@
 
 //--------------------------------------- Default Configuration
 $VERSION = "01P01";  // What does this mean with git?? FIXME
-$TMSport = 9903;
-$HMIaddress = "0.0.0.0";
+
+$RBCIL_SERVER_ADDR = "0.0.0.0";
+$RBCIL_SERVER_PORT = 9903;
 
 // File names
 $TMS_CONFIG = "TMSconf.php";
@@ -29,10 +30,16 @@ versionInfo();
 initTMS();
 forkToBackground();
 initMainProgram();
+initServer();
 do {
+print ".";
   $now = time();
+if ($tmsFh) {
+  fwrite($tmsFh,"TMS $now\n");
+}
 //  if ($now != $pollTimeout) { // every 1 second
 //  }
+  server();
 } while ($run);
 msgLog("Exitting...");
 
@@ -41,6 +48,35 @@ msgLog("Exitting...");
 
 function initTMS() {
 
+}
+
+//----------------------------------------------------------------------------------------- (server)
+
+function initServer() {
+global $tmsFh, $RBCIL_SERVER_ADDR, $RBCIL_SERVER_PORT;
+  $tmsFh = @stream_socket_client("tcp://$RBCIL_SERVER_ADDR:$RBCIL_SERVER_PORT", $errno,$errstr);
+  if (!$tmsFh) {
+    fwrite(STDERR,"Cannot create client socket for RBCIL: $errstr ($errno)\n");
+      die();
+  }
+  stream_set_blocking($tmsFh,false);
+  fwrite($tmsFh,"Hello, this is TMS\n");
+}
+
+function server() {
+global $tmsFh;
+  $except = NULL;
+  $write = NULL;
+  $read[] = $tmsFh;
+  if (stream_select($read, $write, $except, 0, 1000000 )) {
+    foreach ($read as $r) {
+      if ($r == $tmsFh) {
+        if ($data = fgets($r)) {
+          print "Data from RBCIL: >$data<\n";
+        } // else RBCIL gone
+      }
+    }
+  }
 }
 
 //----------------------------------------------------------------------------------------- Utility
