@@ -6,7 +6,7 @@ $PT1 = [
 
 "A" => [ // Bufferstop; begin of direction up
   "element" => "BSB",
-  "U" => ["name" => "01", "dist" => 15],
+  "U" => ["name" => "BG01", "dist" => 25],
   "HMI" => [
     "x" => 0,
     "y" => 2,
@@ -14,24 +14,24 @@ $PT1 = [
     ],
   ],
 
-"01" => [ // Balises
+"BG01" => [ // Balises
   "element" => "BL",
-  "ID" => "73:00:56:F0:55",
-  "U" => ["name" => "02", "dist" => 35],
-  "D" => ["name" => "A", "dist" => 20],
+  "ID" => "75:00:14:D2:51",
+  "U" => ["name" => "BG02", "dist" => 25],
+  "D" => ["name" => "A", "dist" => 25],
   ],
 
-"02" => [ // Balises
+"BG02" => [ // Balises
   "element" => "BL",
   "ID" => "76:00:0C:E3:A8",
-  "U" => ["name" => "T1", "dist" => 40],
-  "D" => ["name" => "01", "dist" => 35],
+  "U" => ["name" => "T1", "dist" => 1],
+  "D" => ["name" => "BG01", "dist" => 22],
   ],
 
 "T1" => [ // Trigger, direcction up, for enforced point holding
   "element" => "PHTU",
-  "U" => ["name" => "B", "dist" => 40],
-  "D" => ["name" => "02", "dist" => 35],
+  "U" => ["name" => "B", "dist" => 1],
+  "D" => ["name" => "BG02", "dist" => 1],
   "holdPoint" => "P1", // Affected point
   ],
 
@@ -39,11 +39,11 @@ $PT1 = [
   "element" => "SU",
   "type" => "MB",
   "EC" => [
-    "addr" => 203,
+    "addr" => 0,
     "type" => 41,
     "majorDevice" => 6,
     ],
-  "U" => ["name" => "03", "dist" => 10],
+  "U" => ["name" => "BG03", "dist" => 10],
   "D" => ["name" => "T1", "dist" => 0],
   "HMI" => [
     "x" => 3,
@@ -51,53 +51,53 @@ $PT1 = [
     ],
   ],
 
-"03" => [ // Balises
+"BG03" => [ // Balises
   "element" => "BL",
   "ID" => "74:00:15:65:29",
-  "U" => ["name" => "C", "dist" => 0],
-  "D" => ["name" => "B", "dist" => 0],
+  "U" => ["name" => "C", "dist" => 10],
+  "D" => ["name" => "B", "dist" => 10],
   ],
 
 "C" => [ // Signal, facing and ...
   "element" => "SD",
   "type" => "MB",
   "EC" => [
-    "addr" => 203,
+    "addr" => 0,
     "type" => 41,
     "majorDevice" => 7,
     ],
-  "U" => ["name" => "04", "dist" => 0],
-  "D" => ["name" => "03", "dist" => 10],
+  "U" => ["name" => "BG04", "dist" => 0],
+  "D" => ["name" => "BG03", "dist" => 10],
   "HMI" => [
     "x" => 5,
     "y" => 1,
     ],
   ],  
 
- "04" => [ // Balises
+"BG04" => [ // Balises
   "element" => "BL",
   "ID" => "73:00:56:D9:B2",
-  "U" => ["name" => "05", "dist" => 25],
-  "D" => ["name" => "C", "dist" => 65],
+  "U" => ["name" => "BG05", "dist" => 10],
+  "D" => ["name" => "C", "dist" => 10],
   ],
   
-"05" => [ // Balises
+"BG05" => [ // Balises
   "element" => "BL",
   "ID" => "76:00:0C:FA:7D",
-  "U" => ["name" => "D", "dist" => 20],
-  "D" => ["name" => "04", "dist" => 25],
+  "U" => ["name" => "D", "dist" => 10],
+  "D" => ["name" => "BG04", "dist" => 10],
   ],
   
 "D" => [ // Signal, facing and ...
   "element" => "SU",
   "type" => "MB",
   "EC" => [
-    "addr" => 203,
+    "addr" => 0,
     "type" => 0,
     "majorDevice" => 3,
     ],
   "U" => ["name" => "P1", "dist" => 10],
-  "D" => ["name" => "05", "dist" => 0],
+  "D" => ["name" => "BG05", "dist" => 0],
   "HMI" => [
     "x" => 9,
     "y" => 2,
@@ -115,8 +115,8 @@ $PT1 = [
     ],
   "supervisionState" => "S",
   "release" => "Y",
-  "R" => ["name" => "F", "dist" => 0],
-  "L" => ["name" => "E", "dist" => 0],
+  "R" => ["name" => "F", "dist" => 10],
+  "L" => ["name" => "E", "dist" => 10],
   "T" => ["name" => "D", "dist" => 0],
   "HMI" => [
     "or" => "fr",
@@ -130,11 +130,11 @@ $PT1 = [
   "element" => "SD",
   "type" => "MB",
   "EC" => [
-    "addr" => 203,
+    "addr" => 0,
     "type" => 41,
     "majorDevice" => 7,
     ],
-  "U" => ["name" => "06", "dist" => 0],
+  "U" => ["name" => "BG06", "dist" => 0],
   "D" => ["name" => "P1", "dist" => 10],
   "HMI" => [
     "x" => 13,
@@ -146,43 +146,42 @@ $PT1 = [
   "element" => "SD",
   "type" => "MB",
   "EC" => [
-    "addr" => 203,
+    "addr" => 0,
     "type" => 41,
     "majorDevice" => 7,
     ],
-  "U" => ["name" => "07", "dist" => 0],
+  "U" => ["name" => "BG07", "dist" => 0],
   "D" => ["name" => "P1", "dist" => 10],
   "HMI" => [
     "x" => 13,
     "y" => 3,
     ],
-  ],  
-
-  
-"06" => [ // Balises
-  "element" => "BL",
-  "ID" => "00:00:0C:FA:7D",
-  "U" => ["name" => "G", "dist" => 20],
-  "D" => ["name" => "E", "dist" => 25],
   ],
   
- "07" => [ // Balises
+"BG06" => [ // Balises
   "element" => "BL",
   "ID" => "00:00:0C:FA:7D",
-  "U" => ["name" => "H", "dist" => 20],
-  "D" => ["name" => "F", "dist" => 25],
+  "U" => ["name" => "G", "dist" => 10],
+  "D" => ["name" => "E", "dist" => 10],
+  ],
+  
+"BG07" => [ // Balises
+  "element" => "BL",
+  "ID" => "00:00:0C:FA:7D",
+  "U" => ["name" => "H", "dist" => 10],
+  "D" => ["name" => "F", "dist" => 10],
   ],
  
 "G" => [ // Signal, facing and ...
   "element" => "SU",
   "type" => "MB",
   "EC" => [
-    "addr" => 203,
+    "addr" => 0,
     "type" => 0,
     "majorDevice" => 3,
     ],
   "U" => ["name" => "P2", "dist" => 10],
-  "D" => ["name" => "06", "dist" => 0],
+  "D" => ["name" => "BG06", "dist" => 0],
   "HMI" => [
     "x" => 17,
     "y" => 2,
@@ -193,19 +192,17 @@ $PT1 = [
   "element" => "SU",
   "type" => "MB",
   "EC" => [
-    "addr" => 203,
+    "addr" => 0,
     "type" => 0,
     "majorDevice" => 3,
     ],
   "U" => ["name" => "P2", "dist" => 10],
-  "D" => ["name" => "07", "dist" => 0],
+  "D" => ["name" => "BG07", "dist" => 0],
   "HMI" => [
     "x" => 17,
     "y" => 4,
     ],
   ],
-
- 
  
 "P2" => [ // Point, trailing
   "element" => "PT",
@@ -216,8 +213,8 @@ $PT1 = [
     "minorDevice" => 0,
     ],
   "supervisionState" => "S",
-  "R" => ["name" => "G", "dist" => 0],
-  "L" => ["name" => "H", "dist" => 0],
+  "R" => ["name" => "G", "dist" => 10],
+  "L" => ["name" => "H", "dist" => 10],
   "T" => ["name" => "J", "dist" => 0],
   "HMI" => [
     "or" => "tl",
@@ -230,28 +227,28 @@ $PT1 = [
   "element" => "SD",
   "type" => "MB",
   "EC" => [
-    "addr" => 203,
+    "addr" => 0,
     "type" => 41,
     "majorDevice" => 7,
     ],
-  "U" => ["name" => "08", "dist" => 0],
+  "U" => ["name" => "BG08", "dist" => 0],
   "D" => ["name" => "P2", "dist" => 10],
   "HMI" => [
     "x" => 21,
     "y" => 1,
     ],
   ],  
-  "08" => [ // Balises
+  "BG08" => [ // Balises
   "element" => "BL",
-  "ID" => "00:00:00:00:00",
+  "ID" => "76:00:0C:B7:36",
   "U" => ["name" => "Q", "dist" => 20],
-  "D" => ["name" => "J", "dist" => 25],
+  "D" => ["name" => "J", "dist" => 50],
   ],
  
   
   "Q" => [ // Bufferstop; end of direction up
   "element" => "BSE",
-  "D" => ["name" => "08", "dist" => 35],
+  "D" => ["name" => "BG08", "dist" => 20],
   "HMI" => [
     "x" => 25,
     "y" => 2,
@@ -263,7 +260,7 @@ $PT1 = [
 $HMI = [ //------------------------------------------------------------------ HMI
   "baliseTrack" => [
     "tr1" => [
-      "balises" => [ "01"
+      "balises" => [ "BG01"
               ],
       "or" => "s",
       "x" => 1,
@@ -271,7 +268,7 @@ $HMI = [ //------------------------------------------------------------------ HM
       "l" => 1,
     ],
     "tr2" => [
-      "balises" => ["02",
+      "balises" => ["BG02",
               ],
       "or" => "s",
       "x" => 2,
@@ -279,7 +276,7 @@ $HMI = [ //------------------------------------------------------------------ HM
       "l" => 1,
     ],
     "tr3" => [
-      "balises" => [ "04"
+      "balises" => [ "BG04"
               ],
       "or" => "s",
       "x" => 7,
@@ -287,7 +284,7 @@ $HMI = [ //------------------------------------------------------------------ HM
       "l" => 1,
     ],
     "tr4" => [
-      "balises" => ["05",
+      "balises" => ["BG05",
               ],
       "or" => "s",
       "x" => 8,
@@ -295,7 +292,7 @@ $HMI = [ //------------------------------------------------------------------ HM
       "l" => 1,
     ],
     "tr5" => [
-      "balises" => ["06",
+      "balises" => ["BG06",
               ],
       "or" => "s",
       "x" => 15,
@@ -303,7 +300,7 @@ $HMI = [ //------------------------------------------------------------------ HM
       "l" => 2,
     ],
     "tr6" => [
-      "balises" => ["07",
+      "balises" => ["BG07",
               ],
       "or" => "s",
       "x" => 15,
@@ -311,7 +308,7 @@ $HMI = [ //------------------------------------------------------------------ HM
       "l" => 2,
     ],
     "tr7" => [
-      "balises" => ["08",
+      "balises" => ["BG08",
               ],
       "or" => "s",
       "x" => 23,

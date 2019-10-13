@@ -148,6 +148,18 @@ define("TRACK_TRAVERSALE_REJECT", 0);
 define("TRACK_TRAVERSALE_ACCEPT_DO_NOTHING", 1);
 define("TRACK_TRAVERSALE_ACCEPT_ACTIVATE_PAYLOAD", 2);
 
+// ---------------------------------------- TMS enummeration
+define("TRN_UDEF",0);
+define("TRN_NORMAL",1);
+define("TRN_COMPLETED",2);
+define("TRN_FAILED",3);
+define("TRN_DISABLED",4);
+define("TRN_BLOCKED",5);
+define("TRN_WAITING",6);
+define("TRN_CONFIRM",7);
+define("TRN_UNKNOWN",8);
+
+
 // -------------------------------------- Txt
 $MODE_TXT = [0 => "Udef", 1 => "SR", 2 => "SH", 3 => "FS", 4 => "ATO", 5 => "N", ];
 $DIR_TXT = [0 => "Udef", 1 => "Down", 2 => "Up", 3 => "Stop",];
@@ -1352,6 +1364,56 @@ function updateTrainPosition(&$train, $baliseName, $dist, $trackState) {
   }
   recUpdateTrainPosition($train, "U", -$PT1[$baliseName]["D"]["dist"], $baliseName, $trackState);
   recUpdateTrainPosition($train, "D", -$PT1[$baliseName]["D"]["dist"], $PT1[$baliseName]["D"]["name"], $trackState); // ???
+  if ($trackState !== T_CLEAR) { // Determine train location for TMS
+// print "Up: {$train["upElt"]} Down: {$train["downElt"]}\n";
+
+    searchNextSignal("U", $train["upElt"], $train["index"], true);
+    searchNextSignal("D", $train["downElt"], $train["index"], true);
+  }
+}
+
+function searchNextSignal($dir, $eltName, $trainIndex, $startElt) {
+global $PT1;
+
+  switch($PT1[$eltName]["element"]) {
+    case "SU":
+      if ($dir == "U" and !$startElt) {
+        print "Train $trainIndex in rear of signal $eltName\n";
+        
+      } else {
+      searchNextSignal($dir, $PT1[$eltName][$dir]["name"], $trainIndex, false);
+      }
+    break;
+    case "SD":
+      if ($dir == "D" and !$startElt) {
+        print "Train $trainIndex in rear of signal $eltName\n";
+        
+      } else {
+        searchNextSignal($dir, $PT1[$eltName][$dir]["name"], $trainIndex, false);
+      }
+    break;
+    case "BSB":
+    case "BSE":
+      return;
+    break;
+    case "PF":
+      if ($dir == "U") {
+        searchNextSignal($dir, $PT1[$eltName][($PT1[$eltName]["expectedLie"] == E_RIGHT ? "R" : "L")]["name"], $trainIndex, false);
+      } else {
+        searchNextSignal($dir,$PT1[$eltName]["T"]["name"], $trainIndex, false);
+      }
+    break;
+    case "PT":
+      if ($dir == "U") {
+        searchNextSignal($dir,$PT1[$eltName]["T"]["name"], $trainIndex, false);
+      } else {
+        searchNextSignal($dir, $PT1[$eltName][($PT1[$eltName]["expectedLie"] == E_RIGHT ? "R" : "L")]["name"], $trainIndex, false);
+      }
+    break;
+    default:
+      searchNextSignal($dir, $PT1[$eltName][$dir]["name"], $trainIndex, false);
+    break;
+  }
 }
 
 function getNextEltName($eltName, $dir) {
@@ -1820,7 +1882,7 @@ global $trainData, $trainIndex;
 
 function initRBCIL() {
 global $trainData, $trainIndex, $DATA_FILE, $SRallowed, $SHallowed, $FSallowed, $ATOallowed;
-  //require($DATA_FILE);
+
   foreach ($trainData as $index => &$train) {
     $train["SRallowed"] = $SRallowed;
     $train["SHallowed"] = $SHallowed;
@@ -1848,6 +1910,8 @@ global $trainData, $trainIndex, $DATA_FILE, $SRallowed, $SHallowed, $FSallowed, 
     $train["MAbaliseName"] = "(00:00:00:00:00)";
     $train["MAdist"] = 0;
     $train["trn"] = "";
+    $train["trnStatus"] = TRN_UDEF;
+    $train["index"] = $index; // to know index when only one set of train data is handed over
     $trainIndex[$train["ID"]] = $index;
   }
 }
@@ -2206,7 +2270,7 @@ global $PT1, $clients, $clientsData, $inCharge, $trainData, $EC, $now, $balises,
   break;
   case "trnSet":
     $trainData[$param[1]]["trn"] = isset($param[2]) ? $param[2] : "";
-    notifyTMS("SetTRN {$trainData[$param[1]]["ID"]} {$trainData[$param[1]]["trn"]}");
+    notifyTMS("setTRN {$param[1]} {$trainData[$param[1]]["trn"]}");
   break;
   case "test": 
     print "TEST: no function assigned\n";
@@ -2308,13 +2372,18 @@ global $now, $levelCrossings, $triggers, $PT1;
 /// ------------------------------------------------------------------------------------------------------------------------- TMS interface 
 
 function processCommandTMS($command) { // Process Commands from TMS engine
-global $now, $tmsHB, $tmsRunning;
+global $now, $tmsHB, $tmsRunning, $trainData;
 print "From TMS: $command\n";
   $param = explode(" ",$command);
   switch ($param[0]) {
     case "TMS_HB":
       $tmsHB = $now + TMS_TIMEOUT;
       $tmsRunning = true;
+    break;
+    case "Hello":
+    break;
+    case "trnStatus":
+      $trainData[$param[1]]["trnStatus"] = $param[2];
     break;
     default:
       print "Ups unimplemented TMS command ".$param[0]."\n";
@@ -2330,10 +2399,10 @@ global $inChargeTMS;
 }
 
 function TMSStartup() {
-global $inChargeTMS, $trainData;
- fwrite($inChargeTMS,"Hello this is RBCIL\n");
-  foreach ($trainData as $train) { // train data
-    notifyTMS("SetTRN {$train["ID"]} {$train["trn"]}");
+global $inChargeTMS, $trainData, $version;
+ fwrite($inChargeTMS,"Hello this is RBCIL version $version\n");
+  foreach ($trainData as $index => $train) { // train data
+    notifyTMS("setTRN {$index} {$train["trn"]}");
     // send current locaiton of train FIXME
   }
 }
@@ -2634,7 +2703,7 @@ global $trainData, $MODE_TXT, $DIR_TXT, $PWR_TXT, $ACK_TXT, $TOSTATE_TXT;
 
   HMIindicationAll("trainDataD ".$index." {".$MODE_TXT[$train["authMode"]]." (".$MODE_TXT[$train["reqMode"]].")} ".$train["baliseName"]." {".
         $train["distance"]."} {".$train["speed"]."} {".$DIR_TXT[$train["nomDir"]]."} {".$PWR_TXT[$train["pwr"]]."} {".
-        $ACK_TXT[$train["MAreceived"]]."} ".$train["dataValid"]." {".$TOSTATE_TXT[$train["toStatus"]]."} {".$train["MAbaliseName"]."} {".$train["MAdist"]."} {".$train["trn"]."}\n");
+        $ACK_TXT[$train["MAreceived"]]."} ".$train["dataValid"]." {".$TOSTATE_TXT[$train["toStatus"]]."} {".$train["MAbaliseName"]."} {".$train["MAdist"]."} {".$train["trn"]."} {".$train["trnStatus"]."}\n");
 }
 
 function HMIindicationAll($msg) {// Send indication to all clients

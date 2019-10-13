@@ -52,6 +52,8 @@ set entryFontSize 12
 set labelFontSize 12
 set buttonFontSize 12
 
+set trnStatusColor {blue black grey red yellow lightblue green orange blue}
+
 set emergencyStop false
 
 #----------------------------------------------------------------------------------------------------------------- Display elements
@@ -672,8 +674,8 @@ global trainName trainLength
   set trainLength($trainIndex) $length
 }
 
-proc trainDataD {trainIndex mode balise distance speed nomDir pwr maAck valid status MAbalise MAdist trn} { ;# dynamic train data
-global trainMode trainPosition trainSpeed trainNomDir trainPWR trainACK trainValid toStatus trainMA trainTRN
+proc trainDataD {trainIndex mode balise distance speed nomDir pwr maAck valid status MAbalise MAdist trn trnStatus} { ;# dynamic train data
+global trainMode trainPosition trainSpeed trainNomDir trainPWR trainACK trainValid toStatus trainMA trainTRN trnStatusColor
   set trainMode($trainIndex) $mode
   set trainPosition($trainIndex) "$balise $distance"
   set trainSpeed($trainIndex) $speed
@@ -684,6 +686,7 @@ global trainMode trainPosition trainSpeed trainNomDir trainPWR trainACK trainVal
   set toStatus($trainIndex) $status
   set trainMA($trainIndex) "$MAbalise $MAdist"
   set trainTRN($trainIndex) $trn
+  .f.fTrain.t$trainIndex.trn configure -foreground [lindex $trnStatusColor $trnStatus]
 }
 
 proc RBCversion {RBC PT1} {
@@ -1098,7 +1101,7 @@ global server
   }
 }
 
-proc openTty {} {
+proc openTty {} { ;# interface to track table demo
 global ttyName tty panelEnabled
   if {$panelEnabled} {
     set tty [open $ttyName r+]
@@ -1170,6 +1173,8 @@ set tmsStatus "Udef."
 
 set reqIP no
 set reqScale no
+set reqFsize no
+
 foreach arg $argv {
   if {$reqIP} {
     set IPaddress $arg
@@ -1179,45 +1184,51 @@ foreach arg $argv {
     set scale $arg
     set reqScale no
     } else {
-      switch $arg {
-      --help {
-      puts "
+      if {$reqFsize} {
+      set labelFontSize $arg
+      set buttonFontSize $arg
+      set reqFsize no
+      } else {
+        switch $arg {
+        --help {
+        puts "
 WinterTrain HMI
 Usage:
---grid          Display gridlines
+--scale <int>   Set scale factor of track layout
+--font <int>    Set font size
 --test          Do not enter event loop 
 --IP <address>  Set server address
 --l             Set server address to localhost (127.0.0.1) 
 --p             Enable connection to HMI panel
---scale <int>   Set scaling factor
 --d             Debug
 "
-        exit
+          exit
+          }
+        --test {
+          set startLoop no
+          }
+        --IP {
+          set reqIP yes
+          }
+        --scale {
+          set reqScale yes
+          }
+        --l {
+          set IPaddress "127.0.0.1"
+          }
+        --font {
+          set reqFsize yes
         }
-      --grid {
-        set showGrid yes
-        }
-      --test {
-        set startLoop no
-        }
-      --IP {
-        set reqIP yes
-        }
-      --scale {
-        set reqScale yes
-        }
-      --l {
-        set IPaddress "127.0.0.1"
-        }
-      --p {
-        set panelEnabled yes
-        }
-      --d {
-        set debug yes
-        }
-      default {
-        puts "Unknown option: $arg"  
-        exit  
+        --p {
+          set panelEnabled yes
+          }
+        --d {
+          set debug yes
+          }
+        default {
+          puts "Unknown option: $arg"  
+          exit  
+          }
         }
       }
     }
@@ -1258,16 +1269,16 @@ grid [ttk::button .f.buttonARS -text "Ars" -command buttonARS] -column 6 -row 2 
 grid [ttk::button .f.buttonStop -text "" -command eStop] -column 7 -row 2 -sticky w
 
 # Track Layout
-grid [tk::canvas .f.canvas -scrollregion "0 0 $cWidth $cHeight" -yscrollcommand ".f.sbv set" -xscrollcommand ".f.sbh set"] -sticky nwes -column 2 -columnspan 12 -row 3
-grid [tk::scrollbar .f.sbh -orient horizontal -command ".f.canvas xview"] -column 2 -columnspan 14 -row 4 -sticky we
+grid [tk::canvas .f.canvas -scrollregion "0 0 $cWidth $cHeight" -yscrollcommand ".f.sbv set" -xscrollcommand ".f.sbh set"] -sticky nwes -column 1 -columnspan 12 -row 3
+grid [tk::scrollbar .f.sbh -orient horizontal -command ".f.canvas xview"] -column 1 -columnspan 14 -row 4 -sticky we
 grid [tk::scrollbar .f.sbv -orient vertical -command ".f.canvas yview"] -column 0 -row 3 -sticky ns
 
 # Status and response
 # grid [ttk::frame .f.fStatus -padding "3 3 3 3"] -column 1 -columnspan 14 -row 5 -sticky nwes
-grid [ttk::label .f.live -textvariable liveIndicator] -column 1 -row 5 -padx 5 -pady 5 -sticky e
-grid [ttk::label .f.status -textvariable status] -column 2 -row 5 -padx 5 -pady 5 -sticky w
+grid [ttk::label .f.live -textvariable liveIndicator -width 1] -column 1 -row 5 -padx 5 -pady 5 -sticky e
+grid [ttk::label .f.status -textvariable status] -column 2 -columnspan 8 -row 5 -padx 5 -pady 5 -sticky w
 grid [ttk::label .f.tmsStatus -textvariable tmsStatus] -column 12 -columnspan 2 -row 5 -padx 5 -pady 5 -sticky w
-grid [ttk::label .f.response -textvariable response] -column 1 -columnspan 3 -row 6 -padx 5 -pady 5 -sticky w
+grid [ttk::label .f.response -textvariable response] -column 1 -columnspan 8 -row 6 -padx 5 -pady 5 -sticky w
 
 # HMI commands
 grid [ttk::button .f.buttonOpr -text "Request operation" -command rqopr] -column 8 -row 8 -sticky e

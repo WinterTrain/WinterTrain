@@ -11,6 +11,7 @@ $RBCIL_SERVER_PORT = 9903;
 // File names
 $TMS_CONFIG = "TMSconf.php";
 $DATA_FILE = "../SiteData/CBU/CBU.php";
+$TT_FILE = "../SiteData/CBU/TimeTables.php";
 $ERRLOG = "Log/TMS_ErrLog.txt";
 $MSGLOG = "Log/TMS.log";
 
@@ -20,10 +21,24 @@ define("RECONNECT_TIMEOUT",3);
 
 // ----------------------------------------Enummerations
 
+define("TRN_UDEF",0);
+define("TRN_NORMAL",1);
+define("TRN_COMPLETED",2);
+define("TRN_FAILED",3);
+define("TRN_DISABLED",4);
+define("TRN_BLOCKED",5);
+define("TRN_WAITING",6);
+define("TRN_CONFIRM",7);
+define("TRN_UNKNOWN",8);
+
 //--------------------------------------- System variable
 $debug = 0x00; $background = FALSE; $run = true;
 $startTime = time();
 $heartBeatTimer = 0;
+
+//----------------------------------------- TMS variable
+$tt = array(); // time tables
+
 
 //---------------------------------------------------------------------------------------------------------- System 
 cmdLineParam();
@@ -40,8 +55,8 @@ do {
       $now = time();
       if ($heartBeatTimer < $now) {
         $heartBeatTimer = $now + HEARTBEAT_TIMEOUT;
-        if ($tmsFh) {
-          fwrite($tmsFh,"TMS_HB $now\n");
+        if ($RBCILfh) {
+          sendCommandRBCIL("TMS_HB $now");
         }
       }
 //    if ($now != $pollTimeout) { // every 1 second
@@ -56,19 +71,63 @@ msgLog("Exitting...");
 // ---------------------------------------------------------------------------------------------------------- TMS
 
 
-function initTMS() {
+function initTMS($data) {
+global $DATA_FILE, $trainData, $tt; 
+  require($DATA_FILE);
+  foreach ($trainData as $index => &$train) { // train data
+    $train["trn"] = "";
+  }
 
+  importTimetable();
+}
+
+function importTimetable() {
+global $tt, $TT_FILE;
+  require($TT_FILE);
+  $tt = $timeTables; // merge FIXME
+}
+
+function processNotificationRBCIL($data) {
+global $tt;
+  $param = explode(" ",$data);
+  switch ($param[0]) {
+    case "setTRN":
+      if (isset($param[2])) {
+        if (array_key_exists($param[2],$tt)) { // trn known in time table
+          $trainData[$param[1]]["trn"] = $param[2];
+          sendTRNstatus($param[1], TRN_NORMAL);
+        } else {
+          sendTRNstatus($param[1], TRN_UNKNOWN);
+        }
+      } else { // clear TRN for train
+        $trainData[$param[1]]["trn"] = "";
+      }
+    break;
+    case "Hello":
+    break;
+    default:
+      print "Ups unimplemented notification\n";
+  }
+}
+
+function sendTRNstatus($index, $status) {
+  sendCommandRBCIL("trnStatus $index $status");
+}
+
+function sendCommandRBCIL($command) {
+global $RBCILfh;
+  fwrite($RBCILfh,"$command\n");
 }
 
 //----------------------------------------------------------------------------------------- (server)
 
 function initServer() {
-global $tmsFh, $RBCIL_SERVER_ADDR, $RBCIL_SERVER_PORT;
-  $tmsFh = @stream_socket_client("tcp://$RBCIL_SERVER_ADDR:$RBCIL_SERVER_PORT", $errno,$errstr);
-  if ($tmsFh) {
-    stream_set_blocking($tmsFh,false);
+global $RBCILfh, $RBCIL_SERVER_ADDR, $RBCIL_SERVER_PORT, $version;
+  $RBCILfh = @stream_socket_client("tcp://$RBCIL_SERVER_ADDR:$RBCIL_SERVER_PORT", $errno,$errstr);
+  if ($RBCILfh) {
+    stream_set_blocking($RBCILfh,false);
     msgLog("Connected to RBCIL");
-    fwrite($tmsFh,"Hello, this is TMS\n");
+    sendCommandRBCIL("Hello this is TMS version $version");
     return true;
   } else {
     fwrite(STDERR,"Cannot create client socket for RBCIL: $errstr ($errno)\n");
@@ -78,14 +137,15 @@ global $tmsFh, $RBCIL_SERVER_ADDR, $RBCIL_SERVER_PORT;
 
 
 function server() {
-global $tmsFh;
+global $RBCILfh;
   $except = NULL;
   $write = NULL;
-  $read[] = $tmsFh;
+  $read[] = $RBCILfh;
   if (stream_select($read, $write, $except, 0, 1000000 )) {
     foreach ($read as $r) {
-      if ($r == $tmsFh) {
+      if ($r == $RBCILfh) {
         if ($data = fgets($r)) {
+         processNotificationRBCIL(trim($data));
           print "Data from RBCIL: >$data<\n";
         } else { //RBCIL gone
         msgLog("RBCIL gone");
@@ -113,14 +173,16 @@ global $VERSION, $PT1_VERSION;
 }
 
 function CmdLineParam() {
-global $debug, $background, $TMS_CONFIG, $VERSION, $argv;
+global $debug, $background, $TMS_CONFIG, $VERSION, $argv, $RBCIL_SERVER_ADDR, $TT_FILE, $DATA_FILE;
   if (in_array("-h",$argv)) {
     fwrite(STDERR,"TMS Engine, version $VERSION
 Usage:
--b, --background  start as daemon
--f <conf_file>    configuration of TMS engine
--D <Data_file>    PT1 and Train data
--d                enable debug info, level all
+-b, --background      Start as daemon
+-f <file name>        Configuration file for TMS engine
+-D <file name>        PT1 and Train data file
+-T <file name>        Time tables file
+-IP <IP-address>      IP-address of RBCIL to contact
+-d                    Enable debug info, level all
 ");
     exit();
   }
@@ -145,15 +207,36 @@ Usage:
       if ($p) {
         $DATA_FILE = $p;
         if (!is_readable($DATA_FILE)) {
-          fwrite(STDERR,"Error: option -f: Cannot read $DATA_FILE \n");
+          fwrite(STDERR,"Error: option -D: Cannot read $DATA_FILE \n");
           exit(1); // If a data file is specified at the cmd line, it has to exist
         }
       } else {
         fwrite(STDERR,"Error: option -D: File name is missing \n");
         exit(1);
       }
-      break;
-      break;
+    break;
+    case "-T":
+      list(,$p) = each($argv);
+      if ($p) {
+        $TT_FILE = $p;
+        if (!is_readable($TT_FILE)) {
+          fwrite(STDERR,"Error: option -T: Cannot read $TT_FILE \n");
+          exit(1); // If a time table file is specified at the cmd line, it has to exist
+        }
+      } else {
+        fwrite(STDERR,"Error: option -T: File name is missing \n");
+        exit(1);
+      }
+    break;
+    case "-IP":
+      list(,$p) = each($argv);
+      if ($p) {
+        $RBCIL_SERVER_ADDR = $p;
+      } else {
+        fwrite(STDERR,"Error: option -IP: IP-address is missing \n");
+        exit(1);
+      }
+    break;
     case "-b":
     case "--background" :
       $background = TRUE;
