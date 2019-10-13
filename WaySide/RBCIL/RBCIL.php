@@ -7,7 +7,7 @@ $arduino = 0x33; // CBU Master, I2C addresse
 $ABUS = "";
 
 //--------------------------------------- Default Configuration
-$VERSION = "03P01";  // What does this mean with git?? FIXME
+$VERSION = "03P02";  // What does this mean with git?? FIXME
 $HMIport = 9900;
 $MCePort = 9901;
 $TMSport = 9903;
@@ -48,6 +48,7 @@ define("LX_WARNING_TIME",2);
 define("POSITION_TIMEOUT", 10);
 define("PUMP_TIMEOUT",4);
 define("EC_RETRY_DELAY", 120000); // delat before Abus retry in uS
+define("TMS_TIMEOUT",6);
 
 // ----------------------------------------Enummerations
 // Route
@@ -195,6 +196,11 @@ $ATOallowed = 0;
 $testStep = 0;
 $testBg = "BG06";
 $testDist = "30";
+
+// TMS interface
+$tmsHB = 0;
+$tmsRunning = false;
+
 //---------------------------------------------------------------------------------------------------------- System 
 cmdLineParam();
 if ($ABUS == "cbu") {
@@ -212,9 +218,7 @@ initServer();
 do {
   $now = time();
   if ($now != $pollTimeout) { // every 1 second
-if($inChargeTMS) {
-  fwrite($inChargeTMS,"RBC $now\n");
-}
+//    notifyTMS("RBCIL $now");
     $pollTimeout = $now;
     checkECtimeout();
     checkTrainTimeout();
@@ -228,6 +232,10 @@ if($inChargeTMS) {
   if ($now - $pumpTimeout >= PUMP_TIMEOUT) {
     $pumpTimeout = $now;
     pumpSignal();
+  }
+  if ($tmsHB < $now) { // TMS gone
+    $tmsRunning = false;
+    $tmsHB = $now + TMS_TIMEOUT;
   }
 //  if ($ABUS == "cbu" and $timeoutUr <= $now) {
 //    $urTimeout = $now + 60;
@@ -1810,84 +1818,6 @@ global $trainData, $trainIndex;
   return ""; // If this is reached. No start signal were met.
 }
 
-/// ----------- TMS part -------------
-function TMS_DebugPrint($msg) {
-global $debug;
-  if ($debug & 0x04) {
-    print "TMS:".date('h:i:s').": ".$msg."\n";
-  }
-}
-
-function hasSchedule($trainID) {
-  return False;
-}
-
-function cancelSchedule($trainID) {
-  TMS_DebugPrint("Canceling Schedule for train $trainID");
-  return;
-}
-
-function continueSchedule($trainID) {
-  TMS_DebugPrint("Continuing Schedule for train $trainID");
-  return;
-}
-
-function createSchedule($trainID) {
-//For now, consider releasing all routes to avoid ressource conflict?
-global $trainData, $trainIndex;
-  TMS_DebugPrint("Trying to create Schedule for train $trainID");
-  $train = $trainData[$trainIndex[$trainID]];
-  //Choose direction and find start signal.
-  //For now, always try to start ATO in the up direction
-  $dir = "U";
-  //Find signal
-  $start = findStartSignalForTrain($trainID, $dir);
-  if ($start != "") {
-    TMS_DebugPrint("Will try to start schedule of train $trainID from signal $start");
-  } else {
-    TMS_DebugPrint("Could not find start signal in direction $dir of train $trainID");
-    $dir = getReverseDir($dir);
-    $start = findStartSignalForTrain($trainID, $dir);
-    if ($start != "") {
-      TMS_DebugPrint("Will try to start schedule of train $trainID from signal $start");
-    } else {
-      TMS_DebugPrint("Could not find start signal in direction $dir of train $trainID. Aborting schedule creation");
-      return;
-    }
-  }
-  //TODO: Start signal was found. Launch schedule accordingly
-  //Create routes until next stop (disregarding the start as a stop)
-  //Record schedule table
-  return;
-}
-
-function TMS() {
-global $trainData;
-  //Check if a train is in ATO
-  foreach($trainData as $train) {
-    //Check if train is in ATO
-    $trainID = $train["ID"];
-    if ($train["authMode"] == M_ATO) {
-      //check if train already has a schedule
-      if (hasSchedule($trainID)) {
-        //Continue schedule
-        continueSchedule($trainID);
-      } else {
-        //Create schedule
-        createSchedule($trainID);
-      }
-    } else {
-      //check if train has a schedule
-      if (hasSchedule($trainID)) {
-        //Train is not anymore in ATO. Cancel schedule
-        cancelSchedule($trainID);
-      }
-    }
-  }
-}
-/// ------------ End of TMS ----------
-// End of addition of new helpers
-
 function initRBCIL() {
 global $trainData, $trainIndex, $DATA_FILE, $SRallowed, $SHallowed, $FSallowed, $ATOallowed;
   //require($DATA_FILE);
@@ -2121,7 +2051,7 @@ global $testBg, $testDist, $trainData, $PT1;
   updateTrainPosition($train, $train["baliseName"], $train["distance"], T_OCCUPIED_UP);
 }
 
-function processCommand($command, $from) { // process HMI command
+function processCommand($command, $from) { // process command from HMI
 global $PT1, $clients, $clientsData, $inCharge, $trainData, $EC, $now, $balises, $run, $emergencyStop;
 //  debugPrint ("HMI command: >$command<");
   $param = explode(" ",$command);
@@ -2276,7 +2206,7 @@ global $PT1, $clients, $clientsData, $inCharge, $trainData, $EC, $now, $balises,
   break;
   case "trnSet":
     $trainData[$param[1]]["trn"] = isset($param[2]) ? $param[2] : "";
-    // send trn to TMS                        FIXME
+    notifyTMS("SetTRN {$trainData[$param[1]]["ID"]} {$trainData[$param[1]]["trn"]}");
   break;
   case "test": 
     print "TEST: no function assigned\n";
@@ -2375,6 +2305,39 @@ global $now, $levelCrossings, $triggers, $PT1;
   }
 }
 
+/// ------------------------------------------------------------------------------------------------------------------------- TMS interface 
+
+function processCommandTMS($command) { // Process Commands from TMS engine
+global $now, $tmsHB, $tmsRunning;
+print "From TMS: $command\n";
+  $param = explode(" ",$command);
+  switch ($param[0]) {
+    case "TMS_HB":
+      $tmsHB = $now + TMS_TIMEOUT;
+      $tmsRunning = true;
+    break;
+    default:
+      print "Ups unimplemented TMS command ".$param[0]."\n";
+    break;
+  }
+};
+
+function notifyTMS($data) {
+global $inChargeTMS;
+  if ($inChargeTMS) {
+    fwrite($inChargeTMS, "$data\n");
+  }
+}
+
+function TMSStartup() {
+global $inChargeTMS, $trainData;
+ fwrite($inChargeTMS,"Hello this is RBCIL\n");
+  foreach ($trainData as $train) { // train data
+    notifyTMS("SetTRN {$train["ID"]} {$train["trn"]}");
+    // send current locaiton of train FIXME
+  }
+}
+
 //---------------------------------------------------------------------------------------------------------------------------  Server
 function initServer() {
 global $HMIport, $MCePort, $TMSport, $HMIaddress, $listener, $listenerMCe, $listenerTMS, $RADIO_LINK_PORT, $RADIO_DEVICE, $radioLink, $RF12GROUP, $RBC_RADIO_ID, $radio;
@@ -2417,7 +2380,8 @@ global $HMIport, $MCePort, $TMSport, $HMIaddress, $listener, $listenerMCe, $list
 }
 
 function Server() {
-global $ABUS, $listener, $listenerMCe, $clients, $clientsData, $inCharge, $inChargeMCe, $inChargeTMS, $listenerTMS, $radioLink, $radioBuf, $radio;
+global $ABUS, $listener, $listenerMCe, $clients, $clientsData, $inCharge, $inChargeMCe, $inChargeTMS, $listenerTMS,
+$radioLink, $radioBuf, $radio, $tmsRunning;
   $read = $clients;
   $read[] = $listener;
   $read[] = $listenerMCe;
@@ -2469,8 +2433,7 @@ global $ABUS, $listener, $listenerMCe, $clients, $clientsData, $inCharge, $inCha
             "type" => "TMS"];
             
             msgLog("TMS Client $clientName signed in");
-            
-            fwrite($newClient,"Hello this is RBCIL\n");
+            TMSStartup();
           } else {
             fclose($newClient);
             errLog("TMS already signed in");
@@ -2500,7 +2463,7 @@ global $ABUS, $listener, $listenerMCe, $clients, $clientsData, $inCharge, $inCha
               processCommandMCe(trim($data),$r);
             break;
             case "TMS":
-        print "Received: >$data<\n";
+              processCommandTMS(trim($data));
             break;
           }
         } else { // Connection closed by client
@@ -2514,6 +2477,7 @@ global $ABUS, $listener, $listenerMCe, $clients, $clientsData, $inCharge, $inCha
             $inChargeMCe = false;
           } elseif ($r == $inChargeTMS) {
             $inChargeTMS = false;
+            $tmsRunning = false;
           }
         }
       }
@@ -2521,16 +2485,17 @@ global $ABUS, $listener, $listenerMCe, $clients, $clientsData, $inCharge, $inCha
   }
 }
 
-// ------------------------------------------------------------------------------------ HMI
+// --------------------------------------------------------------------------------------------------------------------------------- HMI
 
 function HMIstartup($client) { // Initialize specific client and send track layout, status, train data, version info
-global $PT1, $HMI, $trainData, $VERSION, $PT1_VERSION;
+global $PT1, $HMI, $trainData, $VERSION, $PT1_VERSION, $tmsRunning;
 // HMI screen layout
   HMIindication($client,"RBCversion $VERSION $PT1_VERSION\n");
   HMIindication($client,".f.canvas delete all\n");
   HMIindication($client,"destroyTrainFrame\n");
   HMIindication($client,"dGrid\n");  
   HMIindication($client,"resetLabel\n");  
+  HMIindication($client,"set ::tmsStatus ".($tmsRunning ? "{TMS Running}" : "{No TMS}")."\n");  
   foreach ($HMI["color"] as $param => $color) {
     HMIindication($client,"set ::$param $color\n");  
   }
@@ -2590,7 +2555,8 @@ global $PT1, $HMI, $trainData, $VERSION, $PT1_VERSION;
 }
 
 function updateHMI() {
-global $HMI, $PT1, $emergencyStop;
+global $HMI, $PT1, $emergencyStop, $tmsRunning;
+  HMIindicationAll("set ::tmsStatus ".($tmsRunning ? "{TMS Running}" : "{No TMS}")."\n");  
   HMIindicationAll("eStopInd ".($emergencyStop ? "true" : "false")."\n");
   foreach ($HMI["baliseTrack"] as $name => &$baliseTrack) { // compute indication of HMI track segment only representating balises
     $baliseTrack["trackState"] = T_CLEAR;

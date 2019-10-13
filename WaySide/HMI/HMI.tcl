@@ -1144,6 +1144,7 @@ global response status nColor nTrainFrame
   .f.buttonOpr state disabled
   .f.buttonOpr configure -text "Request Operation" -command rqopr
   set status "Not connected"
+  set tmsStatus "Udef."
   set response ""
   .f.canvas itemconfigure {!button} -fill $nColor
   .f.canvas itemconfigure button -activefill "" -activeoutline ""
@@ -1164,6 +1165,8 @@ set showLabel no
 set showGrid no
 set startLoop yes
 set debug no
+set status "Udef."
+set tmsStatus "Udef."
 
 set reqIP no
 set reqScale no
@@ -1260,18 +1263,19 @@ grid [tk::scrollbar .f.sbh -orient horizontal -command ".f.canvas xview"] -colum
 grid [tk::scrollbar .f.sbv -orient vertical -command ".f.canvas yview"] -column 0 -row 3 -sticky ns
 
 # Status and response
-grid [ttk::frame .f.fStatus -padding "3 3 3 3"] -column 1 -columnspan 14 -row 5 -sticky nwes
-grid [ttk::label .f.fStatus.status -textvariable status] -column 2 -row 7 -padx 5 -pady 5 -sticky w
-grid [ttk::label .f.fStatus.live -textvariable liveIndicator] -column 1 -row 7 -padx 5 -pady 5 -sticky e
-grid [ttk::label .f.fStatus.response -textvariable response] -column 1 -columnspan 3 -row 8 -padx 5 -pady 5 -sticky w
+# grid [ttk::frame .f.fStatus -padding "3 3 3 3"] -column 1 -columnspan 14 -row 5 -sticky nwes
+grid [ttk::label .f.live -textvariable liveIndicator] -column 1 -row 5 -padx 5 -pady 5 -sticky e
+grid [ttk::label .f.status -textvariable status] -column 2 -row 5 -padx 5 -pady 5 -sticky w
+grid [ttk::label .f.tmsStatus -textvariable tmsStatus] -column 12 -columnspan 2 -row 5 -padx 5 -pady 5 -sticky w
+grid [ttk::label .f.response -textvariable response] -column 1 -columnspan 3 -row 6 -padx 5 -pady 5 -sticky w
 
 # HMI commands
-grid [ttk::button .f.buttonOpr -text "Request operation" -command rqopr] -column 8 -row 6 -sticky e
-grid [ttk::button .f.buttonShowGrid -text "Show Grid" -command showGrid] -column 9 -row 6 -sticky e
-grid [ttk::button .f.buttonShowLabel -text "Show Label" -command showLabel] -column 10 -row 6 -sticky e
-grid [ttk::button .f.buttonEHMI -text "Exit HMI" -command exit] -column 11 -row 6 -sticky e
-grid [ttk::button .f.buttonERBC -text "Exit RBC" -command exitRBC] -column 12 -row 6 -sticky e
-grid [ttk::button .f.buttonT -text "TEST" -command test] -column 13 -row 6 -sticky e
+grid [ttk::button .f.buttonOpr -text "Request operation" -command rqopr] -column 8 -row 8 -sticky e
+grid [ttk::button .f.buttonShowGrid -text "Show Grid" -command showGrid] -column 9 -row 8 -sticky e
+grid [ttk::button .f.buttonShowLabel -text "Show Label" -command showLabel] -column 10 -row 8 -sticky e
+grid [ttk::button .f.buttonEHMI -text "Exit HMI" -command exit] -column 11 -row 8 -sticky e
+grid [ttk::button .f.buttonERBC -text "Exit RBC" -command exitRBC] -column 12 -row 8 -sticky e
+grid [ttk::button .f.buttonT -text "TEST" -command test] -column 13 -row 8 -sticky e
 
 # Train data
 grid [ttk::frame .f.fTrain -padding "3 3 3 3" -relief solid -borderwidth 2] -column 1 -row 9 -columnspan 14 -sticky nwes

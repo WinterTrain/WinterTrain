@@ -15,12 +15,15 @@ $ERRLOG = "Log/TMS_ErrLog.txt";
 $MSGLOG = "Log/TMS.log";
 
 // ---------------------------------------- Timing
+define("HEARTBEAT_TIMEOUT",5);
+define("RECONNECT_TIMEOUT",3);
 
 // ----------------------------------------Enummerations
 
 //--------------------------------------- System variable
 $debug = 0x00; $background = FALSE; $run = true;
 $startTime = time();
+$heartBeatTimer = 0;
 
 //---------------------------------------------------------------------------------------------------------- System 
 cmdLineParam();
@@ -30,16 +33,23 @@ versionInfo();
 initTMS();
 forkToBackground();
 initMainProgram();
-initServer();
 do {
-print ".";
-  $now = time();
-if ($tmsFh) {
-  fwrite($tmsFh,"TMS $now\n");
-}
-//  if ($now != $pollTimeout) { // every 1 second
-//  }
-  server();
+  if (initServer()) {
+    do {
+//      print ".";
+      $now = time();
+      if ($heartBeatTimer < $now) {
+        $heartBeatTimer = $now + HEARTBEAT_TIMEOUT;
+        if ($tmsFh) {
+          fwrite($tmsFh,"TMS_HB $now\n");
+        }
+      }
+//    if ($now != $pollTimeout) { // every 1 second
+//    }
+    } while (server() and $run);
+  } else {
+    sleep(RECONNECT_TIMEOUT);
+  }
 } while ($run);
 msgLog("Exitting...");
 
@@ -55,13 +65,17 @@ function initTMS() {
 function initServer() {
 global $tmsFh, $RBCIL_SERVER_ADDR, $RBCIL_SERVER_PORT;
   $tmsFh = @stream_socket_client("tcp://$RBCIL_SERVER_ADDR:$RBCIL_SERVER_PORT", $errno,$errstr);
-  if (!$tmsFh) {
+  if ($tmsFh) {
+    stream_set_blocking($tmsFh,false);
+    msgLog("Connected to RBCIL");
+    fwrite($tmsFh,"Hello, this is TMS\n");
+    return true;
+  } else {
     fwrite(STDERR,"Cannot create client socket for RBCIL: $errstr ($errno)\n");
-      die();
+    return false;
   }
-  stream_set_blocking($tmsFh,false);
-  fwrite($tmsFh,"Hello, this is TMS\n");
 }
+
 
 function server() {
 global $tmsFh;
@@ -73,10 +87,14 @@ global $tmsFh;
       if ($r == $tmsFh) {
         if ($data = fgets($r)) {
           print "Data from RBCIL: >$data<\n";
-        } // else RBCIL gone
+        } else { //RBCIL gone
+        msgLog("RBCIL gone");
+        return false;
+        }
       }
     }
   }
+  return true;
 }
 
 //----------------------------------------------------------------------------------------- Utility
