@@ -1265,7 +1265,7 @@ function recUpdateTrainPosition(&$train, $dir, $x, $eltName, $trackState) {
       if ($b >= $train["upEltDist"]) {
           $train["upEltDist"] = $b;
           $train["upElt"] = $eltName;
-      }
+      } 
       //checkIfRouteRelease($eltName); TODO: probably delete
       // activate occupation triggered functions when element gets occupied
       switch($elt["element"]) {
@@ -1365,7 +1365,7 @@ function updateTrainPosition(&$train, $baliseName, $dist, $trackState) {
   recUpdateTrainPosition($train, "U", -$PT1[$baliseName]["D"]["dist"], $baliseName, $trackState);
   recUpdateTrainPosition($train, "D", -$PT1[$baliseName]["D"]["dist"], $PT1[$baliseName]["D"]["name"], $trackState); // ???
   if ($trackState !== T_CLEAR) { // Determine train location for TMS
-// print "Up: {$train["upElt"]} Down: {$train["downElt"]}\n";
+ print "Up: {$train["upElt"]} Down: {$train["downElt"]}\n";
 
     searchNextSignal("U", $train["upElt"], $train["index"], true);
     searchNextSignal("D", $train["downElt"], $train["index"], true);
@@ -1374,27 +1374,43 @@ function updateTrainPosition(&$train, $baliseName, $dist, $trackState) {
 
 function searchNextSignal($dir, $eltName, $trainIndex, $startElt) {
 global $PT1;
-
+print ">$eltName<\n";
+  if ($eltName == "") {
+print "Ups no elt name\n";
+  return;
+}
   switch($PT1[$eltName]["element"]) {
     case "SU":
       if ($dir == "U" and !$startElt) {
-        print "Train $trainIndex in rear of signal $eltName\n";
-        
+        trainLocationTMS($trainIndex, $eltName);
+//        print "Train $trainIndex in rear of signal $eltName\n";
+        return;
       } else {
-      searchNextSignal($dir, $PT1[$eltName][$dir]["name"], $trainIndex, false);
+        searchNextSignal($dir, $PT1[$eltName][$dir]["name"], $trainIndex, false);
       }
     break;
     case "SD":
       if ($dir == "D" and !$startElt) {
-        print "Train $trainIndex in rear of signal $eltName\n";
-        
+        trainLocationTMS($trainIndex, $eltName);
+//        print "Train $trainIndex in rear of signal $eltName\n";
+        return;
       } else {
         searchNextSignal($dir, $PT1[$eltName][$dir]["name"], $trainIndex, false);
       }
     break;
     case "BSB":
-    case "BSE":
+      if ($dir == "D") {
+        trainLocationTMS($trainIndex, $eltName);
+//        print "Train $trainIndex in rear of signal $eltName\n";
+      }
       return;
+    break;
+    case "BSE":
+      if ($dir == "U") {
+        trainLocationTMS($trainIndex, $eltName);
+//        print "Train $trainIndex in rear of signal $eltName\n";
+      }
+    return;
     break;
     case "PF":
       if ($dir == "U") {
@@ -2385,11 +2401,20 @@ print "From TMS: $command\n";
     case "trnStatus":
       $trainData[$param[1]]["trnStatus"] = $param[2];
     break;
+    case "setRoute":
+      setRoute($param[1], $param[2]); // 
+    break;
     default:
       print "Ups unimplemented TMS command ".$param[0]."\n";
     break;
   }
 };
+
+function trainLocationTMS($trainIndex, $eltName) {
+  $progress = "A"; // until progress implemented FIXME
+  notifyTMS("trainLoc $trainIndex $eltName $progress");
+}
+
 
 function notifyTMS($data) {
 global $inChargeTMS;

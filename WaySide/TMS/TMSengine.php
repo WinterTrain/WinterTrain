@@ -37,7 +37,7 @@ $startTime = time();
 $heartBeatTimer = 0;
 
 //----------------------------------------- TMS variable
-$tt = array(); // time tables
+$tts = array(); // time tables
 
 
 //---------------------------------------------------------------------------------------------------------- System 
@@ -71,7 +71,7 @@ msgLog("Exitting...");
 // ---------------------------------------------------------------------------------------------------------- TMS
 
 
-function initTMS($data) {
+function initTMS() {
 global $DATA_FILE, $trainData, $tt; 
   require($DATA_FILE);
   foreach ($trainData as $index => &$train) { // train data
@@ -82,18 +82,69 @@ global $DATA_FILE, $trainData, $tt;
 }
 
 function importTimetable() {
-global $tt, $TT_FILE;
+global $tts, $TT_FILE;
   require($TT_FILE);
-  $tt = $timeTables; // merge FIXME
+  $tts = $timeTables; // merge FIXME
+}
+
+function processTrainLocaiton($trainIndex, $nextElementName, $progress) {
+global $tts, $trainData;
+  $trn = $trainData[$trainIndex]["trn"];
+  if (array_key_exists($trn, $tts)) { // trn known in time table
+    $tt = &$tts[$trn];
+    $routeIndex = findRoute($tt, $nextElementName);
+    if ($routeIndex !== false) {
+      $action = ttAction($trainIndex, $routeIndex, $tt);
+      print "action $action\n";
+      switch ($action) {
+        case TRN_NORMAL:
+          setRoute($tt["routeTable"][$routeIndex]["start"], $tt["routeTable"][$routeIndex]["dest"]);
+        break;
+        case TRN_COMPLETED:
+          print "train $trainIndex at destination\n";
+        break;
+        case TRN_FAILED:
+        case TRN_DISABLED:
+        case TRN_BLOCKED:
+        case TRN:WAITING:
+        break;
+        case TRN_CONFIRM:
+        break;
+      }
+      sendTRNstatus($trainIndex, $action);
+    } else { // no route for this location, but maybe for locaiton 2...
+      print "no route for $trainIndex at $nextElementName\n";
+    }
+  } else { // unknown trn, ignore location report
+  print "unknown trn\n";
+  }
+}
+
+function ttAction($trainIndex, $routeIndex, $tt) {
+global $trainData;
+print "$trainIndex $routeIndex\n";
+  if ($tt["routeTable"][$routeIndex]["cond"] == "E") return TRN_COMPLETED;
+  return TRN_NORMAL;
+}
+
+function findRoute($tt, $nextSignal) {
+
+  foreach ($tt["routeTable"] as $routeIndex => $route) {
+    if ($route["start"] == $nextSignal) {
+    print "found route $routeIndex\n";
+      return $routeIndex;
+    }
+  }
+  return false;
 }
 
 function processNotificationRBCIL($data) {
-global $tt;
+global $tts, $trainData;
   $param = explode(" ",$data);
   switch ($param[0]) {
     case "setTRN":
       if (isset($param[2])) {
-        if (array_key_exists($param[2],$tt)) { // trn known in time table
+        if (array_key_exists($param[2],$tts)) { // trn known in time table
           $trainData[$param[1]]["trn"] = $param[2];
           sendTRNstatus($param[1], TRN_NORMAL);
         } else {
@@ -105,13 +156,20 @@ global $tt;
     break;
     case "Hello":
     break;
+    case "trainLoc":
+      processTrainLocaiton($param[1], $param[2], $param[3]);
+    break;
     default:
       print "Ups unimplemented notification\n";
   }
 }
 
-function sendTRNstatus($index, $status) {
-  sendCommandRBCIL("trnStatus $index $status");
+function setRoute($start, $destination) {
+  sendCommandRBCIL("setRoute $start $destination");
+}
+
+function sendTRNstatus($trainIndex, $status) {
+  sendCommandRBCIL("trnStatus $trainIndex $status");
 }
 
 function sendCommandRBCIL($command) {
@@ -145,8 +203,8 @@ global $RBCILfh;
     foreach ($read as $r) {
       if ($r == $RBCILfh) {
         if ($data = fgets($r)) {
-         processNotificationRBCIL(trim($data));
           print "Data from RBCIL: >$data<\n";
+          processNotificationRBCIL(trim($data));
         } else { //RBCIL gone
         msgLog("RBCIL gone");
         return false;

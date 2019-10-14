@@ -241,14 +241,14 @@ $PT1 = [
   "BG08" => [ // Balises
   "element" => "BL",
   "ID" => "76:00:0C:B7:36",
-  "U" => ["name" => "Q", "dist" => 20],
+  "U" => ["name" => "Q", "dist" => 35],
   "D" => ["name" => "J", "dist" => 50],
   ],
  
   
   "Q" => [ // Bufferstop; end of direction up
   "element" => "BSE",
-  "D" => ["name" => "BG08", "dist" => 20],
+  "D" => ["name" => "BG08", "dist" => 0],
   "HMI" => [
     "x" => 25,
     "y" => 2,
