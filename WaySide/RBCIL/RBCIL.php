@@ -115,6 +115,15 @@ define("IL_LX_DEACTIVATE",13);
 define("ARS_DISABLED",0);
 define("ARS_ENABLED",1);
 
+// FOllowing must be aligned with TMS
+define("RS_UDEF",0);                // state undefined
+define("RS_ROUTE_SET",1);           // route set
+define("RS_REJECTED",2);            // impossible route
+define("RS_BLOCKED",3);             // route temporary blocked by other route
+define("RS_INHIBITED",4);           // route cannot be set due to inhibitions
+define("RS_ARS_DISABLED",5);        // ARS disabled for route
+
+
 // -------------------------------------- EC enummerations
 // Order
 define("O_ROADPASS",41);
@@ -166,6 +175,7 @@ $DIR_TXT = [0 => "Udef", 1 => "Down", 2 => "Up", 3 => "Stop",];
 $PWR_TXT = [0 => "NoComm", 1 => "R", 2 => "L", 3 => "No PWR",];
 $ACK_TXT = [0 => "NO_MA", 1 => "MA_ACK"];
 $TOSTATE_TXT = [0 => "Udef.", 1 => "DMI", 2 => "Remote take-over", 3 => "Pending take-over", 4 => "Pending release"];
+$RS_TXT = [RS_UDEF => "Route state undefined", RS_OK => "OK", RS_BLOCKED => "Route rejected, destination already locked", RS_REJECTED => "Rute rejected"];
 
 //--------------------------------------- System variable
 $debug = 0x00; $background = FALSE; $run = true; $doInitEC = true;
@@ -534,6 +544,8 @@ global $DATA_FILE, $trainData, $PT1_VERSION, $PT1, $HMI, $errorFound, $totalElem
   } else {
     msgLog("Found $totalElement elements in PT1 data file: $DATA_FILE");
   }
+  
+// FIXME Check uniqueness of balises
 // HMI data
   if (array_key_exists("", $HMI["baliseTrack"])) { unset($HMI["baliseTrack"][""]); } // delete any remaining template entry
   foreach ($HMI["baliseTrack"] as $trackName => $baliseTrack ) {
@@ -1301,12 +1313,14 @@ function recUpdateTrainPosition(&$train, $dir, $x, $eltName, $trackState) {
       }
     }
   }
+//    print "Element: $eltName type: {$elt["element"]} retn $dir\n";
 
   //Check if further element in this direction may be occupied
   if (($dir == "U") and ($b <= $train["upFront"])) {
     //keep looking up unless it was facing point
     switch ($elt["element"]) {
       case "PF": // --------------------FIXME position gets ambiguous if point is thrown behind the train before train reads a new balise
+      // FIXME reimplement the JP invalidation function: discharge position if train is no longer occupying a facing point (seen from the reported balise. As long as the train is occupying the facint point, the position is uniquely given by the lie of the point.
 /* JP:       //stop and invalidate position
         $train["positionUnambiguous"] = False;
         RBC_IL_DebugPrint("Invalidating postion in $eltName due to b=".$b." <= train[upFront]=".$train["upFront"]);
@@ -1331,6 +1345,7 @@ function recUpdateTrainPosition(&$train, $dir, $x, $eltName, $trackState) {
         RBC_IL_DebugPrint("Invalidating postion in $eltName due to a=".$a." >= train[downFront]=".$train["downFront"]);
         return;
 */
+//print "Exp Lie: {$elt["expectedLie"]}\n";
         recUpdateTrainPosition($train, $dir, $a, $elt[($elt["expectedLie"] == E_RIGHT ? "R" : "L")]["name"], $trackState);
         return;
       case "PF":
@@ -1357,7 +1372,7 @@ function updateTrainPosition(&$train, $baliseName, $dist, $trackState) {
   $train["positionUnambiguous"] = True;
   if ($trackState !== T_CLEAR) {
     //init data representing element up and down of train that will be found during recUpdateTrainPosition
-    $train["upElt"] = "";
+    $train["upElt"] = ""; // FIXME up/dowmElt not set if train is occupying a bufferstop. Bufferstop is used in TMS to determine time table completed
     $train["downElt"] = "";
     $train["upEltDist"] = $train["upFront"];
     $train["downEltDist"] = $train["downFront"];
@@ -1374,15 +1389,15 @@ function updateTrainPosition(&$train, $baliseName, $dist, $trackState) {
 
 function searchNextSignal($dir, $eltName, $trainIndex, $startElt) {
 global $PT1;
-print ">$eltName<\n";
+//print ">$eltName<\n";
   if ($eltName == "") {
-print "Ups no elt name\n";
+print "Warning: no eltName for Dir: $dir, TrainIndex $trainIndex\n";
   return;
 }
   switch($PT1[$eltName]["element"]) {
     case "SU":
       if ($dir == "U" and !$startElt) {
-        trainLocationTMS($trainIndex, $eltName);
+        trainLocationTMS($trainIndex, $eltName, $dir);
 //        print "Train $trainIndex in rear of signal $eltName\n";
         return;
       } else {
@@ -1391,7 +1406,7 @@ print "Ups no elt name\n";
     break;
     case "SD":
       if ($dir == "D" and !$startElt) {
-        trainLocationTMS($trainIndex, $eltName);
+        trainLocationTMS($trainIndex, $eltName, $dir);
 //        print "Train $trainIndex in rear of signal $eltName\n";
         return;
       } else {
@@ -1400,14 +1415,14 @@ print "Ups no elt name\n";
     break;
     case "BSB":
       if ($dir == "D") {
-        trainLocationTMS($trainIndex, $eltName);
+        trainLocationTMS($trainIndex, $eltName, $dir);
 //        print "Train $trainIndex in rear of signal $eltName\n";
       }
       return;
     break;
     case "BSE":
       if ($dir == "U") {
-        trainLocationTMS($trainIndex, $eltName);
+        trainLocationTMS($trainIndex, $eltName, $dir);
 //        print "Train $trainIndex in rear of signal $eltName\n";
       }
     return;
@@ -1785,12 +1800,13 @@ global $trainData, $trainIndex;
   }
 }
 
-function setRoute($s1, $s2) {
+function setRoute($s1, $s2) { // FIXME return status: destinguish between impossible routes, routes temporary blocked by other routes and routes blocked by inhibitions
   RBC_IL_DebugPrint("Trying to set route  $s1 $s2");
   //If $s2 already locked do nothing
   if (isLocked($s2)) {
     RBC_IL_DebugPrint("Target signal $s2 is already locked. Aborting Route setting");
-    return "Route rejected, $s2 already locked";
+    return RS_BLOCKED;
+//    return "Route rejected, $s2 already locked";
   }
   if (lockRoute($s1, $s2)) {
     //check if this is an extension
@@ -1803,10 +1819,10 @@ function setRoute($s1, $s2) {
       searchAndAssociateTrainToRoute($s2);
     }
     openSignalsInRoute($s2);
-    return "OK";
+    return RS_ROUTE_SET;
   } else {
     RBC_IL_DebugPrint("Route from $s1 to $s2 cannot be locked");
-    return "Route rejected";
+    return RS_REJECTED;
   }
 }
 
@@ -2132,7 +2148,7 @@ global $testBg, $testDist, $trainData, $PT1;
 }
 
 function processCommand($command, $from) { // process command from HMI
-global $PT1, $clients, $clientsData, $inCharge, $trainData, $EC, $now, $balises, $run, $emergencyStop;
+global $PT1, $clients, $clientsData, $inCharge, $trainData, $EC, $now, $balises, $run, $emergencyStop, $RS_TXT;
 //  debugPrint ("HMI command: >$command<");
   $param = explode(" ",$command);
   switch ($param[0]) {
@@ -2252,7 +2268,7 @@ global $PT1, $clients, $clientsData, $inCharge, $trainData, $EC, $now, $balises,
   break;
   case "tr": // Try to lock the route
     if ($from == $inCharge) {
-      HMIindication($from, "displayResponse {".setRoute($param[1], $param[2])."}\n");
+      HMIindication($from, "displayResponse {".$RS_TXT[setRoute($param[1], $param[2])]."}\n");
     }
   break;
   case "reqTo":
@@ -2388,7 +2404,7 @@ global $now, $levelCrossings, $triggers, $PT1;
 /// ------------------------------------------------------------------------------------------------------------------------- TMS interface 
 
 function processCommandTMS($command) { // Process Commands from TMS engine
-global $now, $tmsHB, $tmsRunning, $trainData;
+global $now, $tmsHB, $tmsRunning, $trainData, $PT1;
 print "From TMS: $command\n";
   $param = explode(" ",$command);
   switch ($param[0]) {
@@ -2401,8 +2417,12 @@ print "From TMS: $command\n";
     case "trnStatus":
       $trainData[$param[1]]["trnStatus"] = $param[2];
     break;
-    case "setRoute":
-      setRoute($param[1], $param[2]); // 
+    case "setRoute": // trainIndex start destination
+      if ($PT1[$param[3]]["arsState"] == ARS_ENABLED) {
+        notifyTMS("routeStatus {$param[1]} {$param[2]} ".setRoute($param[3], $param[4]));
+      } else {
+        notifyTMS("routeStatus {$param[1]} {$param[2]} ".RS_ARS_DISABLED);
+      }
     break;
     default:
       print "Ups unimplemented TMS command ".$param[0]."\n";
@@ -2410,9 +2430,9 @@ print "From TMS: $command\n";
   }
 };
 
-function trainLocationTMS($trainIndex, $eltName) {
+function trainLocationTMS($trainIndex, $eltName, $dir) {
   $progress = "A"; // until progress implemented FIXME
-  notifyTMS("trainLoc $trainIndex $eltName $progress");
+  notifyTMS("trainLoc $trainIndex $eltName $progress $dir");
 }
 
 
