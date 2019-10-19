@@ -2434,6 +2434,9 @@ print "From TMS: $command\n";
         notifyTMS("routeStatus {$param[1]} {$param[2]} ".RS_ARS_DISABLED);
       }
     break;
+    case "setTRN":
+      $trainData[$param[1]]["trn"] = $param[2];
+    break;
     default:
       print "Ups unimplemented TMS command ".$param[0]."\n";
     break;

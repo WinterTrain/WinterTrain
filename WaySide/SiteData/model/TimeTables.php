@@ -15,6 +15,20 @@ $timeTables = [
   "remarks" => "",
 ],
   
+"2510" => [
+  "start" => "Station Down",
+  "destination" => "Station Up",
+  "description" => "Running up, upper track",
+  "group" => "Monday",
+  "routeTable" => [
+    ["time" => "**:*1:00", "start" => "B", "dest" => "D", "action" => ""],
+    ["start" => "D", "dest" => "G", "action" => ""],
+    ["time" => "", "start" => "G", "dest" => "Q", "action" => "", "delay" => ""],
+    ["time" => "", "start" => "Q", "action" => "N", "nextTrn" => "2511", "delay" => 10],
+  ],
+  "remarks" => "",
+],
+  
 "4510" => [
   "start" => "Station Down",
   "destination" => "Station Up",
@@ -22,9 +36,9 @@ $timeTables = [
   "group" => "Monday",
   "routeTable" => [
     ["time" => "", "start" => "B", "dest" => "D", "action" => ""],
-    ["time" => "", "start" => "D", "dest" => "G", "action" => ""],
-    ["time" => "", "start" => "G", "dest" => "Q", "action" => "", "delay" => 20],
-    ["time" => "", "start" => "Q", "action" => "N", "delay" => 40, "nextTrn" => "4511"],
+    ["start" => "D", "dest" => "G", "action" => ""],
+    ["time" => "", "start" => "G", "dest" => "Q", "action" => "", "delay" => ""],
+    ["time" => "", "start" => "Q", "action" => "N", "delay" => 20, "nextTrn" => "4511"],
   ],
   "remarks" => "",
 ],
@@ -35,9 +49,9 @@ $timeTables = [
   "description" => "Running up, upper track, time",
   "group" => "Monday",
   "routeTable" => [
-    ["time" => "'':23:00", "start" => "B", "dest" => "D", "action" => ""],
+    ["time" => "**:**:00", "start" => "B", "dest" => "D", "action" => ""],
     ["time" => "", "start" => "D", "dest" => "G", "action" => ""],
-    ["time" => "**:23:30", "start" => "G", "dest" => "Q", "action" => ""],
+    ["time" => "**:**:30", "start" => "G", "dest" => "Q", "action" => ""],
     ["time" => "", "start" => "Q", "action" => "E"],
   ],
   "remarks" => "",
@@ -56,6 +70,20 @@ $timeTables = [
   "remarks" => "",
 ],
 
+"2511" => [
+  "start" => "Station Up",
+  "destination" => "Station Down",
+  "description" => "Running down, upper track",
+  "group" => "Monday",
+  "routeTable" => [
+    ["time" => "**:*2:30", "start" => "J", "dest" => "E", "action" => ""],
+    ["time" => "", "start" => "E", "dest" => "C", "action" => "", "delay" => ""],
+    ["time" => "", "start" => "C", "dest" => "A", "action" => ""],
+    ["time" => "", "start" => "A", "action" => "N", "nextTrn" => "2510", "delay" => 10],
+  ],
+  "remarks" => "",
+],
+
 "4511" => [
   "start" => "Station Up",
   "destination" => "Station Down",
@@ -63,9 +91,9 @@ $timeTables = [
   "group" => "Monday",
   "routeTable" => [
     ["time" => "", "start" => "J", "dest" => "E", "action" => ""],
-    ["time" => "", "start" => "E", "dest" => "C", "action" => "M"],
+    ["time" => "", "start" => "E", "dest" => "C", "action" => "", "delay" => ""],
     ["time" => "", "start" => "C", "dest" => "A", "action" => ""],
-    ["time" => "", "start" => "A", "action" => "E"],
+    ["time" => "", "start" => "A", "action" => "N", "nextTrn" => "4510", "delay" => 20],
   ],
   "remarks" => "",
 ],
