@@ -116,6 +116,12 @@ define("ARS_DISABLED",0);
 define("ARS_ENABLED",1);
 
 // FOllowing must be aligned with TMS
+define("TMS_UDEF",0);
+define("TMS_NO_TT",1);
+define("TMS_OK",2);
+define("TMS_NO_TMS",3);
+
+// FOllowing must be aligned with TMS
 define("RS_UDEF",0);                // state undefined
 define("RS_ROUTE_SET",1);           // route set
 define("RS_REJECTED",2);            // impossible route
@@ -176,6 +182,7 @@ $PWR_TXT = [0 => "NoComm", 1 => "R", 2 => "L", 3 => "No PWR",];
 $ACK_TXT = [0 => "NO_MA", 1 => "MA_ACK"];
 $TOSTATE_TXT = [0 => "Udef.", 1 => "DMI", 2 => "Remote take-over", 3 => "Pending take-over", 4 => "Pending release"];
 $RS_TXT = [RS_UDEF => "Route state undefined", RS_OK => "OK", RS_BLOCKED => "Route rejected, destination already locked", RS_REJECTED => "Rute rejected"];
+$TMS_STATUS_TXT = [TMS_UDEF => "TMS: state undefined", TMS_NO_TT => "TMS: no Time Table", TMS_OK => "TMS: Running", TMS_NO_TMS => "TMS: not running"];
 
 //--------------------------------------- System variable
 $debug = 0x00; $background = FALSE; $run = true; $doInitEC = true;
@@ -221,7 +228,7 @@ $testDist = "30";
 
 // TMS interface
 $tmsHB = 0;
-$tmsRunning = false;
+$tmsStatus = TMS_NO_TMS;
 
 //---------------------------------------------------------------------------------------------------------- System 
 cmdLineParam();
@@ -256,7 +263,7 @@ do {
     pumpSignal();
   }
   if ($tmsHB < $now) { // TMS gone
-    $tmsRunning = false;
+    $tmsStatus = TMS_NO_TMS;
     $tmsHB = $now + TMS_TIMEOUT;
   }
 //  if ($ABUS == "cbu" and $timeoutUr <= $now) {
@@ -2304,6 +2311,9 @@ global $PT1, $clients, $clientsData, $inCharge, $trainData, $EC, $now, $balises,
     $trainData[$param[1]]["trn"] = isset($param[2]) ? $param[2] : "";
     notifyTMS("setTRN {$param[1]} {$trainData[$param[1]]["trn"]}");
   break;
+  case "loadTT":
+    notifyTMS("loadTT");
+  break;
   case "test": 
     print "TEST: no function assigned\n";
   break;
@@ -2404,13 +2414,13 @@ global $now, $levelCrossings, $triggers, $PT1;
 /// ------------------------------------------------------------------------------------------------------------------------- TMS interface 
 
 function processCommandTMS($command) { // Process Commands from TMS engine
-global $now, $tmsHB, $tmsRunning, $trainData, $PT1;
+global $now, $tmsHB, $tmsStatus, $trainData, $PT1;
 print "From TMS: $command\n";
   $param = explode(" ",$command);
   switch ($param[0]) {
     case "TMS_HB":
       $tmsHB = $now + TMS_TIMEOUT;
-      $tmsRunning = true;
+      $tmsStatus = $param[1];
     break;
     case "Hello":
     break;
@@ -2495,7 +2505,7 @@ global $HMIport, $MCePort, $TMSport, $HMIaddress, $listener, $listenerMCe, $list
 
 function Server() {
 global $ABUS, $listener, $listenerMCe, $clients, $clientsData, $inCharge, $inChargeMCe, $inChargeTMS, $listenerTMS,
-$radioLink, $radioBuf, $radio, $tmsRunning;
+$radioLink, $radioBuf, $radio, $tmsStatus;
   $read = $clients;
   $read[] = $listener;
   $read[] = $listenerMCe;
@@ -2591,7 +2601,7 @@ $radioLink, $radioBuf, $radio, $tmsRunning;
             $inChargeMCe = false;
           } elseif ($r == $inChargeTMS) {
             $inChargeTMS = false;
-            $tmsRunning = false;
+            $tmsStatus = TMS_NO_TMS;
           }
         }
       }
@@ -2602,14 +2612,14 @@ $radioLink, $radioBuf, $radio, $tmsRunning;
 // --------------------------------------------------------------------------------------------------------------------------------- HMI
 
 function HMIstartup($client) { // Initialize specific client and send track layout, status, train data, version info
-global $PT1, $HMI, $trainData, $VERSION, $PT1_VERSION, $tmsRunning;
+global $PT1, $HMI, $trainData, $VERSION, $PT1_VERSION, $tmsStatus, $TMS_STATUS_TXT;
 // HMI screen layout
   HMIindication($client,"RBCversion $VERSION $PT1_VERSION\n");
   HMIindication($client,".f.canvas delete all\n");
   HMIindication($client,"destroyTrainFrame\n");
   HMIindication($client,"dGrid\n");  
   HMIindication($client,"resetLabel\n");  
-  HMIindication($client,"set ::tmsStatus ".($tmsRunning ? "{TMS Running}" : "{No TMS}")."\n");  
+  HMIindication($client,"set ::tmsStatus {{$TMS_STATUS_TXT[$tmsStatus]}}\n");  
   foreach ($HMI["color"] as $param => $color) {
     HMIindication($client,"set ::$param $color\n");  
   }
@@ -2669,8 +2679,8 @@ global $PT1, $HMI, $trainData, $VERSION, $PT1_VERSION, $tmsRunning;
 }
 
 function updateHMI() {
-global $HMI, $PT1, $emergencyStop, $tmsRunning;
-  HMIindicationAll("set ::tmsStatus ".($tmsRunning ? "{TMS Running}" : "{No TMS}")."\n");  
+global $HMI, $PT1, $emergencyStop, $tmsStatus, $TMS_STATUS_TXT;
+  HMIindicationAll("set ::tmsStatus {{$TMS_STATUS_TXT[$tmsStatus]}}\n");  
   HMIindicationAll("eStopInd ".($emergencyStop ? "true" : "false")."\n");
   foreach ($HMI["baliseTrack"] as $name => &$baliseTrack) { // compute indication of HMI track segment only representating balises
     $baliseTrack["trackState"] = T_CLEAR;
@@ -2828,6 +2838,9 @@ global $EC, $clients, $clientsData, $inChargeMCe, $run, $lockedRoutes, $trainDat
       if ($from == $inChargeMCe) {
         $run = false;
       }
+    break;
+    case "loadTT":
+      notifyTMS("loadTT");
     break;
     default:
       errLog("Unknown MCe command: {$param[0]}");

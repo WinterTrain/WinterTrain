@@ -10,8 +10,8 @@ $RBCIL_SERVER_PORT = 9903;
 
 // File names
 $TMS_CONFIG = "TMSconf.php";
-$DATA_FILE = "../SiteData/CBU/CBU.php";
-$TT_FILE = "../SiteData/CBU/TimeTables.php";
+$SITE_DATA_FILE = "../SiteData/CBU/CBU.php";         // Site specific data
+$TT_FILE = "../SiteData/CBU/TimeTables.php";    // Time Tables
 $ERRLOG = "Log/TMS_ErrLog.txt";
 $MSGLOG = "Log/TMS.log";
 
@@ -45,10 +45,16 @@ define("RS_WAIT",10);               // await time out
 define("RS_CONFIRM", 11);           // Signaller to set next route by hand
 define("RS_WAIT_DEPARTURE",12);     // await departure time
 
+define("TMS_UDEF",0);
+define("TMS_NO_TT",1);
+define("TMS_OK",2);
+define("TMS_NO_TMS",3);
+
 //--------------------------------------- System variable
 $debug = 0x00; $background = FALSE; $run = true;
 $startTime = time();
 $heartBeatTimer = 0;
+$tmsStatus = TMS_NO_TT;
 
 //----------------------------------------- TMS variable
 $tts = array(); // time tables
@@ -61,6 +67,7 @@ versionInfo();
 //processPT1();
 forkToBackground();
 initMainProgram();
+readTimeTables();
 do {
   if (initServer()) {
     initTMS();
@@ -70,7 +77,7 @@ do {
       if ($heartBeatTimer < $now) {
         $heartBeatTimer = $now + HEARTBEAT_TIMEOUT;
         if ($RBCILfh) {
-          sendCommandRBCIL("TMS_HB $now");
+          sendCommandRBCIL("TMS_HB $tmsStatus $now");
         }
       }
 //    if ($now != $pollTimeout) { // every 1 second
@@ -82,17 +89,70 @@ do {
 } while ($run);
 msgLog("Exitting...");
 
+// --------------------------------------------------------------------------------------------------------- Time Tables
+
+function readTimeTables() {
+global $tts, $PT1, $trainData, $TT_FILE, $SITE_DATA_FILE, $tmsStatus, $now;
+print "Loading time table\n";
+  include($SITE_DATA_FILE);  // re-read site data in case they have been changed
+  require($TT_FILE);
+  $tts = $timeTables; // merge FIXME
+  if (checkTimeTable($tts)) {
+    print "Error in Time Table\n";
+    $tts = array();
+    $tmsStatus = TMS_NO_TT;
+          sendCommandRBCIL("TMS_HB $tmsStatus $now");
+  } else {
+    print "Time Table OK\n";
+    $tmsStatus = TMS_OK;
+          sendCommandRBCIL("TMS_HB $tmsStatus $now");
+  }
+}
+
+function signalExists($signal) {
+global $PT1;
+  return array_key_exists($signal, $PT1) and 
+    ($PT1[$signal]["element"] == "SU" or
+     $PT1[$signal]["element"] == "SD" or
+     $PT1[$signal]["element"] == "BSB" or
+     $PT1[$signal]["element"] == "BSE");
+}
+  
+function ttError($txt) {
+global $ttError;
+  print "Time Table Error: $txt\n";
+  $ttError = true;
+}
+  
+function checkTimeTable($tts) {
+global $PT1, $ttError;
+$ttError = false;
+
+  foreach ($tts as $trn => $tt) {
+    foreach ($tt["routeTable"] as $routeIndex => $route) {
+      if (!signalExists($route["start"])) {
+        ttError("TRN: $trn Route $routeIndex Unknown route start: {$route["start"]}");
+      }
+      if ($route["action"] != "E" and $route["action"] != "N" and !signalExists($route["dest"])) {
+        ttError("TRN: $trn Route $routeIndex Unknown route destination: {$route["dest"]}");
+      }
+      if ($route["action"] == "N" and !isset($route["nextTrn"])) {
+        ttError("TRN: $trn Route $routeIndex \"nextTrn\" missing for action \"N\"");
+      }
+    }
+  }
+  return $ttError;
+}
+
+
 // ---------------------------------------------------------------------------------------------------------- TMS
 
 
 function initTMS() {
-global $DATA_FILE, $trainData;
-  require($DATA_FILE);
+global $SITE_DATA_FILE, $trainData, $PT1;
   foreach ($trainData as $index => &$train) { // train data
     resetTrainState($train);
   }
-
-  importTimetable();
 }
 
 function resetTrainState(&$train) {
@@ -105,13 +165,6 @@ function resetTrainState(&$train) {
     $train["routeIndex"] = 0;
     $train["trnState"] = TRN_UNKNOWN; 
 }
-
-function importTimetable() {
-global $tts, $TT_FILE;
-  require($TT_FILE);
-  $tts = $timeTables; // merge FIXME
-}
-
 
 function processTrainLocaiton($trainIndex, $nextElementName, $progress, $dir) {
 global $tts, $trainData, $now;
@@ -136,33 +189,39 @@ print "TrainLoc trn >$trn< ($trainIndex): $nextElementName, $dir ";
         $routeIndex = findRoute($tt, $nextElementName);
         if ($routeIndex !== false) {
           if ($train["routeState"][$revDir] == RS_NO_ROUTE or $train["routeState"][$revDir] == RS_NO_ROUTE_SPECIFIED) {
-        $train["routeIndex"] = $routeIndex;
-            switch ($tt["routeTable"][$routeIndex]["cond"]) { 
-            case "E": // location is destination
-              $train["routeState"][$dir] = RS_COMPLETED;
-              $train["trnState"] = TRN_COMPLETED;
-            break;
-            case "": // no condition, set route
-              $train["routeState"][$dir] = RS_PENDING;
-              $train["trnState"] = TRN_NORMAL;
-              setRoute($trainIndex, $dir, $tt["routeTable"][$routeIndex]["start"], $tt["routeTable"][$routeIndex]["dest"]);
-print "setRoute1 $trainIndex, $dir, {$tt["routeTable"][$routeIndex]["start"]}, {$tt["routeTable"][$routeIndex]["dest"]}\n";
-            break;
-            case "W":
-              $train["routeState"][$dir] = RS_WAIT;
-              $train["trnState"] = TRN_WAITING;
-            break;
-            case "T":
-              $train["routeState"][$dir] = RS_WAIT_DEPARTURE;
-              $train["trnState"] = TRN_WAITING;
-            break;
-            case "C": // Confirm - operator to set next route
-              $train["routeState"][$dir] = RS_CONFIRM;
-              $train["trnState"] = TRN_CONFIRM;
-            break;
+            $train["routeIndex"] = $routeIndex;
+            $route = $tt["routeTable"][$routeIndex];
+            switch ($route["action"]) { 
+              case "E": // location is destination
+                $train["routeState"][$dir] = RS_COMPLETED;
+                $train["trnState"] = TRN_COMPLETED;
+                if (isset($route["time"]) and $route["time"] != "") { // await time
+
+                } elseif (isset($route["delay"]) and is_numeric($route["delay"])) { // await delay
+
+                }
+              break;
+              case "": // set route
+              case "R":
+                if (isset($route["time"]) and $route["time"] != "") { // await time
+                  $train["routeState"][$dir] = RS_WAIT_DEPARTURE;
+                  $train["trnState"] = TRN_WAITING;             
+                } elseif (isset($route["delay"]) and is_numeric($route["delay"])) { // await delay
+                  $train["routeState"][$dir] = RS_WAIT;
+                  $train["trnState"] = TRN_WAITING;          
+                } else { // set route unconditional
+                  $train["routeState"][$dir] = RS_PENDING;
+                  $train["trnState"] = TRN_NORMAL;
+                  setRoute($trainIndex, $dir, $route["start"], $route["dest"]);
+                  print "setRoute1 $trainIndex, $dir, {$route["start"]}, {$route["dest"]}\n";
+                }
+              break;
+              case "M": // Manual - operator to set next route
+                $train["routeState"][$dir] = RS_CONFIRM;
+                $train["trnState"] = TRN_CONFIRM;
+              break;
             }
           } else { // tt specifies routes for both directions
-          
             $train["trnState"] = TRN_FAILED;
             errLog("Time table $trn specifies routes for both directions: {$train["location"]["U"]} and {$train["location"]["D"]} ");
             // FIXME don't log every time
@@ -285,6 +344,9 @@ global $tts, $trainData;
     case "routeStatus":
       processRouteStatus($param[1], $param[2], $param[3]);
     break;
+    case "loadTT":
+      readTimeTables();
+    break;
     default:
       print "Ups unimplemented notification\n";
   }
@@ -300,7 +362,7 @@ function sendTRNstate($trainIndex, $status) {
 
 function sendCommandRBCIL($command) {
 global $RBCILfh;
-  fwrite($RBCILfh,"$command\n");
+  if ($RBCILfh) fwrite($RBCILfh,"$command\n");
 }
 
 //----------------------------------------------------------------------------------------- (server)
@@ -352,12 +414,12 @@ function toSigned($b1, $b2) {
 
 function versionInfo() {
 global $VERSION, $PT1_VERSION;
-  fwrite(STDERR,"RBCIL, version: $VERSION\n");
-  fwrite(STDERR,"PT1 data, version: $PT1_VERSION\n");
+  fwrite(STDERR,"TMS Engine, version: $VERSION\n");
+//  fwrite(STDERR,"PT1 data, version: $PT1_VERSION\n");
 }
 
 function CmdLineParam() {
-global $debug, $background, $TMS_CONFIG, $VERSION, $argv, $RBCIL_SERVER_ADDR, $TT_FILE, $DATA_FILE;
+global $debug, $background, $TMS_CONFIG, $VERSION, $argv, $RBCIL_SERVER_ADDR, $TT_FILE, $SITE_DATA_FILE;
   if (in_array("-h",$argv)) {
     fwrite(STDERR,"TMS Engine, version $VERSION
 Usage:
@@ -389,9 +451,9 @@ Usage:
     case "-D":
       list(,$p) = each($argv);
       if ($p) {
-        $DATA_FILE = $p;
-        if (!is_readable($DATA_FILE)) {
-          fwrite(STDERR,"Error: option -D: Cannot read $DATA_FILE \n");
+        $SITE_DATA_FILE = $p;
+        if (!is_readable($SITE_DATA_FILE)) {
+          fwrite(STDERR,"Error: option -D: Cannot read $SITE_DATA_FILE \n");
           exit(1); // If a data file is specified at the cmd line, it has to exist
         }
       } else {
@@ -452,8 +514,8 @@ global $logFh, $errFh, $debug, $TMS_CONFIG, $MSGLOG, $ERRLOG;
     fwrite(STDERR,"Warning: Cannot open Log file: $MSGLOG\n");
     $logFh = fopen("/dev/null","w");
   }
-/*  if (!is_readable($DATA_FILE)) {
-    fwrite(STDERR,"Error: Cannot read data file: $DATA_FILE\n");
+/*  if (!is_readable($SITE_DATA_FILE)) {
+    fwrite(STDERR,"Error: Cannot read data file: $SITE_DATA_FILE\n");
     exit(1); // PT1 and Train data is mandatory
   }
 */
@@ -476,8 +538,8 @@ global $logFh, $errFh, $debug, $background, $ERRLOG, $MSGLOG;
     fwrite(STDERR,"Warning: Cannot open Log file: $MSGLOG\n");
     $logFh = fopen("/dev/null","w");
   }
-/*  if (!(@$DATAFh = fopen($DATA_FILE,"r"))) { // file exsist FIXME
-    fwrite(STDERR,"Error: Cannot open PT1 and Train data file: $DATA_FILE\n");
+/*  if (!(@$DATAFh = fopen($SITE_DATA_FILE,"r"))) { // file exsist FIXME
+    fwrite(STDERR,"Error: Cannot open PT1 and Train data file: $SITE_DATA_FILE\n");
     exit(1); // PT1 data is mandatory
   }
   */

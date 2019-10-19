@@ -974,6 +974,10 @@ proc exitRBC {} {
   sendCommand "exitRBC"
 }
 
+proc loadTT {} {
+  sendCommand "loadTT"
+}
+
 proc showLabel {} {
 global showLabel
   if {$showLabel} {
@@ -1008,7 +1012,7 @@ global nTrainFrame
   .f.buttonLX state disabled
   .f.buttonARS state disabled
   .f.buttonStop state disabled
-  .f.buttonERBC state disabled
+#  .f.buttonERBC state disabled
   .f.buttonT state disabled
   for {set x 0} {$x < $nTrainFrame} {incr x} {
     .f.fTrain.t$x.sr_allowed state disabled
@@ -1046,7 +1050,7 @@ global aColor nTrainFrame
   .f.buttonLX state !disabled
   .f.buttonARS state !disabled
   .f.buttonStop state !disabled
-  .f.buttonERBC state !disabled
+#  .f.buttonERBC state !disabled
   .f.buttonT state !disabled
   for {set x 0} {$x < $nTrainFrame} {incr x} {
     .f.fTrain.t$x.sr_allowed state !disabled
@@ -1290,12 +1294,13 @@ grid [ttk::label .f.status -textvariable status] -column 2 -columnspan 8 -row 5 
 grid [ttk::label .f.tmsStatus -textvariable tmsStatus] -column 12 -columnspan 2 -row 5 -padx 5 -pady 2 -sticky w
 grid [ttk::label .f.response -textvariable response] -column 1 -columnspan 8 -row 6 -padx 5 -pady 2 -sticky w
 
-# HMI commands
-grid [ttk::button .f.buttonOpr -text "Request operation" -command rqopr] -column 8 -row 8 -sticky e
-grid [ttk::button .f.buttonShowGrid -text "Show Grid" -command showGrid] -column 9 -row 8 -sticky e
-grid [ttk::button .f.buttonShowLabel -text "Show Label" -command showLabel] -column 10 -row 8 -sticky e
+# System and HMI commands
+grid [ttk::button .f.buttonOpr -text "Request operation" -command rqopr] -column 7 -row 8 -sticky e
+grid [ttk::button .f.buttonShowGrid -text "Show Grid" -command showGrid] -column 8 -row 8 -sticky e
+grid [ttk::button .f.buttonShowLabel -text "Show Label" -command showLabel] -column 9 -row 8 -sticky e
+grid [ttk::button .f.buttonReloadTT -text "Load Timetable" -command loadTT] -column 10 -row 8 -sticky e
 grid [ttk::button .f.buttonEHMI -text "Exit HMI" -command exit] -column 11 -row 8 -sticky e
-grid [ttk::button .f.buttonERBC -text "Exit RBC" -command exitRBC] -column 12 -row 8 -sticky e
+#grid [ttk::button .f.buttonERBC -text "Exit RBC" -command exitRBC] -column 12 -row 8 -sticky e
 grid [ttk::button .f.buttonT -text "TEST" -command test] -column 13 -row 8 -sticky e
 
 # Train data
