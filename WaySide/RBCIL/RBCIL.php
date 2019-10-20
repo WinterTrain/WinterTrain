@@ -212,6 +212,7 @@ $triggers = array();
 $EC = array();
 $lockedRoutes = array();
 $emergencyStop = false;
+$arsEnabled = true;
 
 $errorFound = false;
 $totalElement = 0;
@@ -928,7 +929,7 @@ global $PT1, $EC, $now, $radioLinkAddr;
 function RBC_IL_DebugPrint($msg) {
 global $debug;
   if ($debug & 0x02) {
-    print "RBC:".date('h:i:s').": ".$msg."\n";
+    print "RBC:".date('H:i:s').": ".$msg."\n";
   }
 }
 
@@ -1387,7 +1388,7 @@ function updateTrainPosition(&$train, $baliseName, $dist, $trackState) {
   recUpdateTrainPosition($train, "U", -$PT1[$baliseName]["D"]["dist"], $baliseName, $trackState);
   recUpdateTrainPosition($train, "D", -$PT1[$baliseName]["D"]["dist"], $PT1[$baliseName]["D"]["name"], $trackState); // ???
   if ($trackState !== T_CLEAR) { // Determine train location for TMS
- print "Up: {$train["upElt"]} Down: {$train["downElt"]}\n";
+// print "Up: {$train["upElt"]} Down: {$train["downElt"]}\n";
 
     searchNextSignal("U", $train["upElt"], $train["index"], true);
     searchNextSignal("D", $train["downElt"], $train["index"], true);
@@ -2155,7 +2156,7 @@ global $testBg, $testDist, $trainData, $PT1;
 }
 
 function processCommand($command, $from) { // process command from HMI
-global $PT1, $clients, $clientsData, $inCharge, $trainData, $EC, $now, $balises, $run, $emergencyStop, $RS_TXT;
+global $PT1, $clients, $clientsData, $inCharge, $trainData, $EC, $now, $balises, $run, $emergencyStop, $arsEnabled, $RS_TXT;
 //  debugPrint ("HMI command: >$command<");
   $param = explode(" ",$command);
   switch ($param[0]) {
@@ -2258,6 +2259,9 @@ global $PT1, $clients, $clientsData, $inCharge, $trainData, $EC, $now, $balises,
   break;
   case "eStop": // Toggle emergency stop state
     $emergencyStop = !$emergencyStop;
+  break;
+  case "arsAll": // Toggle overall ARS state
+    $arsEnabled = !$arsEnabled;
   break;
   case "Rq": // request operation
     if ($inCharge) {
@@ -2414,8 +2418,8 @@ global $now, $levelCrossings, $triggers, $PT1;
 /// ------------------------------------------------------------------------------------------------------------------------- TMS interface 
 
 function processCommandTMS($command) { // Process Commands from TMS engine
-global $now, $tmsHB, $tmsStatus, $trainData, $PT1;
-print "From TMS: $command\n";
+global $now, $tmsHB, $tmsStatus, $trainData, $PT1, $arsEnabled;
+//print "From TMS: $command\n";
   $param = explode(" ",$command);
   switch ($param[0]) {
     case "TMS_HB":
@@ -2428,7 +2432,7 @@ print "From TMS: $command\n";
       $trainData[$param[1]]["trnStatus"] = $param[2];
     break;
     case "setRoute": // trainIndex start destination
-      if ($PT1[$param[3]]["arsState"] == ARS_ENABLED) {
+      if ($arsEnabled and $PT1[$param[3]]["arsState"] == ARS_ENABLED) {
         notifyTMS("routeStatus {$param[1]} {$param[2]} ".setRoute($param[3], $param[4]));
       } else {
         notifyTMS("routeStatus {$param[1]} {$param[2]} ".RS_ARS_DISABLED);
@@ -2584,6 +2588,7 @@ $radioLink, $radioBuf, $radio, $tmsStatus;
         if ($data = fgets($r)) {
           switch ($clientsData[(int)$r]["type"]) {
             case "HMI":
+//F            print "$data\n";
               processCommand(trim($data),$r);
             break;
             case "MCe":
@@ -2615,14 +2620,16 @@ $radioLink, $radioBuf, $radio, $tmsStatus;
 // --------------------------------------------------------------------------------------------------------------------------------- HMI
 
 function HMIstartup($client) { // Initialize specific client and send track layout, status, train data, version info
-global $PT1, $HMI, $trainData, $VERSION, $PT1_VERSION, $tmsStatus, $TMS_STATUS_TXT;
+global $PT1, $HMI, $trainData, $VERSION, $PT1_VERSION, $tmsStatus, $TMS_STATUS_TXT, $emergencyStop, $arsEnabled;
 // HMI screen layout
   HMIindication($client,"RBCversion $VERSION $PT1_VERSION\n");
   HMIindication($client,".f.canvas delete all\n");
   HMIindication($client,"destroyTrainFrame\n");
   HMIindication($client,"dGrid\n");  
   HMIindication($client,"resetLabel\n");  
-  HMIindication($client,"set ::tmsStatus {{$TMS_STATUS_TXT[$tmsStatus]}}\n");  
+  HMIindication($client,"set ::tmsStatus {{$TMS_STATUS_TXT[$tmsStatus]}}\n");
+    HMIindication($client, "eStopInd ".($emergencyStop ? "true" : "false")."\n");
+  HMIindication($client, "arsAllInd ".($arsEnabled ? "true" : "false")."\n");
   foreach ($HMI["color"] as $param => $color) {
     HMIindication($client,"set ::$param $color\n");  
   }
@@ -2632,6 +2639,11 @@ global $PT1, $HMI, $trainData, $VERSION, $PT1_VERSION, $tmsStatus, $TMS_STATUS_T
   foreach ($HMI["label"] as $label) {
     HMIindication($client,"label {".$label["text"]."} ".$label["x"]." ".$label["y"]."\n");  
   }
+  if (isset($HMI["eStopIndicator"]))
+    HMIindication($client,"eStopIndicator ".$HMI["eStopIndicator"]["x"]." ".$HMI["eStopIndicator"]["y"]."\n");  
+  if (isset($HMI["arsIndicator"]))
+    HMIindication($client,"arsIndicator ".$HMI["arsIndicator"]["x"]." ".$HMI["arsIndicator"]["y"]."\n");  
+
 // track layout
   foreach ($PT1 as $name => $element) {
     switch ($element["element"]) {
@@ -2682,9 +2694,10 @@ global $PT1, $HMI, $trainData, $VERSION, $PT1_VERSION, $tmsStatus, $TMS_STATUS_T
 }
 
 function updateHMI() {
-global $HMI, $PT1, $emergencyStop, $tmsStatus, $TMS_STATUS_TXT;
+global $HMI, $PT1, $emergencyStop, $arsEnabled, $tmsStatus, $TMS_STATUS_TXT;
   HMIindicationAll("set ::tmsStatus {{$TMS_STATUS_TXT[$tmsStatus]}}\n");  
   HMIindicationAll("eStopInd ".($emergencyStop ? "true" : "false")."\n");
+  HMIindicationAll("arsAllInd ".($arsEnabled ? "true" : "false")."\n");
   foreach ($HMI["baliseTrack"] as $name => &$baliseTrack) { // compute indication of HMI track segment only representating balises
     $baliseTrack["trackState"] = T_CLEAR;
     $baliseTrack["routeState"] = R_IDLE;
