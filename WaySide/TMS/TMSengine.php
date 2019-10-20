@@ -94,18 +94,16 @@ msgLog("Exitting...");
 
 function readTimeTables() {
 global $tts, $PT1, $trainData, $TT_FILE, $SITE_DATA_FILE, $tmsStatus, $now;
-print "Loading time table\n";
+  msgLog("Loading time table \"$TT_FILE\"");
   require($TT_FILE);
-  $tts = $timeTables; // merge FIXME
+  $tts = $timeTables;
   if (checkTimeTable($tts)) {
-    print "Error in Time Table\n";
     $tts = array();
     $tmsStatus = TMS_NO_TT;
-          sendCommandRBCIL("TMS_HB $tmsStatus $now");
+    sendCommandRBCIL("TMS_HB $tmsStatus $now");
   } else {
-    print "Time Table OK\n";
     $tmsStatus = TMS_OK;
-          sendCommandRBCIL("TMS_HB $tmsStatus $now");
+    sendCommandRBCIL("TMS_HB $tmsStatus $now");
   }
 }
 
@@ -120,18 +118,17 @@ global $PT1;
   
 function ttError($txt) {
 global $ttError;
-  print "Error: $txt\n";
+  msgLog("Error: $txt");
   $ttError = true;
 }
 
 function ttWarning($txt) {
-  print "Warning: $txt\n";
+  msgLog("Warning: $txt");
 }
  
 function checkTimeTable($tts) {
 global $PT1, $ttError;
-$ttError = false;
-
+  $ttError = false;
   foreach ($tts as $trn => $tt) {
     foreach ($tt["routeTable"] as $routeIndex => $route) {
       if (!signalExists($route["start"])) {
@@ -153,8 +150,6 @@ $ttError = false;
 
 
 // ---------------------------------------------------------------------------------------------------------- TMS
-
-
 function initTMS() {
 global $SITE_DATA_FILE, $trainData, $PT1;
   foreach ($trainData as $index => &$train) { // train data
@@ -178,19 +173,16 @@ global $tts, $trainData, $now;
   $train = &$trainData[$trainIndex];
   $trn = $train["trn"];
   $revDir = ($dir == "U" ? "D" : "U");
-print "TrainLoc trn >$trn< ($trainIndex): $nextElementName, $dir ";
-  if (array_key_exists($trn, $tts)) { // trn known in time table FIXME to be checked during tt load
+//print "TrainLoc trn >$trn< ($trainIndex): $nextElementName, $dir ";
+  if (array_key_exists($trn, $tts)) { // trn is known in time table
     $tt = $tts[$trn];
     if ($nextElementName != $train["location"][$dir]) { // new location
-    print "new";
+//    print "new\n";
       $train["location"][$dir] = $nextElementName;
-      $train["locationTS"] = $now; // set TS if at stopping location of next signal, if defined FIXME
+      $train["locationTS"] = $now; // if stopping locaiton of next signal is defined, set time stamp only when at stopping locationd FIXME
       $train["routeState"]["U"] = RS_NO_ROUTE; 
       $train["routeState"]["D"] = RS_NO_ROUTE;
-//      $train["routeIndex"] = 0;
-//      $train["trnStatus"] = TRN_NORMAL;
     }
-      print "\n";
     switch ($train["routeState"][$dir]) {
       case  RS_NO_ROUTE:
         $routeIndex = findRoute($tt, $nextElementName);
@@ -212,7 +204,6 @@ print "TrainLoc trn >$trn< ($trainIndex): $nextElementName, $dir ";
                   $train["trn"] = $route["nextTrn"];
                   $train["trnState"] = TRN_NORMAL;
                   setTRN($trainIndex, $train["trn"]);
-                  print "set TRN {$train["trn"]}\n";
                 }
               break;
               case "": // set route
@@ -227,7 +218,7 @@ print "TrainLoc trn >$trn< ($trainIndex): $nextElementName, $dir ";
                   $train["routeState"][$dir] = RS_PENDING;
                   $train["trnState"] = TRN_NORMAL;
                   setRoute($trainIndex, $dir, $route["start"], $route["dest"]);
-                  print "setRoute1 $trainIndex, $dir, {$route["start"]}, {$route["dest"]}\n";
+//                  print "setRoute1 $trainIndex, $dir, {$route["start"]}, {$route["dest"]}\n";
                 }
               break;
               case "M": // Manual - operator to set next route
@@ -236,9 +227,9 @@ print "TrainLoc trn >$trn< ($trainIndex): $nextElementName, $dir ";
               break;
             }
           } else { // tt specifies routes for both directions
+            if ($train["trnState"] != TRN_FAILED)
+              errLog("Time table $trn specifies routes for both directions: {$train["location"]["U"]} and {$train["location"]["D"]} ");
             $train["trnState"] = TRN_FAILED;
-            errLog("Time table $trn specifies routes for both directions: {$train["location"]["U"]} and {$train["location"]["D"]} ");
-            // FIXME don't log every time
           }      
         } else { // no route specified in tt for this location and direction
           $train["routeState"][$dir] = RS_NO_ROUTE_SPECIFIED; 
@@ -254,13 +245,11 @@ print "TrainLoc trn >$trn< ($trainIndex): $nextElementName, $dir ";
         $route = $tts[$train["trn"]]["routeTable"][$train["routeIndex"]];
         $train["routeState"][$dir] = RS_PENDING;
         setRoute($trainIndex, $dir, $route["start"], $route["dest"]);
-        print "setRoute2 $trainIndex, $dir, {$route["start"]}, {$route["dest"]}\n";
+//        print "setRoute2 $trainIndex, $dir, {$route["start"]}, {$route["dest"]}\n";
       break;
     }
     sendTRNstate($trainIndex, $train["trnState"]);
-    print "trnState: {$train["trnState"]}\n";
   } // else unknown trn, ignore location report
-      print "\n";
 }
 
 function processTimeout() {
@@ -271,27 +260,24 @@ global $trainData, $tts, $now;
       case RS_NO_ROUTE_SPECIFIED:
       break;
       case RS_WAIT: // if time elapsed set route
-        print "wait\n";
         $route = $tts[$train["trn"]]["routeTable"][$train["routeIndex"]];
         if ($now > $train["locationTS"] + $route["delay"]) { // waiting time elapsed
           $train["routeState"][$dir] = RS_PENDING;
           $train["trnState"] = TRN_NORMAL;
           setRoute($trainIndex, $dir, $route["start"], $route["dest"]);
-          print "setRoute3 $trainIndex, $dir, {$route["start"]}, {$route["dest"]}\n";
+//          print "setRoute3 $trainIndex, $dir, {$route["start"]}, {$route["dest"]}\n";
         }
       break;
       case RS_WAIT_DEPARTURE: // if departure time, set route
-        print "wait departure\n";
         $route = $tts[$train["trn"]]["routeTable"][$train["routeIndex"]];
         if (departure($route["time"])) { // departure time reached
           $train["routeState"][$dir] = RS_PENDING;
           $train["trnState"] = TRN_NORMAL;
           setRoute($trainIndex, $dir, $route["start"], $route["dest"]);
-          print "setRoute4 $trainIndex, $dir, {$route["start"]}, {$route["dest"]}\n";
+//          print "setRoute4 $trainIndex, $dir, {$route["start"]}, {$route["dest"]}\n";
         }
       break;
       case RS_COMPLETED:
-        print "wait nextTRN\n";
         $route = $tts[$train["trn"]]["routeTable"][$train["routeIndex"]];
         if (isset($route["time"]) and $route["time"] != "") { // check depature time
           if (departure($route["time"])) {
@@ -299,7 +285,6 @@ global $trainData, $tts, $now;
             $train["trn"] = $route["nextTrn"];
             $train["trnState"] = TRN_NORMAL;
             setTRN($trainIndex, $train["trn"]);
-            print "set TRN {$train["trn"]}\n";
           }
         } elseif (isset($route["delay"]) and is_numeric($route["delay"])) { // check delay
           if ($now > $train["locationTS"] + $route["delay"]) {
@@ -307,7 +292,6 @@ global $trainData, $tts, $now;
             $train["trn"] = $route["nextTrn"];
             $train["trnState"] = TRN_NORMAL;
             setTRN($trainIndex, $train["trn"]);
-            print "set TRN {$train["trn"]}\n";
           }
         }
       break;
@@ -316,13 +300,12 @@ global $trainData, $tts, $now;
 }
 
 function departure ($departure) {
-print "Departure time: >$departure< Wallclock: ".date("H:i:s")."\n";
+//print "Departure time: >$departure< Wallclock: ".date("H:i:s")."\n";
   $departure = str_split($departure."        ");
   $wallclock = str_split(date("H:i:s"));
   for ($i = 0; $i < 7 ; $i++) { // ignore 2nd second digit
     if ($departure[$i] != "*" and $departure[$i] != $wallclock[$i]) return false;
   }
-  print "reached\n";
   return true;
 }
 
@@ -344,7 +327,7 @@ global $trainData;
       $train["trnState"] = TRN_BLOCKED;
     break;
   }
-print "routeSetting $routeSettingStatus {$train["trnState"]}\n";
+//print "routeSetting $routeSettingStatus {$train["trnState"]}\n";
   sendTRNstate($trainIndex, $train["trnState"]);
 }
 
@@ -352,7 +335,6 @@ print "routeSetting $routeSettingStatus {$train["trnState"]}\n";
 function findRoute($tt, $nextSignal) {
   foreach ($tt["routeTable"] as $routeIndex => $route) {
     if ($route["start"] == $nextSignal) {
-    print "found route $routeIndex\n";
       return $routeIndex;
     }
   }
@@ -392,7 +374,7 @@ global $tts, $trainData;
       readTimeTables();
     break;
     default:
-      print "Ups unimplemented notification\n";
+      errLog("Ups, unimplemented notification {$param[0]}");
   }
 }
 
@@ -586,7 +568,7 @@ global $logFh, $errFh, $debug, $background, $ERRLOG, $MSGLOG, $SITE_DATA_FILE, $
     fwrite(STDERR,"Warning: Cannot open Log file: $MSGLOG\n");
     $logFh = fopen("/dev/null","w");
   }
-  if (!(@$DATAFh = fopen($SITE_DATA_FILE,"r"))) { // file exsist FIXME
+  if (!is_readable($SITE_DATA_FILE)) {
     fwrite(STDERR,"Error: Cannot open PT1 and Train data file: $SITE_DATA_FILE\n");
     exit(1); // PT1 data is mandatory
   }

@@ -1166,7 +1166,9 @@ global response status nColor nTrainFrame
   .f.canvas itemconfigure {!button} -fill $nColor
   .f.canvas itemconfigure button -activefill "" -activeoutline ""
   for {set index 0} {$index < $nTrainFrame} {incr index} {
-    trainDataD $index "--" "--:--:--:--:--" "---" "---" "--" "--"
+#  proc trainDataD {trainIndex mode balise distance speed nomDir pwr maAck valid status MAbalise MAdist trn trnStatus} ;# dynamic train data
+
+    trainDataD $index "--" "--:--:--:--:--" "---" "---" "--" "--" "--" "VOID" "--" "--:--:--:--:--" "--" "" 8
   }
 }
 
