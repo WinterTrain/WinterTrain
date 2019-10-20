@@ -32,8 +32,8 @@ set oColor lightgreen   ;# signal open
 set oppColor lightgreen ;# signal open proceed proceed
 set cColor darkgrey     ;# signal closed, not locked in route
 set dColor red          ;# signal closed, locked in route
-set aColor yellow       ;# Select buttom for elements
-set sColor orange       ;# Selected buttom
+set aColor yellow       ;# Select button for elements
+set sColor orange       ;# Selected button
 set trIdColor blue      ;# Train ID when occupied
 set nColor grey
 set lColor black        ;# lines
@@ -71,15 +71,25 @@ proc label {text x y} {
   dLabelStatic $x $y 0 0 $text
 }
 
+proc eStopIndicator {x y} {
+  dRectangle $x $y 0 0 6 1 "eStopIndicator eStopRectangle"
+  .f.canvas itemconfigure eStopRectangle -fill orange 
+  dLabel $x $y 3 0.5 "Energency STOP activated" "eStopIndicator"
+}
+
+proc arsIndicator {x y} {
+  dRectangle $x $y 0 0 3 1 "arsIndicator arsRectangle"
+  .f.canvas itemconfigure arsRectangle -fill yellow 
+  dLabel $x $y 1.5 0.5 "Ars Disabled" "arsIndicator"
+}
+
 proc track {name x y length  {or s}} {
   switch $or {
     s {
       dLabel $x $y 0.5 0.9 $name "$name label"
       dTrack $x $y 0 0.5 $length 0.5 "$name track"
-#>>JP:TRAIN_ID
       dTrainIDLabel  $x $y 0.5 0.2 "TEST" "$name trainIdLabel"
-#<<JP:TRAIN_ID
-}
+    }
     u {
       dLabel $x $y 0.2 1 $name "$name label"
       dTrack $x $y 0 [expr 2.5 * $length] $length 0.5 "$name track"
@@ -734,12 +744,24 @@ global showLabel
 proc eStopInd {state} {
 global showLabel
   if {$state} {
-  .f.buttonStop configure -text " - Emergency Stop, Release" 
+    .f.buttonStop configure -text " - Emergency Stop, Release"
+    .f.canvas itemconfigure eStopIndicator -state normal 
   } else {
-  .f.buttonStop configure -text "  -- - Emergency STOP - - - "
+    .f.buttonStop configure -text "  -- - Emergency STOP - - - "
+    .f.canvas itemconfigure eStopIndicator -state hidden 
   }
 }
 
+proc arsAllInd {state} {
+global showLabel
+  if {$state} {
+  .f.buttonARSALL configure -text "Disable Ars" 
+    .f.canvas itemconfigure arsIndicator -state hidden
+  } else {
+    .f.buttonARSALL configure -text "Enable Ars"
+    .f.canvas itemconfigure arsIndicator -state normal 
+  }
+}
 #--------------------------------------------------------------------------------------------------------------- command handlers
 
 proc buttonPoint {} {
@@ -919,6 +941,10 @@ global command
   }
 }
 
+proc buttonARSALL {} { ;# toggle ARS overall
+  sendCommand "arsAll"
+}
+
 proc setSR {trainIndex} {
 global sr
   sendCommand "SR $trainIndex $sr($trainIndex)"
@@ -1012,6 +1038,7 @@ global nTrainFrame
   .f.buttonLX state disabled
   .f.buttonARS state disabled
   .f.buttonStop state disabled
+  .f.buttonARSALL state disabled
 #  .f.buttonERBC state disabled
   .f.buttonT state disabled
   for {set x 0} {$x < $nTrainFrame} {incr x} {
@@ -1050,6 +1077,8 @@ global aColor nTrainFrame
   .f.buttonLX state !disabled
   .f.buttonARS state !disabled
   .f.buttonStop state !disabled
+  .f.buttonARSALL state !disabled
+
 #  .f.buttonERBC state !disabled
   .f.buttonT state !disabled
   for {set x 0} {$x < $nTrainFrame} {incr x} {
@@ -1283,6 +1312,7 @@ grid [ttk::button .f.buttonPointBlock -text "Block" -command buttonPointBlock] -
 grid [ttk::button .f.buttonLX -text "Ovk" -command buttonLX] -column 5 -row 2 -sticky we
 grid [ttk::button .f.buttonARS -text "Ars" -command buttonARS] -column 6 -row 2 -sticky we
 grid [ttk::button .f.buttonStop -text "" -command eStop] -column 7 -row 2 -sticky w
+grid [ttk::button .f.buttonARSALL -text "Disable Ars" -command buttonARSALL] -column 8 -row 2 -sticky we
 
 # Track Layout
 grid [tk::canvas .f.canvas -scrollregion "0 0 $cWidth $cHeight" -yscrollcommand ".f.sbv set" -xscrollcommand ".f.sbh set"] -sticky nwes -column 1 -columnspan 12 -row 3
