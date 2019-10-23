@@ -32,6 +32,7 @@ void setup() {
   Serial.println("DMI 02P02");
   pinMode(DMI_PIN_BLUE, OUTPUT);
   pinMode(DMI_PIN_RED, OUTPUT);
+  pinMode(DMI_PIN_RED2, OUTPUT);
   pinMode(DMI_PIN_YELLOW, OUTPUT);
   pinMode(DMI_PIN_GREEN, OUTPUT);
   pinMode(DMI_PIN_METER, OUTPUT);
@@ -39,15 +40,31 @@ void setup() {
   pinMode(DMI_PIN_DRIVE_SEL, INPUT);
   pinMode(DMI_PIN_DIR_SEL, INPUT_PULLUP);
   rf12_initialize(DMI_ID, RF12_868MHZ, GROUP);
+  
   digitalWrite(DMI_PIN_BLUE, HIGH);
-  delay(500);
+  digitalWrite(DMI_PIN_RED2, HIGH);
+  digitalWrite(DMI_PIN_RED, HIGH);
+  digitalWrite(DMI_PIN_YELLOW, HIGH);
+  digitalWrite(DMI_PIN_GREEN, HIGH);
+  delay(300);
   digitalWrite(DMI_PIN_BLUE, LOW);
-  delay(500);
+  digitalWrite(DMI_PIN_RED2, LOW);
+  digitalWrite(DMI_PIN_RED, LOW);
+  digitalWrite(DMI_PIN_YELLOW, LOW);
+  digitalWrite(DMI_PIN_GREEN, LOW);
+  delay(300);
   digitalWrite(DMI_PIN_BLUE, HIGH);
-  delay(500);
+  digitalWrite(DMI_PIN_RED2, HIGH);
+  digitalWrite(DMI_PIN_RED, HIGH);
+  digitalWrite(DMI_PIN_YELLOW, HIGH);
+  digitalWrite(DMI_PIN_GREEN, HIGH);
+  delay(300);
   digitalWrite(DMI_PIN_BLUE, LOW);
-  delay(500);
-  lastMillis = millis();
+  digitalWrite(DMI_PIN_RED2, LOW);
+  digitalWrite(DMI_PIN_RED, LOW);
+  digitalWrite(DMI_PIN_YELLOW, LOW);
+  digitalWrite(DMI_PIN_GREEN, LOW);
+  delay(300);  lastMillis = millis();
 }
 
 void loop() {
@@ -83,6 +100,7 @@ void rf12Transceive() {
   if (rf12_recvDone() and rf12_crc == 0 and
       (rf12_hdr & ID_MASK) == OBU_ID and rf12_data[0] == DMI) {
     vReq = rf12_data[2];
+    digitalWrite(DMI_PIN_RED2, rf12_data[1] & 0x10);
     digitalWrite(DMI_PIN_RED, rf12_data[1] & 0x04);
     digitalWrite(DMI_PIN_YELLOW, rf12_data[1] & 0x02);
     digitalWrite(DMI_PIN_GREEN, rf12_data[1] & 0x01);

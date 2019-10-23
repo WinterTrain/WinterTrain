@@ -2284,17 +2284,17 @@ global $PT1, $clients, $clientsData, $inCharge, $trainData, $EC, $now, $balises,
   break;
   case "reqTo":
     if ($inCharge) {
-      print "Not impl. Request take-over of train {$param[1]}\n";
+      print "Not impl. Request take-over of train {$param[1]}, Mode 5, Drive 1, Dir 2 \n";
     }
   break;
   case "relTo":
     if ($inCharge) {
-      print "Not impl. Release take-over of train {$param[1]}\n";
+      print "Not impl. Release take-over of train {$param[1]} Mode 5, Drive 1, Dir 2 \n";
     }
   break;
-  case "txTo":
+  case "txRto":
     if ($inCharge) {
-      print "Not impl. Send to train {$param[1]} Mode: {$param[2]} Drive: {$param[3]} Dir: {$param[4]}\n";
+      print "Not impl. Send to train {$param[1]} Cmd: {$param[2]} Mode: {$param[3]} Drive: {$param[4]} Dir: {$param[5]}\n";
     }
   break;
   case "ars": // Toggle ARS for signal

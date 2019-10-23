@@ -270,26 +270,26 @@ global nTrainFrame  trainMA entryFontSize toState toMode toDrive toDir trnSetVal
 # ---------------- Frame for Remote take-over
   grid [ttk::label .f.fTrain.t$index.toX -text "Remote take-over"] -column 0 -row 9 -padx 5 -pady 2 -sticky we
   grid [ttk::label .f.fTrain.t$index.to -text "----" -textvariable toStatus($index)] -column 1 -columnspan 2 -row 9 -padx 5 -pady 2 -sticky we
-  grid [ttk::button .f.fTrain.t$index.reqTo -text "Request" -command "reqTo $index"] -column 2 -row 10 -padx 5 -pady 2 -sticky we
+  grid [ttk::button .f.fTrain.t$index.reqTo -text "Request" -command "reqToRt$index"] -column 2 -row 10 -padx 5 -pady 2 -sticky we
   .f.fTrain.t$index.reqTo state disabled
-   grid [ttk::button .f.fTrain.t$index.relTo -text "Release" -command "relTo $index"] -column 3 -row 10 -padx 5 -pady 2 -sticky we
+   grid [ttk::button .f.fTrain.t$index.relTo -text "Release" -command "relRto $index"] -column 3 -row 10 -padx 5 -pady 2 -sticky we
   .f.fTrain.t$index.relTo state disabled
    
   grid [ttk::frame .f.fTrain.t$index.oMode -padding "3 3 12 12" ] -column 0 -row 10 -columnspan 2 -sticky nwes
-  grid [ttk::label .f.fTrain.t$index.oMode.modeOFFX -text "OFF "] -column 1 -row 0 -sticky we -padx 5 -pady 2
+  grid [ttk::label .f.fTrain.t$index.oMode.modeOFFX -text "N "] -column 1 -row 0 -sticky we -padx 5 -pady 2
   grid [ttk::label .f.fTrain.t$index.oMode.modeSRX -text "SR "] -column 2 -row 0 -sticky we -padx 5 -pady 2
   grid [ttk::label .f.fTrain.t$index.oMode.modeSHX -text "SH "] -column 3 -row 0 -sticky we -padx 5 -pady 2
   grid [ttk::label .f.fTrain.t$index.oMode.modeFSX -text "FS "] -column 4 -row 0 -sticky we -padx 5 -pady 2
   grid [ttk::label .f.fTrain.t$index.oMode.modeATOX -text "ATO"] -column 5 -row 0 -sticky we -padx 5 -pady 2
-  grid [ttk::radiobutton .f.fTrain.t$index.oMode.modeOFF -value "5" -variable toMode($index) -command "txTo $index"] -column 1 -row 1
+  grid [ttk::radiobutton .f.fTrain.t$index.oMode.modeOFF -value "5" -variable toMode($index) -command "txRto $index"] -column 1 -row 1
   .f.fTrain.t$index.oMode.modeOFF state disabled
-  grid [ttk::radiobutton .f.fTrain.t$index.oMode.modeSR -value "1" -variable toMode($index) -command  "txTo $index"] -column 2 -row 1
+  grid [ttk::radiobutton .f.fTrain.t$index.oMode.modeSR -value "1" -variable toMode($index) -command  "txRto $index"] -column 2 -row 1
   .f.fTrain.t$index.oMode.modeSR state disabled
-  grid [ttk::radiobutton .f.fTrain.t$index.oMode.modeSH -value "2" -variable toMode($index) -command  "txTo $index"] -column 3 -row 1
+  grid [ttk::radiobutton .f.fTrain.t$index.oMode.modeSH -value "2" -variable toMode($index) -command  "txRto $index"] -column 3 -row 1
   .f.fTrain.t$index.oMode.modeSH state disabled
-  grid [ttk::radiobutton .f.fTrain.t$index.oMode.modeFS -value "3" -variable toMode($index) -command  "txTo $index"] -column 4 -row 1
+  grid [ttk::radiobutton .f.fTrain.t$index.oMode.modeFS -value "3" -variable toMode($index) -command  "txRto $index"] -column 4 -row 1
   .f.fTrain.t$index.oMode.modeFS state disabled
-  grid [ttk::radiobutton .f.fTrain.t$index.oMode.modeATO -value "4" -variable toMode($index) -command  "txTo $index"] -column 5 -row 1
+  grid [ttk::radiobutton .f.fTrain.t$index.oMode.modeATO -value "4" -variable toMode($index) -command  "txRto $index"] -column 5 -row 1
   .f.fTrain.t$index.oMode.modeATO state disabled
 
   grid [ttk::frame .f.fTrain.t$index.oDrive -padding "3 3 12 12" ] -column 0 -row 11 -columnspan 2 -sticky nwes
@@ -298,26 +298,26 @@ grid [ttk::label .f.fTrain.t$index.oDrive.drive1X -text "1 "] -column 1 -row 0 -
 grid [ttk::label .f.fTrain.t$index.oDrive.drive2X -text "2 "] -column 2 -row 0 -sticky we
 grid [ttk::label .f.fTrain.t$index.oDrive.drive3X -text "3 "] -column 3 -row 0 -sticky we
 grid [ttk::label .f.fTrain.t$index.oDrive.drive4X -text "4 "] -column 4 -row 0 -sticky we
-grid [ttk::radiobutton .f.fTrain.t$index.oDrive.drive5 -value "5" -variable toDrive($index)  -command  "txTo $index"] -column 4 -row 1 -sticky we
-.f.fTrain.t$index.oDrive.drive5 state disabled
-grid [ttk::radiobutton .f.fTrain.t$index.oDrive.drive4 -value "4" -variable toDrive($index)  -command  "txTo $index"] -column 3 -row 1 -sticky we
-.f.fTrain.t$index.oDrive.drive4 state disabled
-grid [ttk::radiobutton .f.fTrain.t$index.oDrive.drive3 -value "3" -variable toDrive($index)  -command  "txTo $index"] -column 2 -row 1 -sticky we
-.f.fTrain.t$index.oDrive.drive3 state disabled
-grid [ttk::radiobutton .f.fTrain.t$index.oDrive.drive2 -value "2" -variable toDrive($index)  -command  "txTo $index"] -column 1 -row 1 -sticky we
-.f.fTrain.t$index.oDrive.drive2 state disabled
-grid [ttk::radiobutton .f.fTrain.t$index.oDrive.drive1 -value "1" -variable toDrive($index)  -command  "txTo $index"] -column 0 -row 1 -sticky we
+grid [ttk::radiobutton .f.fTrain.t$index.oDrive.driveSTOP -value "1" -variable toDrive($index)  -command  "txRto $index"] -column 0 -row 1 -sticky we
+.f.fTrain.t$index.oDrive.driveSTOP state disabled
+grid [ttk::radiobutton .f.fTrain.t$index.oDrive.drive1 -value "2" -variable toDrive($index)  -command  "txRto $index"] -column 1 -row 1 -sticky we
 .f.fTrain.t$index.oDrive.drive1 state disabled
+grid [ttk::radiobutton .f.fTrain.t$index.oDrive.drive2 -value "3" -variable toDrive($index)  -command  "txRto $index"] -column 2 -row 1 -sticky we
+.f.fTrain.t$index.oDrive.drive2 state disabled
+grid [ttk::radiobutton .f.fTrain.t$index.oDrive.drive3 -value "4" -variable toDrive($index)  -command  "txRto $index"] -column 3 -row 1 -sticky we
+.f.fTrain.t$index.oDrive.drive3 state disabled
+grid [ttk::radiobutton .f.fTrain.t$index.oDrive.drive4 -value "5" -variable toDrive($index)  -command  "txRto $index"] -column 4 -row 1 -sticky we
+.f.fTrain.t$index.oDrive.drive4 state disabled
 
 #  grid [ttk::frame .f.fTrain.t$index.oDir -padding "3 3 12 12" ] -column 1 -row 11 -sticky nwes
 grid [ttk::label .f.fTrain.t$index.oDrive.dirRX -text "R "] -column 6 -row 0 -sticky we -padx 5 -pady 2
 grid [ttk::label .f.fTrain.t$index.oDrive.dirNX -text "N "] -column 7 -row 0 -sticky we -padx 5 -pady 2
 grid [ttk::label .f.fTrain.t$index.oDrive.dirFX -text "F"] -column 8 -row 0 -sticky we -padx 5 -pady 2
-grid [ttk::radiobutton .f.fTrain.t$index.oDrive.dirR -value "1" -variable toDir($index)  -command  "txTo $index"] -column 6 -row 1
+grid [ttk::radiobutton .f.fTrain.t$index.oDrive.dirR -value "1" -variable toDir($index)  -command  "txRto $index"] -column 6 -row 1
 .f.fTrain.t$index.oDrive.dirR state disabled
-grid [ttk::radiobutton .f.fTrain.t$index.oDrive.dirN -value "2" -variable toDir($index)  -command  "txTo $index"] -column 7 -row 1
+grid [ttk::radiobutton .f.fTrain.t$index.oDrive.dirN -value "2" -variable toDir($index)  -command  "txRto $index"] -column 7 -row 1
 .f.fTrain.t$index.oDrive.dirN state disabled
-grid [ttk::radiobutton .f.fTrain.t$index.oDrive.dirF -value "3" -variable toDir($index)  -command  "txTo $index"] -column 8 -row 1
+grid [ttk::radiobutton .f.fTrain.t$index.oDrive.dirF -value "3" -variable toDir($index)  -command  "txRto $index"] -column 8 -row 1
 .f.fTrain.t$index.oDrive.dirF state disabled
 
 }
@@ -983,15 +983,18 @@ global trnSetValue
   set trnSetValue($trainIndex) ""
 }
 
-proc reqTo {trainIndex} {
+proc reqRto {trainIndex} {
+  set toMode($trainIndex) 5
+  set toDrive($trainIndex) 1
+  set toDir($trainIndex) 2
   sendCommand "reqTo $trainIndex"
 }
 
-proc relTo {trainIndex} {
+proc relRto {trainIndex} {
   sendCommand "relTo $trainIndex"
 }
 
-proc txTo {trainIndex} {
+proc txRto {trainIndex} {
 global toMode toDrive toDir
   sendCommand "txTo $trainIndex $toMode($trainIndex) $toDrive($trainIndex) $toDir($trainIndex)"
 }

@@ -36,10 +36,10 @@
 };
 
 // OBU HW assignment
-#define OBU_PIN_MOTOR 5         //  PWM signal to moter control. JeeNode port 2
-                                // Note: PWM frequency is set for port 5 in setup()
+#define OBU_PIN_MOTOR 5         // PWM signal to moter control. JeeNode port 2
+                                // Note: PWM frequency is set for pin 5 in setup()
 #define OBU_PIN_REVERSE_DIR A1  // Direction control. JeeNode port 2
-#define OBU_PIN_TRACK_UP A0     //  JeeNode port 1
+#define OBU_PIN_TRACK_UP A0     // JeeNode port 1
 #define OBU_PIN_TRACK_DOWN 4    // JeeNode port 1
 #define OBU_PIN_BLUE A3
 #define OBU_PIN_WHEEL 7         // Wheel sensor  JeeNode port 4
@@ -48,12 +48,11 @@
 
 // DMI HW assignment
 #define DMI_PIN_BLUE 4, 
-#define DMI_PIN_RED 5
+#define DMI_PIN_RED 5           // Movement Auth indicator
+#define DMI_PIN_RED2 3          // Mode Auth indicator 
 #define DMI_PIN_YELLOW A3
 #define DMI_PIN_GREEN 7
 #define DMI_PIN_MODE_SEL A0
 #define DMI_PIN_DIR_SEL A1
 #define DMI_PIN_DRIVE_SEL A2
 #define DMI_PIN_METER 6
-
-
