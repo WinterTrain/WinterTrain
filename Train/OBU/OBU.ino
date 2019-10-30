@@ -176,8 +176,10 @@ void setup() {
 #ifdef OBU_PIN_BLUE
   digitalWrite(OBU_PIN_BLUE, HIGH);
 #endif
-#ifdef OBU_PIN_OVERRIDE
-  //  overrideSR = !digitalRead(OBU_PIN_OVERRIDE);
+#ifdef OVERRIDE_SR
+  overrideSR = !digitalRead(OBU_PIN_OVERRIDE);
+#endif
+#ifdef OVERRIDE_SH
   overrideSH = !digitalRead(OBU_PIN_OVERRIDE);
 #endif
   nomDir = (DETECT_NOM_DIR == AUTO_DETECT ? (digitalRead(OBU_PIN_TRACK_UP) ? UP : DOWN) : DETECT_NOM_DIR);
@@ -308,6 +310,7 @@ void indication() { // MA indications at DMI
 void opMode() {
   //  Serial.print(authorisedMode);
   //  Serial.println(" Mode");
+  if (rtoMode == RTO_DMI) ind(RED2, OFF); // clear old indication
   if (DMIlost and rtoMode == RTO_DMI) {
     if (nomDriveDir == STAND_STILL and authorisation == ATO) {
       authorisedMode = ATO;
@@ -365,14 +368,20 @@ void opMode() {
           ind(RED2, ON);
         }
         break;
+      case N:
+        reqMode = N;
+        authorisedMode = N;
+        authorisation = N;
+        ind(RED2, OFF);
+        break;
     }
   }
   switch (rtoMode) { // active RTO is overruling indication of authorizasion mode
     case RTO_REMOTE:
-      ind(RED2, ON);
-      break;
-    case RTO_PEND_REMOTE:
       ind(RED2, FLASH);
+      break;
+    case RTO_PEND_RELEASE:  // while waiting for dirSel to be neutral
+      ind(RED2, ON);
       break;
   }
 }
@@ -632,7 +641,7 @@ void rf12Transceive() {
         DMIlost = false;
         //        digitalWrite(OBU_PIN_BLUE, LOW);
         break;
-      case RBC_ID: // MA
+      case RBC_ID:
         switch (rf12_data[0]) { // packet type
           case MA_PACK:
             if (rf12_data[1] == OBU_ID) {
@@ -687,7 +696,8 @@ void rf12Transceive() {
                   if (rtoMode == RTO_REMOTE) {
                     if (DMIlost) {
                       rtoMode = RTO_DMI;
-                      authorisedMode = ATO;
+                      authorisedMode = N;
+                      reqMode = ATO;
                       authorisation = N;
                     } else if (dirSelDMI == NEUTRAL) {
                       rtoMode = RTO_DMI;

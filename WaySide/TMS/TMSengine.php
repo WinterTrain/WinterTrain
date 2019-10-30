@@ -95,7 +95,7 @@ msgLog("Exitting...");
 function readTimeTables() {
 global $tts, $PT1, $trainData, $TT_FILE, $SITE_DATA_FILE, $tmsStatus, $now;
   msgLog("Loading time table \"$TT_FILE\"");
-  require($TT_FILE);
+  require($TT_FILE); // FIXME handle syntax errors
   $tts = $timeTables;
   if (checkTimeTable($tts)) {
     $tts = array();
@@ -143,6 +143,7 @@ global $PT1, $ttError;
       if (isset($route["time"]) and $route["time"] != "" and isset($rouyte["delay"])) {
         ttWarning("TRN: $trn Route $routeIndex: both \"time\" and \"delay\" are specified - \"delay\" will be ignored");
       }
+      // check valid time format
     }
   }
   return $ttError;
@@ -166,6 +167,7 @@ function resetTrainState(&$train) {
     $train["locationTS"] = false;
     $train["routeIndex"] = 0;
     $train["trnState"] = TRN_UNKNOWN; 
+    $train["ETD"] = 0;
 }
 
 function processTrainLocaiton($trainIndex, $nextElementName, $progress, $dir) {
@@ -182,6 +184,7 @@ global $tts, $trainData, $now;
       $train["locationTS"] = $now; // if stopping locaiton of next signal is defined, set time stamp only when at stopping locationd FIXME
       $train["routeState"]["U"] = RS_NO_ROUTE; 
       $train["routeState"]["D"] = RS_NO_ROUTE;
+      sendETD($trainIndex,0); // clear indication at HMI
     }
     switch ($train["routeState"][$dir]) {
       case  RS_NO_ROUTE:
@@ -208,12 +211,20 @@ global $tts, $trainData, $now;
               break;
               case "": // set route
               case "R":
-                if (isset($route["time"]) and $route["time"] != "") { // await time
+                if (isset($route["time"]) and $route["time"] != "") { // await departure time
                   $train["routeState"][$dir] = RS_WAIT_DEPARTURE;
-                  $train["trnState"] = TRN_WAITING;             
+                  $train["trnState"] = TRN_WAITING;
+                  $train["ETD"] = departureTime($route["time"]);
+                  sendETD($trainIndex,$train["ETD"]);
+                  print date("H:i:s")." ETD/time: ".date("H:i:s",$train["ETD"])."\n";
                 } elseif (isset($route["delay"]) and is_numeric($route["delay"])) { // await delay
-                  $train["routeState"][$dir] = RS_WAIT;
-                  $train["trnState"] = TRN_WAITING;          
+                  if (true) { // if at stopping location => start delay timer
+                    $train["routeState"][$dir] = RS_WAIT;
+                    $train["trnState"] = TRN_WAITING;   
+                    $train["ETD"] = $now + $route["delay"];       
+                    sendETD($trainIndex,$train["ETD"]);
+                    print date("H:i:s")." ETD/delay: ".date("H:i:s",$train["ETD"])."\n";
+                  } // if not at stopping location, keep routeState RS_NO_ROUTE until delaytimer to be started
                 } else { // set route unconditional
                   $train["routeState"][$dir] = RS_PENDING;
                   $train["trnState"] = TRN_NORMAL;
@@ -252,6 +263,50 @@ global $tts, $trainData, $now;
   } // else unknown trn, ignore location report
 }
 
+function departureTime($depTime) {
+global $now;
+  $depH = substr($depTime,0,2);
+  $depM = substr($depTime,3,2);
+  $depS = substr($depTime,6,2);
+  $wallH = date("H",$now);
+  $wallM = date("i",$now);
+//print "Time: >$depH:$depM:$depS<\n";
+//print "Wall: ".date("z",$now)." $wallH:$wallM:$wallS<\n";
+
+  if (substr($depTime,0,5) == "**:**") {
+    $depH = $wallH;
+    $depM = $wallM;
+    $dep = mktime($depH, $depM, $depS);
+    if ($dep < $now) {
+//      print "fortid\n";
+      $dep = $dep + 60;
+    } 
+  } elseif (substr($depTime,0,4) == "**:*") {
+    $depH = $wallH;
+    $depM = substr($wallM,0,1).substr($depM,1,1) ;
+    $dep = mktime($depH, $depM, $depS);
+    if ($dep < $now) {
+//      print "fortid\n";
+      $dep = $dep + 600;
+    } 
+  } elseif (substr($depTime,0,2) == "**") {
+    $depH = $wallH;
+    $dep = mktime($depH, $depM, $depS);
+    if ($dep < $now) {
+//      print "fortid\n";
+      $dep = $dep + 3600;
+    } 
+  } else { // pattern "*_:__:__" not implemented
+    $dep = mktime($depH, $depM, $depS);
+    if ($dep < $now) {
+//      print "fortid\n";
+      $dep = $dep + 86400;
+    } 
+  }
+//print "Dep:  ".date("z H:i:s", $dep)."\n";
+  return $dep;
+}
+
 function processTimeout() {
 global $trainData, $tts, $now;
   foreach ($trainData as $trainIndex => &$train) {
@@ -259,6 +314,17 @@ global $trainData, $tts, $now;
     switch ($train["routeState"][$dir]) {
       case RS_NO_ROUTE_SPECIFIED:
       break;
+      case RS_WAIT: // if time elapsed set route
+      case RS_WAIT_DEPARTURE: // if departure time, set route
+        if ($now > $train["ETD"]) { // waiting time elapsed
+          $route = $tts[$train["trn"]]["routeTable"][$train["routeIndex"]];
+          $train["routeState"][$dir] = RS_PENDING;
+          $train["trnState"] = TRN_NORMAL;
+          setRoute($trainIndex, $dir, $route["start"], $route["dest"]);
+//          print "setRoute3 $trainIndex, $dir, {$route["start"]}, {$route["dest"]}\n";
+        }
+      break;
+      
       case RS_WAIT: // if time elapsed set route
         $route = $tts[$train["trn"]]["routeTable"][$train["routeIndex"]];
         if ($now > $train["locationTS"] + $route["delay"]) { // waiting time elapsed
@@ -299,7 +365,7 @@ global $trainData, $tts, $now;
   }
 }
 
-function departure ($departure) {
+function departure ($departure) { // obsolete
 //print "Departure time: >$departure< Wallclock: ".date("H:i:s")."\n";
   $departure = str_split($departure."        ");
   $wallclock = str_split(date("H:i:s"));
@@ -388,6 +454,10 @@ function sendTRNstate($trainIndex, $status) {
 
 function setTRN($trainIndex, $trn) {
   sendCommandRBCIL("setTRN $trainIndex $trn");
+}
+
+function sendETD($trainIndex, $etd) {
+  sendCommandRBCIL("etd $trainIndex $etd");
 }
 
 function sendCommandRBCIL($command) {

@@ -1,6 +1,9 @@
 // Train specific configuration
 // ------------------------------------------- Circus Wagon
 
+// define either OVERRIDE_SR or OVERRIDE_SH
+#define OVERRRIDE_SR
+
 // RF12
 #define OBU_ID 22 // RF12 node ID of train
 #define DMI_ID 23 // RF12 node ID of assigned DMI
