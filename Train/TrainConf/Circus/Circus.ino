@@ -1,6 +1,9 @@
 // Train specific configuration
 // ------------------------------------------- Circus Wagon
 
+// define either OVERRIDE_SR or OVERRIDE_SH
+#define OVERRRIDE_SR
+
 // RF12
 #define OBU_ID 22 // RF12 node ID of train
 #define DMI_ID 23 // RF12 node ID of assigned DMI
@@ -46,12 +49,11 @@
 
 // DMI HW assignment
 #define DMI_PIN_BLUE 4 
-#define DMI_PIN_RED 5 
+#define DMI_PIN_RED 5           // Movement Auth indicator
+#define DMI_PIN_RED2 3          // Mode Auth indicator
 #define DMI_PIN_YELLOW A3 
 #define DMI_PIN_GREEN 7
 #define DMI_PIN_MODE_SEL A0 
 #define DMI_PIN_DIR_SEL A1 
 #define DMI_PIN_DRIVE_SEL A2
 #define DMI_PIN_METER 6
-
-

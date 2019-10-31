@@ -19,7 +19,7 @@ Welcome to the WinterTrain at Christianshavns Bådudlejning og Café.
 
 
 foreach ($timeTables as $trn => $tt) {
-  print "<li><a href='/showTimeTable.php'>$trn</a> {$tt["start"]} - {$tt["destination"]}  ";
+  print "<li><a href='/showTimeTable.php?trn=$trn'>$trn</a> {$tt["start"]} - {$tt["destination"]}  ";
 }
 
 print "</ul>

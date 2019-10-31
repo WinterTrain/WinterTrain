@@ -21,7 +21,7 @@ $timeTables = [
   "description" => "Running up, upper track",
   "group" => "Monday",
   "routeTable" => [
-    ["time" => "**:*1:00", "start" => "B", "dest" => "D", "action" => ""],
+    ["time" => "**:*8:00", "start" => "B", "dest" => "D", "action" => ""],
     ["start" => "D", "dest" => "G", "action" => ""],
     ["time" => "", "start" => "G", "dest" => "Q", "action" => "", "delay" => ""],
     ["time" => "", "start" => "Q", "action" => "N", "nextTrn" => "2511", "delay" => 10],
@@ -35,7 +35,7 @@ $timeTables = [
   "description" => "Running up, upper track",
   "group" => "Monday",
   "routeTable" => [
-    ["time" => "", "start" => "B", "dest" => "D", "action" => ""],
+    ["time" => "**:*5:00", "start" => "B", "dest" => "D", "action" => ""],
     ["start" => "D", "dest" => "G", "action" => ""],
     ["time" => "", "start" => "G", "dest" => "Q", "action" => "", "delay" => ""],
     ["time" => "", "start" => "Q", "action" => "N", "delay" => 20, "nextTrn" => "4511"],
@@ -84,14 +84,27 @@ $timeTables = [
   "remarks" => "",
 ],
 
-"4511" => [
+"3511" => [
   "start" => "Station Up",
   "destination" => "Station Down",
   "description" => "Running down, upper track",
   "group" => "Monday",
   "routeTable" => [
     ["time" => "", "start" => "J", "dest" => "E", "action" => ""],
-    ["time" => "", "start" => "E", "dest" => "C", "action" => "", "delay" => ""],
+    ["time" => "", "start" => "E", "dest" => "C", "action" => "", "delay" => "30"],
+    ["time" => "", "start" => "C", "dest" => "A", "action" => ""],
+    ["time" => "", "start" => "A", "action" => "E", "nextTrn" => "", "delay" => 20],
+  ],
+  "remarks" => "",
+],
+"4511" => [
+  "start" => "Station Up",
+  "destination" => "Station Down",
+  "description" => "Running down, upper track",
+  "group" => "Monday",
+  "routeTable" => [
+    ["time" => "**:*2:30", "start" => "J", "dest" => "E", "action" => ""],
+    ["time" => "", "start" => "E", "dest" => "C", "action" => "", "delay" => "15"],
     ["time" => "", "start" => "C", "dest" => "A", "action" => ""],
     ["time" => "", "start" => "A", "action" => "N", "nextTrn" => "4510", "delay" => 20],
   ],

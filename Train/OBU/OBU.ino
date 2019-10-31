@@ -6,8 +6,8 @@
 // OBU
 // WinterTrain v. 3
 // ------------------------------------------- Configuration
-#define MAJOR_VERSION 5
-#define MINOR_VERSION 6
+#define MAJOR_VERSION 6
+#define MINOR_VERSION 0
 // Proporties
 #define DETECT_NOM_DIR DOWN // UP, DOWN or AUTO_DETECT
 #define BRAKING_DISTANCE 18
@@ -47,6 +47,13 @@ const unsigned long DYN = 3200; // 0.05 sec
 #define ATO 4
 #define N 5
 #define ESTOP 7
+// Remote Take-over states
+#define RTO_UDEF 0
+#define RTO_DMI 1
+#define RTO_PEND_REMOTE 2
+#define RTO_REMOTE 3
+#define RTO_PEND_RELEASE 4
+
 // Indications
 #define ON 1
 #define OFF 0
@@ -55,11 +62,7 @@ const unsigned long DYN = 3200; // 0.05 sec
 #define YELLOW 1
 #define RED 2
 #define BLUE 3
-#define IND_GREEN 1
-#define IND_YELLOW 2
-#define IND_RED 4
-#define IND_BLUE 8
-
+#define RED2 4
 
 
 // RF12
@@ -91,7 +94,8 @@ struct posRepType {
   int distance; // signed distance from frontend to balise
   byte v; // Speed
   byte stat; // B0-B1: Driving direction, UP, DOWN, STAND_STILL
-  int tripMeter;
+  byte rtoMode;
+  //  int tripMeter;
 };
 
 // Balises
@@ -111,10 +115,12 @@ unsigned long lastMillis, deltaMillis, thisMillis, speedMillis;
 long timerDMIPoll, timerDMITimeout, timerPosRep, timerDistance, timerModeTimeout;
 long timerDyn;
 
-// DMI selector
+// DMI and RTO selector
 byte modeSel, dirSel, driveSel;
+byte dirSelDMI;
 
 // Dynamic values
+byte rtoMode = RTO_DMI; // State for remote take-over of driver interface (DMI)
 byte reqMode = ATO; // as requested by DMI selector
 byte authorisedMode = N; // as authorised by RBC (if necessary)
 byte authorisation; // from RBC
@@ -170,11 +176,14 @@ void setup() {
 #ifdef OBU_PIN_BLUE
   digitalWrite(OBU_PIN_BLUE, HIGH);
 #endif
-#ifdef OBU_PIN_OVERRIDE
-  //  overrideSR = !digitalRead(OBU_PIN_OVERRIDE);
+#ifdef OVERRIDE_SR
+  overrideSR = !digitalRead(OBU_PIN_OVERRIDE);
+#endif
+#ifdef OVERRIDE_SH
   overrideSH = !digitalRead(OBU_PIN_OVERRIDE);
 #endif
   nomDir = (DETECT_NOM_DIR == AUTO_DETECT ? (digitalRead(OBU_PIN_TRACK_UP) ? UP : DOWN) : DETECT_NOM_DIR);
+  // FIXME nomDir to be determined by stable power polarity
   //  txDMI[0] = 22;
   //  txDMI[1] = MAJOR_VERSION;
   //  txDMI[2] = MINOR_VERSION;
@@ -261,7 +270,7 @@ void odometry() { // position and speed
   oldW = w;
 }
 
-void indication() {
+void indication() { // MA indications at DMI
   switch (authorisedMode)  {
     case ESTOP:
       ind(GREEN, OFF); ind(YELLOW, FLASH); ind(RED, FLASH);
@@ -301,7 +310,8 @@ void indication() {
 void opMode() {
   //  Serial.print(authorisedMode);
   //  Serial.println(" Mode");
-  if (DMIlost) {
+  if (rtoMode == RTO_DMI) ind(RED2, OFF); // clear old indication
+  if (DMIlost and rtoMode == RTO_DMI) {
     if (nomDriveDir == STAND_STILL and authorisation == ATO) {
       authorisedMode = ATO;
       authorisation = N;
@@ -315,8 +325,10 @@ void opMode() {
           //          Serial.println("SR");
           authorisedMode = SR;
           authorisation = N;
+          ind(RED2, OFF);
         } else {
           authorisedMode = N;
+          ind(RED2, ON);
         }
         knownBalises[MAindex].MAreceived = false;
         knownBalises[MAindex].MAvalid = false; // clear current MA
@@ -326,8 +338,10 @@ void opMode() {
         if (nomDriveDir == STAND_STILL and dirSel == NEUTRAL and (authorisation == SH or overrideSH)) {
           authorisedMode = SH;
           authorisation = N;
+          ind(RED2, OFF);
         } else {
           authorisedMode = N;
+          ind(RED2, ON);
         }
         knownBalises[MAindex].MAreceived = false;
         knownBalises[MAindex].MAvalid = false; // Clear current MA
@@ -337,8 +351,10 @@ void opMode() {
         if (nomDriveDir == STAND_STILL and dirSel == NEUTRAL and authorisation == FS) {
           authorisedMode = FS;
           authorisation = N;
+          ind(RED2, OFF);
         } else {
           authorisedMode = N;
+          ind(RED2, ON);
         }
         break;
       case ATO:
@@ -346,11 +362,27 @@ void opMode() {
         if (nomDriveDir == STAND_STILL and dirSel == NEUTRAL and authorisation == ATO) {
           authorisedMode = ATO;
           authorisation = N;
+          ind(RED2, OFF);
         } else {
           authorisedMode = N;
+          ind(RED2, ON);
         }
         break;
+      case N:
+        reqMode = N;
+        authorisedMode = N;
+        authorisation = N;
+        ind(RED2, OFF);
+        break;
     }
+  }
+  switch (rtoMode) { // active RTO is overruling indication of authorizasion mode
+    case RTO_REMOTE:
+      ind(RED2, FLASH);
+      break;
+    case RTO_PEND_RELEASE:  // while waiting for dirSel to be neutral
+      ind(RED2, ON);
+      break;
   }
 }
 
@@ -581,7 +613,8 @@ void sendPosition() {
                   digitalRead(OBU_PIN_TRACK_DOWN) << 6 |
                   (reqMode == authorisedMode) << 7;
   }
-  posRep.tripMeter = tripMeter;
+  posRep.rtoMode = rtoMode;
+  //  posRep.tripMeter = tripMeter;
   txPosRep = true;
 }
 
@@ -592,17 +625,23 @@ void rf12Transceive() {
     switch (rf12_hdr & ID_MASK) { // sender
       case DMI_ID: // DMI command
         // if rd12_data[0] == 20
-        modeSel = rf12_data[1] & 0b00000111;
-        dirSel = (rf12_data[1] & 0b00011000) >> 3;
-        if (dirSel == 0) dirSel = NEUTRAL;
-        driveSel = (rf12_data[1] & 0b11100000) >> 5;
-        if (driveSel > 5) driveSel = 0;
+        dirSelDMI = (rf12_data[1] & 0b00011000) >> 3;
+        if (dirSelDMI == 0) dirSelDMI = NEUTRAL;
+        if (dirSelDMI == NEUTRAL and rtoMode == RTO_PEND_RELEASE) {
+          rtoMode = RTO_DMI;
+        }
+        if (rtoMode == RTO_DMI) {
+          modeSel = rf12_data[1] & 0b00000111;
+          dirSel = dirSelDMI;
+          driveSel = (rf12_data[1] & 0b11100000) >> 5;
+          if (driveSel > 5) driveSel = 0;
+        }
         timerDMITimeout = DMI_TIMEOUT;
         timerModeTimeout = MODE_TIMEOUT;
         DMIlost = false;
         //        digitalWrite(OBU_PIN_BLUE, LOW);
         break;
-      case RBC_ID: // MA
+      case RBC_ID:
         switch (rf12_data[0]) { // packet type
           case MA_PACK:
             if (rf12_data[1] == OBU_ID) {
@@ -644,6 +683,40 @@ void rf12Transceive() {
             }
             break;
           case RTO_PACK: // Remte take-over
+            if (rf12_data[1] == OBU_ID) {
+              switch (rf12_data[2]) { // Signaler RTO request
+                case 1: // Request take-over
+                  if (rtoMode == RTO_DMI or rtoMode == RTO_PEND_RELEASE) {
+                    rtoMode = RTO_REMOTE;
+                    authorisedMode = N;
+                    authorisation = N;
+                  }
+                  break;
+                case 2: // release take-over
+                  if (rtoMode == RTO_REMOTE) {
+                    if (DMIlost) {
+                      rtoMode = RTO_DMI;
+                      authorisedMode = N;
+                      reqMode = ATO;
+                      authorisation = N;
+                    } else if (dirSelDMI == NEUTRAL) {
+                      rtoMode = RTO_DMI;
+                      authorisedMode = N;
+                      authorisation = N;
+                    } else {
+                      rtoMode = RTO_PEND_RELEASE;
+                    }
+                  }
+                  break;
+              }
+              if (rtoMode == RTO_REMOTE) {
+                modeSel = rf12_data[3] & 0b00000111;
+                dirSel = (rf12_data[3] & 0b00011000) >> 3;
+                if (dirSel == 0) dirSel = NEUTRAL;
+                driveSel = (rf12_data[3] & 0b11100000) >> 5;
+                if (driveSel > 5) driveSel = 0;
+              }
+            }
             break;
           case POSREST_PACK: // Position restore after reboot
             if (positionUnknown and rf12_data[1] == OBU_ID) {
