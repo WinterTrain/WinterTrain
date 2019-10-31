@@ -106,6 +106,12 @@ define("P_UDEF",0);
 define("P_R",1);
 define("P_L",2);
 define("P_NOPWR",3);
+// Train Remote Take-over mode
+define("RTO_UDEF", 0);
+define("RTO_DMI", 1);
+define("RTO_PEND_REMOTE", 2);
+define("RTO_REMOTE", 3);
+define("RTO_PEND_RELEASE", 4);
 // Interlocking orders (internal)
 define("IL_P_RIGHT",10);
 define("IL_P_LEFT",11);
@@ -180,9 +186,12 @@ $MODE_TXT = [0 => "Udef", 1 => "SR", 2 => "SH", 3 => "FS", 4 => "ATO", 5 => "N",
 $DIR_TXT = [0 => "Udef", 1 => "Down", 2 => "Up", 3 => "Stop",];
 $PWR_TXT = [0 => "NoComm", 1 => "R", 2 => "L", 3 => "No PWR",];
 $ACK_TXT = [0 => "NO_MA", 1 => "MA_ACK"];
-$TOSTATE_TXT = [0 => "Udef.", 1 => "DMI", 2 => "Remote take-over", 3 => "Pending take-over", 4 => "Pending release"];
-$RS_TXT = [RS_UDEF => "Route state undefined", RS_OK => "OK", RS_BLOCKED => "Route rejected, destination already locked", RS_REJECTED => "Rute rejected"];
-$TMS_STATUS_TXT = [TMS_UDEF => "TMS: state undefined", TMS_NO_TT => "TMS: no Time Table", TMS_OK => "TMS: Running", TMS_NO_TMS => "TMS: not running"];
+$RTOMODE_TXT = [RTO_UDEF => "Udef.", RTO_DMI => "DMI", RTO_REMOTE => "Remote take-over", RTO_PEND_REMOTE => "Pending take-over",
+                RTO_PEND_RELEASE => "Pending release"];
+$RS_TXT = [RS_UDEF => "Route state undefined", RS_ROUTE_SET => "Route set", RS_BLOCKED => "Route rejected, destination already locked",
+           RS_REJECTED => "Rute rejected"];
+$TMS_STATUS_TXT = [TMS_UDEF => "TMS: state undefined", TMS_NO_TT => "TMS: no Time Table", TMS_OK => "TMS: Running", 
+                   TMS_NO_TMS => "TMS: not running"];
 
 //--------------------------------------- System variable
 $debug = 0x00; $background = FALSE; $run = true; $doInitEC = true;
@@ -628,6 +637,19 @@ global $radioLinkAddr, $radioLink, $radio;
   }
 }
 
+function sendRTO($trainID, $cmd, $mode, $drive, $dir) { 
+global $radioLinkAddr, $radioLink, $radio;
+  switch ($radio) { 
+    case "USB":
+      fwrite($radioLink,"32,$trainID,$cmd,".($mode | ($dir << 3) | ($drive << 5)).",0s\n");
+//      print "sendRTO: >"."32,$trainID,$cmd,".($mode | ($dir << 3) | ($drive << 5)).",0s\n";
+    break;
+    case "ABUS":
+      print "RTO via Abus not implemented\n";
+    break;
+  }
+}
+
 function checkTrainTimeout() {
 global $trainData, $now;
   foreach ($trainData as $index => &$train) {
@@ -645,7 +667,7 @@ function receivedFromRadioLink($data) {  // position report received via USB
   if ($res[0] == "OK" and $res[2] == $POSREP) {
     $packet[3] = 1; // report valid
     $packet[4] = $res[1] & $RF12_ID_MASK;
-    for ($b = 3; $b < 12; $b++) {
+    for ($b = 3; $b < 13; $b++) {
       $packet[$b + 2] = $res[$b];
     }
     positionReport($packet);
@@ -1726,7 +1748,7 @@ global $trainData, $trainIndex;
       }
     }
   } else {
-    RBC_IL_DebugPrint("Skiping partial route release because train $trainID is ambiguous");
+    RBC_IL_DebugPrint("Skiping partial route release because position of train $trainID is ambiguous");
   }
 }
 
@@ -1830,7 +1852,7 @@ function setRoute($s1, $s2) { // FIXME return status: destinguish between imposs
     return RS_ROUTE_SET;
   } else {
     RBC_IL_DebugPrint("Route from $s1 to $s2 cannot be locked");
-    return RS_REJECTED;
+    return RS_REJECTED; // detail why 
   }
 }
 
@@ -1942,7 +1964,7 @@ global $trainData, $trainIndex, $DATA_FILE, $SRallowed, $SHallowed, $FSallowed, 
     $train["prevBaliseName"] = "00:00:00:00:00";
     $train["prevDistance"] = 0;
     $train["dataValid"] = "VOID";
-    $train["toStatus"] = 0;
+    $train["rtoMode"] = RTO_UDEF;
     $train["pr0"] = false;
     $train["posTimeStamp"] = 0;
     $train["comTimeStamp"] = 0;
@@ -1951,14 +1973,15 @@ global $trainData, $trainIndex, $DATA_FILE, $SRallowed, $SHallowed, $FSallowed, 
     $train["MAdist"] = 0;
     $train["trn"] = "";
     $train["trnStatus"] = TRN_UDEF;
-    $train["index"] = $index; // to know index when only one set of train data is handed over
+    $train["etd"] = 0;
+    $train["index"] = $index; // to know index when only the train data set is handed over
     $trainIndex[$train["ID"]] = $index;
   }
 }
 
 function positionReport($data) { // analyse received position report
 global $trainIndex, $trainData, $balisesID, $SR_MAX_SPEED, $SH_MAX_SPEED, $ATO_MAX_SPEED, $FS_MAX_SPEED, $now, 
-  $posTimeout, $restorePos, $PT1,$points;
+  $posTimeout, $restorePos, $PT1, $points;
   
   if (isset($trainIndex[$data[4]])) {
     $index = $trainIndex[$data[4]];
@@ -1975,7 +1998,8 @@ global $trainIndex, $trainData, $balisesID, $SR_MAX_SPEED, $SH_MAX_SPEED, $ATO_M
         $train["front"] = D_UP;
       } elseif ($train["pwr"] == P_L) {
         $train["front"] = D_DOWN;
-      }
+      } // else orientation undefined, FIXME
+      $train["rtoMode"] = $data[14];
       // ------ Mode and MA request
       switch ($train["reqMode"]) {
         case M_SR:
@@ -2282,19 +2306,19 @@ global $PT1, $clients, $clientsData, $inCharge, $trainData, $EC, $now, $balises,
       HMIindication($from, "displayResponse {".$RS_TXT[setRoute($param[1], $param[2])]."}\n");
     }
   break;
-  case "reqTo":
+  case "reqRto":
     if ($inCharge) {
-      print "Not impl. Request take-over of train {$param[1]}\n";
+      sendRTO($trainData[$param[1]]["ID"], 1, 5, 1, 2);
     }
   break;
-  case "relTo":
+  case "relRto":
     if ($inCharge) {
-      print "Not impl. Release take-over of train {$param[1]}\n";
+      sendRTO($trainData[$param[1]]["ID"], 2, 5, 1, 2);
     }
   break;
-  case "txTo":
+  case "txRto":
     if ($inCharge) {
-      print "Not impl. Send to train {$param[1]} Mode: {$param[2]} Drive: {$param[3]} Dir: {$param[4]}\n";
+      sendRTO($trainData[$param[1]]["ID"], 0, $param[2], $param[3], $param[4]);
     }
   break;
   case "ars": // Toggle ARS for signal
@@ -2441,6 +2465,9 @@ global $now, $tmsHB, $tmsStatus, $trainData, $PT1, $arsEnabled;
     case "setTRN":
       $trainData[$param[1]]["trn"] = $param[2];
     break;
+    case "etd":
+      $trainData[$param[1]]["etd"] = $param[2];
+    break;
     default:
       print "Ups unimplemented TMS command ".$param[0]."\n";
     break;
@@ -2448,7 +2475,7 @@ global $now, $tmsHB, $tmsStatus, $trainData, $PT1, $arsEnabled;
 };
 
 function trainLocationTMS($trainIndex, $eltName, $dir) {
-  $progress = "A"; // until progress implemented FIXME
+  $progress = "A"; // until progress and/or stand still is implemented FIXME
   notifyTMS("trainLoc $trainIndex $eltName $progress $dir");
 }
 
@@ -2580,7 +2607,7 @@ $radioLink, $radioBuf, $radio, $tmsStatus;
         while ($res = fgets($r)) { // Get all available data
         $radioBuf = $radioBuf.$res;
         if (false !== strpos($res,"\n")) {
-          receivedFromRadioLink($radioBuf); // process data from radio
+          receivedFromRadioLink(trim($radioBuf)); // process data from radio
           $radioBuf = "";
         }
         }
@@ -2769,12 +2796,13 @@ global $HMI, $PT1, $emergencyStop, $arsEnabled, $tmsStatus, $TMS_STATUS_TXT;
 }
 
 function updateTrainDataHMI($index) {
-global $trainData, $MODE_TXT, $DIR_TXT, $PWR_TXT, $ACK_TXT, $TOSTATE_TXT;
+global $trainData, $MODE_TXT, $DIR_TXT, $PWR_TXT, $ACK_TXT, $RTOMODE_TXT;
   $train = $trainData[$index];
-
   HMIindicationAll("trainDataD ".$index." {".$MODE_TXT[$train["authMode"]]." (".$MODE_TXT[$train["reqMode"]].")} ".$train["baliseName"]." {".
         $train["distance"]."} {".$train["speed"]."} {".$DIR_TXT[$train["nomDir"]]."} {".$PWR_TXT[$train["pwr"]]."} {".
-        $ACK_TXT[$train["MAreceived"]]."} ".$train["dataValid"]." {".$TOSTATE_TXT[$train["toStatus"]]."} {".$train["MAbaliseName"]."} {".$train["MAdist"]."} {".$train["trn"]."} {".$train["trnStatus"]."}\n");
+        $ACK_TXT[$train["MAreceived"]]."} ".$train["dataValid"]." {".$RTOMODE_TXT[$train["rtoMode"]]."} {".
+        $train["MAbaliseName"]."} {".$train["MAdist"]."} {".$train["trn"]."} {".$train["trnStatus"]."} {".
+        ($train["etd"] != 0 ? date("H:i:s",$train["etd"]) : "")."}\n");
 }
 
 function HMIindicationAll($msg) {// Send indication to all clients
