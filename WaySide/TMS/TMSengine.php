@@ -179,7 +179,7 @@ global $tts, $trainData, $now;
   if (array_key_exists($trn, $tts)) { // trn is known in time table
     $tt = $tts[$trn];
     if ($nextElementName != $train["location"][$dir]) { // new location
-//    print "new\n";
+    print "new location ($dir): $nextElementName Prev. location {$train["location"][$dir]}\n";
       $train["location"][$dir] = $nextElementName;
       $train["locationTS"] = $now; // if stopping locaiton of next signal is defined, set time stamp only when at stopping locationd FIXME
       $train["routeState"]["U"] = RS_NO_ROUTE; 
