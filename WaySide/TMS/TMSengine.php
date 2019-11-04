@@ -41,9 +41,10 @@ define("RS_PENDING",6);             // route is being set
 define("RS_NO_ROUTE_SPECIFIED",7);  // time table has no route
 define("RS_COMPLETED",8);           // route setting completed for time table
 define("RS_NO_ROUTE",9);            // route not set (yet)
-define("RS_WAIT",10);               // await time out
+define("RS_WAIT",10);               // await departure delay
 define("RS_CONFIRM", 11);           // Signaller to set next route by hand
 define("RS_WAIT_DEPARTURE",12);     // await departure time
+define("RS_WAIT_TRAIN",13);         // await meeting train
 
 define("TMS_UDEF",0);
 define("TMS_NO_TT",1);
@@ -134,11 +135,11 @@ global $PT1, $ttError;
       if (!signalExists($route["start"])) {
         ttError("TRN: $trn Route $routeIndex Unknown route start: {$route["start"]}");
       }
-      if ((!isset($route["action"]) or $route["action"] != "E" and $route["action"] != "N") and !signalExists($route["dest"])) {
+      if ((!isset($route["condition"]) or $route["condition"] != "E" and $route["condition"] != "N") and !signalExists($route["dest"])) {
         ttError("TRN: $trn Route $routeIndex Unknown route destination: {$route["dest"]}");
       }
-      if (isset($route["action"]) and $route["action"] == "N" and !isset($route["nextTrn"])) {
-        ttError("TRN: $trn Route $routeIndex \"nextTrn\" missing for action \"N\"");
+      if (isset($route["condition"]) and $route["condition"] == "N" and !isset($route["nextTrn"])) {
+        ttError("TRN: $trn Route $routeIndex \"nextTrn\" missing for condition \"N\"");
       }
       if (isset($route["time"]) and $route["time"] != "" and isset($rouyte["delay"])) {
         ttWarning("TRN: $trn Route $routeIndex: both \"time\" and \"delay\" are specified - \"delay\" will be ignored");
@@ -193,7 +194,7 @@ global $tts, $trainData, $now;
           if ($train["routeState"][$revDir] == RS_NO_ROUTE or $train["routeState"][$revDir] == RS_NO_ROUTE_SPECIFIED) {
             $train["routeIndex"] = $routeIndex;
             $route = $tt["routeTable"][$routeIndex];
-            switch ($route["action"]) { 
+            switch ($route["condition"]) { 
               case "E": // location is destination
                 $train["routeState"][$dir] = RS_COMPLETED;
                 $train["trnState"] = TRN_COMPLETED;
@@ -231,6 +232,10 @@ global $tts, $trainData, $now;
                   setRoute($trainIndex, $dir, $route["start"], $route["dest"]);
 //                  print "setRoute1 $trainIndex, $dir, {$route["start"]}, {$route["dest"]}\n";
                 }
+              break;
+              case "W": // wait for another train
+                $train["routeState"][$dir] = RS_WAIT_TRAIN;
+                $train["trnState"] = TRN_WAITING;
               break;
               case "M": // Manual - operator to set next route
                 $train["routeState"][$dir] = RS_CONFIRM;
@@ -324,8 +329,10 @@ global $trainData, $tts, $now;
 //          print "setRoute3 $trainIndex, $dir, {$route["start"]}, {$route["dest"]}\n";
         }
       break;
-      
-      case RS_WAIT: // if time elapsed set route
+      case RS_WAIT_TRAIN:
+        
+      break;
+/*      case RS_WAIT: // if time elapsed set route
         $route = $tts[$train["trn"]]["routeTable"][$train["routeIndex"]];
         if ($now > $train["locationTS"] + $route["delay"]) { // waiting time elapsed
           $train["routeState"][$dir] = RS_PENDING;
@@ -343,6 +350,7 @@ global $trainData, $tts, $now;
 //          print "setRoute4 $trainIndex, $dir, {$route["start"]}, {$route["dest"]}\n";
         }
       break;
+*/
       case RS_COMPLETED:
         $route = $tts[$train["trn"]]["routeTable"][$train["routeIndex"]];
         if (isset($route["time"]) and $route["time"] != "") { // check depature time

@@ -65,6 +65,7 @@ set trnStatusColor {red lightgreen grey red yellow darkcyan green orange lightgr
 #define("TRN_UNKNOWN",8);
 
 set emergencyStop false
+set rtoDisplay no
 
 #----------------------------------------------------------------------------------------------------------------- Display elements
 proc label {text x y} {
@@ -210,7 +211,7 @@ proc point {name x y layout} {
 }
 
 proc trainFrame {index} {
-global nTrainFrame  trainMA entryFontSize rtoMode toMode toDrive toDir trnSetValue
+global nTrainFrame  trainMA entryFontSize rtoMode toMode toDrive toDir trnSetValue rtoDisplay
 
   set toMode($index) 5
   set toDrive($index) 1
@@ -271,6 +272,7 @@ global nTrainFrame  trainMA entryFontSize rtoMode toMode toDrive toDir trnSetVal
 
   
 # ----------------  Remote take-over
+if {$rtoDisplay} {
   grid [ttk::frame .f.fTrain.t$index.rto  -padding "3 3 12 12" -relief solid -borderwidth 2] -column 0  -columnspan 8 -row 9
   grid [ttk::label .f.fTrain.t$index.rto.toX -text "RTO mode:"] -column 0 -row 9 -padx 5 -pady 2 -sticky we
   grid [ttk::label .f.fTrain.t$index.rto.to -text "----" -textvariable rtoMode($index)] -column 1 -columnspan 2 -row 9 -padx 5 -pady 2 -sticky we
@@ -324,7 +326,7 @@ grid [ttk::radiobutton .f.fTrain.t$index.rto.oDrive.dirN -value "2" -variable to
 .f.fTrain.t$index.rto.oDrive.dirN state disabled
 grid [ttk::radiobutton .f.fTrain.t$index.rto.oDrive.dirF -value "3" -variable toDir($index)  -command  "txRto $index"] -column 9 -row 1
 .f.fTrain.t$index.rto.oDrive.dirF state disabled
-
+  }
 }
 
 proc destroyTrainFrame {} {
@@ -700,7 +702,7 @@ global trainName trainLength
 }
 
 proc trainDataD {trainIndex mode balise distance speed nomDir pwr maAck valid status MAbalise MAdist trn trnStatus etd} { ;# dynamic train data
-global trainMode trainPosition trainSpeed trainNomDir trainPWR trainACK trainValid rtoMode trainMA trainTRN trainETD trnStatusColor
+global trainMode trainPosition trainSpeed trainNomDir trainPWR trainACK trainValid rtoMode trainMA trainTRN trainETD trnStatusColor rtoDisplay
   set trainMode($trainIndex) $mode
   set trainPosition($trainIndex) "$balise $distance"
   set trainSpeed($trainIndex) $speed
@@ -708,10 +710,12 @@ global trainMode trainPosition trainSpeed trainNomDir trainPWR trainACK trainVal
   set trainPWR($trainIndex) $pwr
   set trainACK($trainIndex) $maAck
   set trainValid($trainIndex) $valid
-  set rtoMode($trainIndex) $status
   set trainMA($trainIndex) "$MAbalise $MAdist"
   set trainTRN($trainIndex) $trn
   set trainETD($trainIndex) $etd
+  if {$rtoDisplay} {
+    set rtoMode($trainIndex) $status
+  }
   .f.fTrain.t$trainIndex.trn configure -background [lindex $trnStatusColor $trnStatus]
 }
 
@@ -1041,7 +1045,7 @@ global showGrid
 }
 
 proc disableButtons {} {
-global nTrainFrame
+global nTrainFrame rtoDisplay
   .f.buttonPoint state disabled
   .f.buttonPointBlock state disabled
   .f.buttonRelease state disabled
@@ -1058,28 +1062,29 @@ global nTrainFrame
     .f.fTrain.t$x.ato_allowed state disabled
     .f.fTrain.t$x.trnInp state disabled
     .f.fTrain.t$x.trnSet state disabled
-    .f.fTrain.t$x.rto.reqRto state disabled
-    .f.fTrain.t$x.rto.relRto state disabled
-    .f.fTrain.t$x.rto.oMode.modeOFF state disabled
-    .f.fTrain.t$x.rto.oMode.modeSR state disabled
-    .f.fTrain.t$x.rto.oMode.modeSH state disabled
-    .f.fTrain.t$x.rto.oMode.modeFS state disabled
-    .f.fTrain.t$x.rto.oMode.modeATO state disabled
-    .f.fTrain.t$x.rto.oDrive.driveSTOP state disabled
-    .f.fTrain.t$x.rto.oDrive.drive4 state disabled
-    .f.fTrain.t$x.rto.oDrive.drive3 state disabled
-    .f.fTrain.t$x.rto.oDrive.drive2 state disabled
-    .f.fTrain.t$x.rto.oDrive.drive1 state disabled
-    .f.fTrain.t$x.rto.oDrive.dirR state disabled
-    .f.fTrain.t$x.rto.oDrive.dirN state disabled
-    .f.fTrain.t$x.rto.oDrive.dirF state disabled
-
+    if {$rtoDisplay} {
+      .f.fTrain.t$x.rto.reqRto state disabled
+      .f.fTrain.t$x.rto.relRto state disabled
+      .f.fTrain.t$x.rto.oMode.modeOFF state disabled
+      .f.fTrain.t$x.rto.oMode.modeSR state disabled
+      .f.fTrain.t$x.rto.oMode.modeSH state disabled
+      .f.fTrain.t$x.rto.oMode.modeFS state disabled
+      .f.fTrain.t$x.rto.oMode.modeATO state disabled
+      .f.fTrain.t$x.rto.oDrive.driveSTOP state disabled
+      .f.fTrain.t$x.rto.oDrive.drive4 state disabled
+      .f.fTrain.t$x.rto.oDrive.drive3 state disabled
+      .f.fTrain.t$x.rto.oDrive.drive2 state disabled
+      .f.fTrain.t$x.rto.oDrive.drive1 state disabled
+      .f.fTrain.t$x.rto.oDrive.dirR state disabled
+      .f.fTrain.t$x.rto.oDrive.dirN state disabled
+      .f.fTrain.t$x.rto.oDrive.dirF state disabled
+    }
   }
   .f.canvas itemconfigure button -activefill "" -activeoutline ""
 }
 
 proc enableButtons {} {
-global aColor nTrainFrame
+global aColor nTrainFrame rtoDisplay
   .f.buttonPoint state !disabled
   .f.buttonPointBlock state !disabled
   .f.buttonRelease state !disabled
@@ -1097,21 +1102,23 @@ global aColor nTrainFrame
     .f.fTrain.t$x.ato_allowed state !disabled
     .f.fTrain.t$x.trnInp state !disabled
     .f.fTrain.t$x.trnSet state !disabled
-    .f.fTrain.t$x.rto.reqRto state !disabled
-    .f.fTrain.t$x.rto.relRto state !disabled
-    .f.fTrain.t$x.rto.oMode.modeOFF state !disabled
-    .f.fTrain.t$x.rto.oMode.modeSR state !disabled
-    .f.fTrain.t$x.rto.oMode.modeSH state !disabled
-    .f.fTrain.t$x.rto.oMode.modeFS state !disabled
-    .f.fTrain.t$x.rto.oMode.modeATO state !disabled
-    .f.fTrain.t$x.rto.oDrive.driveSTOP state !disabled
-    .f.fTrain.t$x.rto.oDrive.drive4 state !disabled
-    .f.fTrain.t$x.rto.oDrive.drive3 state !disabled
-    .f.fTrain.t$x.rto.oDrive.drive2 state !disabled
-    .f.fTrain.t$x.rto.oDrive.drive1 state !disabled
-    .f.fTrain.t$x.rto.oDrive.dirR state !disabled
-    .f.fTrain.t$x.rto.oDrive.dirN state !disabled
-    .f.fTrain.t$x.rto.oDrive.dirF state !disabled
+    if {$rtoDisplay} {
+      .f.fTrain.t$x.rto.reqRto state !disabled
+      .f.fTrain.t$x.rto.relRto state !disabled
+      .f.fTrain.t$x.rto.oMode.modeOFF state !disabled
+      .f.fTrain.t$x.rto.oMode.modeSR state !disabled
+      .f.fTrain.t$x.rto.oMode.modeSH state !disabled
+      .f.fTrain.t$x.rto.oMode.modeFS state !disabled
+      .f.fTrain.t$x.rto.oMode.modeATO state !disabled
+      .f.fTrain.t$x.rto.oDrive.driveSTOP state !disabled
+      .f.fTrain.t$x.rto.oDrive.drive4 state !disabled
+      .f.fTrain.t$x.rto.oDrive.drive3 state !disabled
+      .f.fTrain.t$x.rto.oDrive.drive2 state !disabled
+      .f.fTrain.t$x.rto.oDrive.drive1 state !disabled
+      .f.fTrain.t$x.rto.oDrive.dirR state !disabled
+      .f.fTrain.t$x.rto.oDrive.dirN state !disabled
+      .f.fTrain.t$x.rto.oDrive.dirF state !disabled
+    }
   }
   .f.canvas itemconfigure button -activefill $aColor -activeoutline $aColor
 }
@@ -1214,7 +1221,7 @@ global status
   set status "Connected"
 }
 
-#----------------------------------------------- Main
+#------------------------------------------------------------------------------------------------------------------ Main
 set command ""
 set showLabel no
 set showGrid no
@@ -1248,6 +1255,7 @@ WinterTrain HMI
 Usage:
 --scale <int>   Set scale factor of track layout
 --font <int>    Set font size
+--rto           Enable Remote Take-over display
 --test          Do not enter event loop 
 --IP <address>  Set server address
 --l             Set server address to localhost (127.0.0.1) 
@@ -1261,6 +1269,9 @@ Usage:
           }
         --IP {
           set reqIP yes
+          }
+        --rto {
+          set rtoDisplay yes
           }
         --scale {
           set reqScale yes
