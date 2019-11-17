@@ -18,7 +18,7 @@ set winWidth 1800
 set winHeight 800
 set winX +50
 set winY +50
-set cWidth 1600
+set cWidth 2000
 set cHeight 350
 
 # Note, following color definitions may by overwritten by specifications in PT1 data
@@ -137,11 +137,11 @@ proc bufferStop {name x y layout {length 1}} {
   }
 }
 
-proc signal {name x y layout} {
+proc signal {name x y layout {length 2}} {
   switch $layout {
     f {
       dLabel $x $y 0.4 1.6 $name "$name label"
-      dTrack $x $y 0 0.5 2 0.5 "$name track"
+      dTrack $x $y 0 0.5 $length 0.5 "$name track"
       dTrainIDLabel  $x $y 0.7 0.2 "TEST" "$name trainIdLabel"
       dRectangle $x $y 0.9 0.9 1.9 1.5 "$name ars"
       dLine $x $y 0.4 0.5 0.4 1.2 $name
@@ -152,16 +152,16 @@ proc signal {name x y layout} {
       dButton $x $y 1.4 1.2 0.4 $name selectSignal
     }
     r {
-      dLabel $x $y 1.5 0.4 $name "$name label"
-      dTrack $x $y 0 1.5 2 1.5 "$name track"
-      dTrainIDLabel  $x $y 0.5 1.2 "TEST" "$name trainIdLabel"
-      dRectangle $x $y 1.1 1.1 0.1 0.5 "$name ars"
-      dLine $x $y 1.6 1.5 1.6 0.8 $name
-      dLine $x $y 1 0.8 1.6 0.8 $name
-      dArcR $x $y 0.8 0.8 0.2 "$name aspect"
-      dArcL $x $y 0.4 0.8 0.2 "$name aspect"
-      dRectangle $x $y 0.4 0.6 0.8 1 "$name aspect"
-      dButton $x $y 0.6 0.8 0.4 $name selectSignal
+      dLabel $x $y [expr $length - 0.5 ] 0.4 $name "$name label"
+      dTrack $x $y 0 1.5 $length 1.5 "$name track"
+      dTrainIDLabel  $x $y [expr $length - 1.5 ] 1.2 "TEST" "$name trainIdLabel"
+      dRectangle $x $y [expr $length - 0.9 ] 1.1 [expr $length - 1.9 ] 0.5 "$name ars"
+      dLine $x $y [expr $length - 0.4 ] 1.5 [expr $length - 0.4 ] 0.8 $name
+      dLine $x $y [expr $length - 1 ] 0.8 [expr $length - 0.4 ] 0.8 $name
+      dArcR $x $y [expr $length - 1.2 ] 0.8 0.2 "$name aspect"
+      dArcL $x $y [expr $length - 1.6 ] 0.8 0.2 "$name aspect"
+      dRectangle $x $y [expr $length - 1.6 ] 0.6 [expr $length - 1.2 ] 1 "$name aspect"
+      dButton $x $y [expr $length - 1.4 ] 0.8 0.4 $name selectSignal
     }
   }
 }
@@ -192,6 +192,19 @@ proc point {name x y layout} {
       dMarkLine $x $y 0.5 2.8 1.5 2.8 "$name lockright"
       dMarkLine $x $y 0.5 2.3 0.9 2.3 "$name lockleft"
       dMarkLine $x $y 0.9 2.3 1.1 1.9 "$name lockleft"
+      dButton $x $y 1 2.5 0.4 $name selectPoint
+    }
+    tr { ;# trailing, rigth branch is diverging
+      dLabel $x $y 1 2.9 $name "$name label"
+      dTrainIDLabel  $x $y 1.5 2.8 "TEST" "$name trainIdLabel"
+      dTrack $x $y 0 2.5 0.5 2.5 "$name trackleft"
+      dTrack $x $y 0.5 2.5 1 2.5 "$name left"
+      dTrack $x $y 1 2.5 2 2.5 "$name track"
+      dTrack $x $y 1 2.5 0.7 1.9 "$name right"
+      dTrack $x $y 0.7 1.9 0 0.5 "$name trackright"
+      dMarkLine $x $y 0.5 2.8 1.5 2.8 "$name lockleft"
+      dMarkLine $x $y 1.5 2.3 1.1 2.3 "$name lockright"
+      dMarkLine $x $y 1.1 2.3 0.9 1.9 "$name lockright"
       dButton $x $y 1 2.5 0.4 $name selectPoint
     }
     tl { ;# trailing, left branch is diverging
@@ -911,6 +924,11 @@ global command aColor sColor
         .f.buttonARS configure -text "Ars"
         sendCommand "ars $ID"
       }
+      "_pb" {
+        set command ""
+        .f.buttonPointBlock configure -text "Block"
+        sendCommand "sb $ID"
+      }
       default {
         sendCommand "tr $command $ID"
         .f.canvas itemconfigure "$command&&button" -fill "" -outline "" -activefill $aColor -activeoutline $aColor
@@ -1333,8 +1351,8 @@ grid [ttk::button .f.buttonStop -text "" -command eStop] -column 7 -row 2 -stick
 grid [ttk::button .f.buttonARSALL -text "Disable Ars" -command buttonARSALL] -column 8 -row 2 -sticky we
 
 # Track Layout
-grid [tk::canvas .f.canvas -scrollregion "0 0 $cWidth $cHeight" -yscrollcommand ".f.sbv set" -xscrollcommand ".f.sbh set"] -sticky nwes -column 1 -columnspan 12 -row 3
-grid [tk::scrollbar .f.sbh -orient horizontal -command ".f.canvas xview"] -column 1 -columnspan 14 -row 4 -sticky we
+grid [tk::canvas .f.canvas -scrollregion "0 0 $cWidth $cHeight" -yscrollcommand ".f.sbv set" -xscrollcommand ".f.sbh set"] -sticky nwes -column 1 -columnspan 18 -row 3
+grid [tk::scrollbar .f.sbh -orient horizontal -command ".f.canvas xview"] -column 1 -columnspan 18 -row 4 -sticky we
 grid [tk::scrollbar .f.sbv -orient vertical -command ".f.canvas yview"] -column 0 -row 3 -sticky ns
 
 # Status and response
@@ -1345,16 +1363,16 @@ grid [ttk::label .f.tmsStatus -textvariable tmsStatus] -column 12 -columnspan 2 
 grid [ttk::label .f.response -textvariable response] -column 1 -columnspan 8 -row 6 -padx 5 -pady 2 -sticky w
 
 # System and HMI commands
-grid [ttk::button .f.buttonOpr -text "Request operation" -command rqopr] -column 7 -row 8 -sticky e
-grid [ttk::button .f.buttonShowGrid -text "Show Grid" -command showGrid] -column 8 -row 8 -sticky e
-grid [ttk::button .f.buttonShowLabel -text "Show Label" -command showLabel] -column 9 -row 8 -sticky e
-grid [ttk::button .f.buttonReloadTT -text "Load Timetable" -command loadTT] -column 10 -row 8 -sticky e
-grid [ttk::button .f.buttonEHMI -text "Exit HMI" -command exit] -column 11 -row 8 -sticky e
+grid [ttk::button .f.buttonOpr -text "Request operation" -command rqopr] -column 9 -row 8 -sticky we
+grid [ttk::button .f.buttonShowGrid -text "Show Grid" -command showGrid] -column 10 -row 8 -sticky we
+grid [ttk::button .f.buttonShowLabel -text "Show Label" -command showLabel] -column 11 -row 8 -sticky we
+grid [ttk::button .f.buttonReloadTT -text "Load Timetable" -command loadTT] -column 12 -row 8 -sticky we
+grid [ttk::button .f.buttonEHMI -text "Exit HMI" -command exit] -column 13 -row 8 -sticky we
 #grid [ttk::button .f.buttonERBC -text "Exit RBC" -command exitRBC] -column 12 -row 8 -sticky e
-grid [ttk::button .f.buttonT -text "TEST" -command test] -column 13 -row 8 -sticky e
+grid [ttk::button .f.buttonT -text "TEST" -command test] -column 15 -row 8 -sticky we
 
 # Train data
-grid [ttk::frame .f.fTrain -padding "3 3 3 3" -relief solid -borderwidth 2] -column 1 -row 9 -columnspan 14 -sticky nwes
+grid [ttk::frame .f.fTrain -padding "3 3 3 3" -relief solid -borderwidth 2] -column 1 -row 9 -columnspan 16 -sticky nwes
 
 grid [ttk::label .f.versions -textvariable versions] -column 2 -columnspan 6  -row 10 -padx 5 -pady 2 -sticky w
 

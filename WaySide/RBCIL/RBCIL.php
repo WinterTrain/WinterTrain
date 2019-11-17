@@ -286,7 +286,7 @@ msgLog("Exitting...");
 
 //-----------------------------------------------------------------------------------------------------------------------  Analyse PT1
 function processPT1() {
-global $DATA_FILE, $trainData, $PT1_VERSION, $PT1, $HMI, $errorFound, $totalElement, $points, $signals, $levelCrossings,
+global $DATA_FILE, $trainData, $PT1_VERSION, $PT1, $HMI, $HMIoffset, $errorFound, $totalElement, $points, $signals, $levelCrossings,
   $balises, $balisesID, $bufferstops, $triggers, $tracks;
 
   function inspect($this, $prevName, $up) { // check each edge in the graph
@@ -562,7 +562,7 @@ global $DATA_FILE, $trainData, $PT1_VERSION, $PT1, $HMI, $errorFound, $totalElem
     msgLog("Found $totalElement elements in PT1 data file: $DATA_FILE");
   }
   
-// FIXME Check uniqueness of balises
+// FIXME Check uniqueness of balises. Allow for virtual balises with same ID
 // HMI data
   if (array_key_exists("", $HMI["baliseTrack"])) { unset($HMI["baliseTrack"][""]); } // delete any remaining template entry
   foreach ($HMI["baliseTrack"] as $trackName => $baliseTrack ) {
@@ -2647,8 +2647,9 @@ $radioLink, $radioBuf, $radio, $tmsStatus;
 // --------------------------------------------------------------------------------------------------------------------------------- HMI
 
 function HMIstartup($client) { // Initialize specific client and send track layout, status, train data, version info
-global $PT1, $HMI, $trainData, $VERSION, $PT1_VERSION, $tmsStatus, $TMS_STATUS_TXT, $emergencyStop, $arsEnabled;
+global $PT1, $HMI, $HMIoffset, $trainData, $VERSION, $PT1_VERSION, $tmsStatus, $TMS_STATUS_TXT, $emergencyStop, $arsEnabled;
 // HMI screen layout
+
   HMIindication($client,"RBCversion $VERSION $PT1_VERSION\n");
   HMIindication($client,".f.canvas delete all\n");
   HMIindication($client,"destroyTrainFrame\n");
@@ -2676,28 +2677,49 @@ global $PT1, $HMI, $trainData, $VERSION, $PT1_VERSION, $tmsStatus, $TMS_STATUS_T
     switch ($element["element"]) {
     case "PF":
     case "PT":
-      HMIindication($client,"point $name ".$element["HMI"]["x"]." ".$element["HMI"]["y"]." ".$element["HMI"]["or"]."\n");
+    case "SU":
+    case "SD":
+    case "BSB":
+    case "BSE":
+    case "LX":
+      $hmi = $element["HMI"];
+      $hmiX = $element["HMI"]["x"]; 
+      $hmiY = $element["HMI"]["y"]; 
+      $hmiL = isset($element["HMI"]["l"]) ? $element["HMI"]["l"] : "";
+      if (isset($element["HMI"]["offset"])) {
+        if (isset($HMIoffset[$element["HMI"]["offset"]])) {
+          $hmiX += $HMIoffset[$element["HMI"]["offset"]]["x"];
+          $hmiY += $HMIoffset[$element["HMI"]["offset"]]["y"];
+        } else {
+          print "Warning: Element $name, HMI offset \"{$element["HMI"]["offset"]}\" not defined.\n";        
+        }
+      }
+    }
+    switch ($element["element"]) {
+    case "PF":
+    case "PT":
+      HMIindication($client,"point $name ".$hmiX." ".$hmiY." ".$hmi["or"]."\n");
       HMIindication($client,"pointState $name ".$element["state"]." ".$element["routeState"]." ".$element["trackState"]." ".
         $element["blockingState"]."\n");
     break;
     case "SU":
-      HMIindication($client,"signal $name ".$element["HMI"]["x"]." ".$element["HMI"]["y"]." f\n");
+      HMIindication($client,"signal $name ".$hmiX." ".$hmiY." f $hmiL\n");
       HMIindication($client,"signalState $name ".$element["state"]." ".$element["routeState"]." ".$element["trackState"]." ".$element["arsState"]." \n");
     break;
     case "SD":
-      HMIindication($client,"signal $name ".$element["HMI"]["x"]." ".$element["HMI"]["y"]." r\n");
+      HMIindication($client,"signal $name ".$hmiX." ".$hmiY." r $hmiL\n");
       HMIindication($client,"signalState $name ".$element["state"]." ".$element["routeState"]." ".$element["trackState"]." ".$element["arsState"]." \n");
     break;
     case "BSB":
-      HMIindication($client,"bufferStop $name ".$element["HMI"]["x"]." ".$element["HMI"]["y"]." b ".$element["HMI"]["l"]."\n");
+      HMIindication($client,"bufferStop $name ".$hmiX." ".$hmiY." b ".$hmi["l"]."\n");
       HMIindication($client,"bufferStopState $name ".$element["state"]." ".$element["routeState"]." ".$element["trackState"]."\n");
     break;
     case "BSE":
-      HMIindication($client,"bufferStop $name ".$element["HMI"]["x"]." ".$element["HMI"]["y"]." e ".$element["HMI"]["l"]."\n");
+      HMIindication($client,"bufferStop $name ".$hmiX." ".$hmiY." e ".$hmi["l"]."\n");
       HMIindication($client,"bufferStopState $name ".$element["state"]." ".$element["routeState"]." ".$element["trackState"]."\n");
     break;
     case "LX":
-      HMIindication($client,"levelcrossing $name ".$element["HMI"]["x"]." ".$element["HMI"]["y"]."\n");
+      HMIindication($client,"levelcrossing $name ".$hmiX." ".$hmiY."\n");
       HMIindication($client,"levelcrossingState $name ".$element["status"]." ".$element["routeState"]." ".$element["trackState"]."\n");
     break;
     }
@@ -2705,7 +2727,18 @@ global $PT1, $HMI, $trainData, $VERSION, $PT1_VERSION, $tmsStatus, $TMS_STATUS_T
   HMIindication($client,".f.canvas raise button [.f.canvas create text 0 0]\n"); // Ensure that all element buttons are on the top layer
 // HMI data
   foreach ($HMI["baliseTrack"] as $trackName => $baliseTrack) {
-    HMIindication($client,"track $trackName ".$baliseTrack["x"]." ".$baliseTrack["y"]." ".$baliseTrack["l"]." ".$baliseTrack["or"]."\n");
+    $hmiX = $baliseTrack["x"]; 
+    $hmiY = $baliseTrack["y"]; 
+    if (isset($baliseTrack["offset"])) {
+      if (isset($HMIoffset[$baliseTrack["offset"]])) {
+        $hmiX += $HMIoffset[$baliseTrack["offset"]]["x"];
+        $hmiY += $HMIoffset[$baliseTrack["offset"]]["y"];
+      } else {
+        print "Warning: Track $trackName, HMI offset \"{$baliseTrack["offset"]}\" not defined.\n";        
+      }
+    }
+
+    HMIindication($client,"track $trackName $hmiX $hmiY ".$baliseTrack["l"]." ".$baliseTrack["or"]."\n");
     HMIindication($client,"trState $trackName ".$baliseTrack["routeState"]." ".$baliseTrack["trackState"]." ".$baliseTrack["trainID"]."\n");
   }
 // train data

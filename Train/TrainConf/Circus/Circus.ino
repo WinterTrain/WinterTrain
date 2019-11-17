@@ -2,7 +2,7 @@
 // ------------------------------------------- Circus Wagon
 
 // define either OVERRIDE_SR or OVERRIDE_SH
-#define OVERRRIDE_SR
+#define OVERRIDE_SR
 
 // RF12
 #define OBU_ID 22 // RF12 node ID of train

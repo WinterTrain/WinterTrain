@@ -47,7 +47,7 @@
 #define OBU_PIN_RLIGHT A2       // Rear light
 
 // DMI HW assignment
-#define DMI_PIN_BLUE 4, 
+#define DMI_PIN_BLUE 4
 #define DMI_PIN_RED 5           // Movement Auth indicator
 #define DMI_PIN_RED2 3          // Mode Auth indicator 
 #define DMI_PIN_YELLOW A3

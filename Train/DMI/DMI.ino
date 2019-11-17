@@ -92,6 +92,7 @@ void sendCmd() {
   driveSel = ((analogRead(DMI_PIN_DRIVE_SEL) >> 4) + 24) / 16;
   dirSel = ((analogRead(DMI_PIN_DIR_SEL) >> 5) + 24) / 16;
   txQ[0] = OBU_ID;
+  
   txQ[1] = modeSel | dirSel << 3 | driveSel << 5;
   txWaiting = true;
 }
