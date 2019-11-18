@@ -1,7 +1,7 @@
 <?php
 // PT1 data for the WinterTrain at CBU
 
-$PT1_VERSION = "CBU2019_01P01"; 
+$PT1_VERSION = "CBU2019_01P02";
 $PT1 = [
 
 // ----------------------------------------------------------------------------------------------------------------------------- Station A
@@ -90,7 +90,7 @@ $PT1 = [
     "type" => 0,
     "majorDevice" => 0,
     ],
-  "U" => ["name" => "S24", "dist" => 0],
+  "U" => ["name" => "S6", "dist" => 0],
   "D" => ["name" => "P1", "dist" => 0],
   "HMI" => [
     "offset" => "A",
@@ -100,7 +100,7 @@ $PT1 = [
     ],
   ],
 
-"S24" => [ // Signal, facing and ...
+"S6" => [ // Signal, facing and ...
   "element" => "SU",
   "type" => "MB",
   "EC" => [
@@ -108,7 +108,7 @@ $PT1 = [
     "type" => 0,
     "majorDevice" => 0,
     ],
-  "U" => ["name" => "S21", "dist" => 0],
+  "U" => ["name" => "S3", "dist" => 0],
   "D" => ["name" => "S1", "dist" => 0],
   "HMI" => [
     "offset" => "A",
@@ -118,7 +118,7 @@ $PT1 = [
     ],
   ], 
 
-"S21" => [ // Signal, facing and ...
+"S3" => [ // Signal, facing and ...
   "element" => "SD",
   "type" => "MB",
   "EC" => [
@@ -126,8 +126,8 @@ $PT1 = [
     "type" => 0,
     "majorDevice" => 0,
     ],
-  "U" => ["name" => "S6", "dist" => 0],
-  "D" => ["name" => "S24", "dist" => 0],
+  "U" => ["name" => "S8", "dist" => 0],
+  "D" => ["name" => "S6", "dist" => 0],
   "HMI" => [
     "offset" => "A",
     "x" => 9,
@@ -137,7 +137,7 @@ $PT1 = [
   ], 
 // ---------------------------------------------------------------------------------------------------------------------- Station B
 
-"S6" => [ // Signal, facing and ...
+"S8" => [ // Signal, facing and ...
   "element" => "SU",
   "type" => "MB",
   "EC" => [
@@ -146,7 +146,7 @@ $PT1 = [
     "majorDevice" => 0,
     ],
   "U" => ["name" => "P2", "dist" => 0],
-  "D" => ["name" => "S21", "dist" => 0],
+  "D" => ["name" => "S3", "dist" => 0],
   "HMI" => [
     "offset" => "B",
     "x" => 0,
@@ -164,9 +164,9 @@ $PT1 = [
     "minorDevice" => 0,
     ],
   "supervisionState" => "S",
-  "R" => ["name" => "S5", "dist" => 0],
-  "L" => ["name" => "S3", "dist" => 0],
-  "T" => ["name" => "S6", "dist" => 0],
+  "R" => ["name" => "S7", "dist" => 0],
+  "L" => ["name" => "S5", "dist" => 0],
+  "T" => ["name" => "S8", "dist" => 0],
   "HMI" => [
     "offset" => "B",
     "or" => "fr",
@@ -175,23 +175,6 @@ $PT1 = [
     ],
   ],
 
-"S3" => [ // Signal, facing and ...
-  "element" => "SD",
-  "type" => "MB",
-  "EC" => [
-    "addr" => 0,
-    "type" => 0,
-    "majorDevice" => 0,
-    ],
-  "U" => ["name" => "S8", "dist" => 0],
-  "D" => ["name" => "P2", "dist" => 0],
-  "HMI" => [
-    "offset" => "B",
-    "x" => 3,
-    "y" => -1,
-    ],
-  ],
-  
 "S5" => [ // Signal, facing and ...
   "element" => "SD",
   "type" => "MB",
@@ -205,27 +188,27 @@ $PT1 = [
   "HMI" => [
     "offset" => "B",
     "x" => 3,
-    "y" => 1,
+    "y" => -1,
     ],
   ],
   
-"S8" => [ // Signal, facing and ...
-  "element" => "SU",
+"S7" => [ // Signal, facing and ...
+  "element" => "SD",
   "type" => "MB",
   "EC" => [
     "addr" => 0,
     "type" => 0,
     "majorDevice" => 0,
     ],
-  "U" => ["name" => "P3", "dist" => 0],
-  "D" => ["name" => "S3", "dist" => 0],
+  "U" => ["name" => "S12", "dist" => 0],
+  "D" => ["name" => "P2", "dist" => 0],
   "HMI" => [
     "offset" => "B",
-    "x" => 6,
-    "y" => 0,
+    "x" => 3,
+    "y" => 1,
     ],
   ],
-
+  
 "S10" => [ // Signal, facing and ...
   "element" => "SU",
   "type" => "MB",
@@ -236,6 +219,23 @@ $PT1 = [
     ],
   "U" => ["name" => "P3", "dist" => 0],
   "D" => ["name" => "S5", "dist" => 0],
+  "HMI" => [
+    "offset" => "B",
+    "x" => 6,
+    "y" => 0,
+    ],
+  ],
+
+"S12" => [ // Signal, facing and ...
+  "element" => "SU",
+  "type" => "MB",
+  "EC" => [
+    "addr" => 0,
+    "type" => 0,
+    "majorDevice" => 0,
+    ],
+  "U" => ["name" => "P3", "dist" => 0],
+  "D" => ["name" => "S7", "dist" => 0],
   "HMI" => [
     "offset" => "B",
     "x" => 6,
@@ -252,9 +252,9 @@ $PT1 = [
     "minorDevice" => 0,
     ],
   "supervisionState" => "S",
-  "R" => ["name" => "S8", "dist" => 0],
-  "L" => ["name" => "S10", "dist" => 0],
-  "T" => ["name" => "S7", "dist" => 0],
+  "R" => ["name" => "S10", "dist" => 0],
+  "L" => ["name" => "S12", "dist" => 0],
+  "T" => ["name" => "S9", "dist" => 0],
   "HMI" => [
     "offset" => "B",
     "or" => "tl",
@@ -263,7 +263,7 @@ $PT1 = [
     ],
   ],
 
-"S7" => [ // Signal, facing and ...
+"S9" => [ // Signal, facing and ...
   "element" => "SD",
   "type" => "MB",
   "EC" => [
@@ -271,7 +271,7 @@ $PT1 = [
     "type" => 0,
     "majorDevice" => 0,
     ],
-  "U" => ["name" => "S34", "dist" => 0],
+  "U" => ["name" => "S16", "dist" => 0],
   "D" => ["name" => "P3", "dist" => 0],
   "HMI" => [
     "offset" => "B",
@@ -281,7 +281,7 @@ $PT1 = [
     ],
   ],
 
-"S34" => [ // Signal, facing and ...
+"S16" => [ // Signal, facing and ...
   "element" => "SU",
   "type" => "MB",
   "EC" => [
@@ -289,8 +289,8 @@ $PT1 = [
     "type" => 0,
     "majorDevice" => 0,
     ],
-  "U" => ["name" => "S31", "dist" => 0],
-  "D" => ["name" => "S7", "dist" => 0],
+  "U" => ["name" => "S11", "dist" => 0],
+  "D" => ["name" => "S9", "dist" => 0],
   "HMI" => [
     "offset" => "B",
     "x" => 12,
@@ -299,7 +299,7 @@ $PT1 = [
     ],
   ], 
 
-"S31" => [ // Signal, facing and ...
+"S11" => [ // Signal, facing and ...
   "element" => "SD",
   "type" => "MB",
   "EC" => [
@@ -307,8 +307,8 @@ $PT1 = [
     "type" => 0,
     "majorDevice" => 0,
     ],
-  "U" => ["name" => "S16", "dist" => 0],
-  "D" => ["name" => "S34", "dist" => 0],
+  "U" => ["name" => "S20", "dist" => 0],
+  "D" => ["name" => "S16", "dist" => 0],
   "HMI" => [
     "offset" => "B",
     "x" => 13,
@@ -321,7 +321,7 @@ $PT1 = [
   
 "BS5" => [ // Bufferstop; begin of direction up
   "element" => "BSB",
-  "U" => ["name" => "S12", "dist" => 0],
+  "U" => ["name" => "S14", "dist" => 0],
   "HMI" => [
     "offset" => "C",
     "x" => 0,
@@ -330,7 +330,7 @@ $PT1 = [
     ],
   ],
 
-"S12" => [ // Signal, facing and ...
+"S14" => [ // Signal, facing and ...
   "element" => "SU",
   "type" => "MB",
   "EC" => [
@@ -338,7 +338,7 @@ $PT1 = [
     "type" => 0,
     "majorDevice" => 0,
     ],
-  "U" => ["name" => "S14", "dist" => 0],
+  "U" => ["name" => "S18", "dist" => 0],
   "D" => ["name" => "BS5", "dist" => 0],
   "HMI" => [
     "offset" => "C",
@@ -347,7 +347,7 @@ $PT1 = [
     ],
   ],  
 // ---------------------------------------------------------------------------------------------------------------------- Station D  
-  "S14" => [ // Signal, facing and ...
+  "S18" => [ // Signal, facing and ...
   "element" => "SU",
   "type" => "MB",
   "EC" => [
@@ -356,7 +356,7 @@ $PT1 = [
     "majorDevice" => 0,
     ],
   "U" => ["name" => "P5", "dist" => 0],
-  "D" => ["name" => "S12", "dist" => 0],
+  "D" => ["name" => "S14", "dist" => 0],
   "HMI" => [
     "offset" => "D",
     "x" => 1,
@@ -364,7 +364,7 @@ $PT1 = [
     ],
   ],
     
-  "S16" => [ // Signal, facing and ...
+  "S20" => [ // Signal, facing and ...
   "element" => "SU",
   "type" => "MB",
   "EC" => [
@@ -373,7 +373,7 @@ $PT1 = [
     "majorDevice" => 0,
     ],
   "U" => ["name" => "P4", "dist" => 0],
-  "D" => ["name" => "S31", "dist" => 0],
+  "D" => ["name" => "S11", "dist" => 0],
   "HMI" => [
     "offset" => "D",
     "x" => 0,
@@ -391,9 +391,9 @@ $PT1 = [
     "minorDevice" => 0,
     ],
   "supervisionState" => "S",
-  "R" => ["name" => "S11", "dist" => 0],
+  "R" => ["name" => "S17", "dist" => 0],
   "L" => ["name" => "P5", "dist" => 0],
-  "T" => ["name" => "S16", "dist" => 0],
+  "T" => ["name" => "S20", "dist" => 0],
   "HMI" => [
     "offset" => "D",
     "or" => "fl",
@@ -411,9 +411,9 @@ $PT1 = [
     "minorDevice" => 0,
     ],
   "supervisionState" => "S",
-  "R" => ["name" => "S14", "dist" => 0],
+  "R" => ["name" => "S18", "dist" => 0],
   "L" => ["name" => "P4", "dist" => 0],
-  "T" => ["name" => "S9", "dist" => 0],
+  "T" => ["name" => "S15", "dist" => 0],
   "HMI" => [
     "offset" => "D",
     "or" => "tl",
@@ -422,7 +422,7 @@ $PT1 = [
     ],
   ],
 
-"S9" => [ // Signal, facing and ...
+"S15" => [ // Signal, facing and ...
   "element" => "SD",
   "type" => "MB",
   "EC" => [
@@ -430,7 +430,7 @@ $PT1 = [
     "type" => 0,
     "majorDevice" => 0,
     ],
-  "U" => ["name" => "S18", "dist" => 0],
+  "U" => ["name" => "S22", "dist" => 0],
   "D" => ["name" => "P5", "dist" => 0],
   "HMI" => [
     "offset" => "D",
@@ -440,7 +440,7 @@ $PT1 = [
     ],
   ],
   
-"S11" => [ // Signal, facing and ...
+"S17" => [ // Signal, facing and ...
   "element" => "SD",
   "type" => "MB",
   "EC" => [
@@ -448,7 +448,7 @@ $PT1 = [
     "type" => 0,
     "majorDevice" => 0,
     ],
-  "U" => ["name" => "S20", "dist" => 0],
+  "U" => ["name" => "S24", "dist" => 0],
   "D" => ["name" => "P4", "dist" => 0],
   "HMI" => [
     "offset" => "D",
@@ -457,7 +457,7 @@ $PT1 = [
     ],
   ],
   
-"S18" => [ // Signal, facing and ...
+"S22" => [ // Signal, facing and ...
   "element" => "SU",
   "type" => "MB",
   "EC" => [
@@ -466,7 +466,7 @@ $PT1 = [
     "majorDevice" => 0,
     ],
   "U" => ["name" => "VBG1", "dist" => 0],
-  "D" => ["name" => "S9", "dist" => 0],
+  "D" => ["name" => "S15", "dist" => 0],
   "HMI" => [
     "offset" => "D",
     "x" => 6,
@@ -477,10 +477,10 @@ $PT1 = [
   "element" => "BL",
   "ID" => "",
   "U" => ["name" => "P6", "dist" => 0],
-  "D" => ["name" => "S18", "dist" => 0],
+  "D" => ["name" => "S22", "dist" => 0],
   ],
   
-"S20" => [ // Signal, facing and ...
+"S24" => [ // Signal, facing and ...
   "element" => "SU",
   "type" => "MB",
   "EC" => [
@@ -489,7 +489,7 @@ $PT1 = [
     "majorDevice" => 0,
     ],
   "U" => ["name" => "P6", "dist" => 0],
-  "D" => ["name" => "S11", "dist" => 0],
+  "D" => ["name" => "S17", "dist" => 0],
   "HMI" => [
     "offset" => "D",
     "x" => 7,
@@ -507,8 +507,8 @@ $PT1 = [
     ],
   "supervisionState" => "S",
   "R" => ["name" => "VBG1", "dist" => 0],
-  "L" => ["name" => "S20", "dist" => 0],
-  "T" => ["name" => "S13", "dist" => 0],
+  "L" => ["name" => "S24", "dist" => 0],
+  "T" => ["name" => "S19", "dist" => 0],
   "HMI" => [
     "offset" => "D",
     "or" => "tr",
@@ -517,7 +517,7 @@ $PT1 = [
     ],
   ],
 
-"S13" => [ // Signal, facing and ...
+"S19" => [ // Signal, facing and ...
   "element" => "SD",
   "type" => "MB",
   "EC" => [
@@ -537,7 +537,7 @@ $PT1 = [
 
 "BS2" => [ // Bufferstop; end of direction up
   "element" => "BSE",
-  "D" => ["name" => "S13", "dist" => 0],
+  "D" => ["name" => "S19", "dist" => 0],
   "HMI" => [
     "offset" => "D",
     "x" => 13,
@@ -679,7 +679,7 @@ $HMI = [
       "y" => 2,
       "l" => 1,
     ],
-    "tr21" => [
+    "tr2" => [
       "balises" => [ "VBG1"
               ],
       "offset" => "A",
@@ -688,7 +688,7 @@ $HMI = [
       "y" => 2,
       "l" => 1,
     ],
-    "tr22" => [
+    "tr3" => [
       "balises" => [ "VBG1"
               ],
       "offset" => "A",
@@ -697,38 +697,12 @@ $HMI = [
       "y" => 2,
       "l" => 1,
     ],
-   "tr23" => [
+   "tr4" => [
       "balises" => [ "VBG1"
               ],
       "offset" => "A",
       "or" => "s",
       "x" => 11,
-      "y" => 2,
-      "l" => 1,
-    ],    "" => [ // tr2
-      "balises" => [ "VBG1"
-              ],
-      "offset" => "A",
-      "or" => "s",
-      "x" => 11,
-      "y" => 0,
-      "l" => 1,
-    ],
-    "tr3" => [
-      "balises" => [ "VBG1"
-              ],
-      "offset" => "B",
-      "or" => "s",
-      "x" => 5,
-      "y" => 0,
-      "l" => 1,
-    ],
-    "tr4" => [
-      "balises" => [ "VBG1"
-              ],
-      "offset" => "B",
-      "or" => "s",
-      "x" => 5,
       "y" => 2,
       "l" => 1,
     ],
@@ -737,11 +711,29 @@ $HMI = [
               ],
       "offset" => "B",
       "or" => "s",
+      "x" => 5,
+      "y" => 0,
+      "l" => 1,
+    ],
+    "tr6" => [
+      "balises" => [ "VBG1"
+              ],
+      "offset" => "B",
+      "or" => "s",
+      "x" => 5,
+      "y" => 2,
+      "l" => 1,
+    ],
+    "tr7" => [
+      "balises" => [ "VBG1"
+              ],
+      "offset" => "B",
+      "or" => "s",
       "x" => 10,
       "y" => 0,
       "l" => 1,
     ],
-    "tr35" => [
+    "tr8" => [
       "balises" => [ "VBG1"
               ],
       "offset" => "B",
@@ -750,7 +742,7 @@ $HMI = [
       "y" => 0,
       "l" => 1,
     ],
-    "tr36" => [
+    "tr9" => [
       "balises" => [ "VBG1"
               ],
       "offset" => "B",
@@ -759,7 +751,7 @@ $HMI = [
       "y" => 0,
       "l" => 1,
     ],
-    "tr37" => [
+    "tr10" => [
       "balises" => [ "VBG1"
               ],
       "offset" => "B",
@@ -768,7 +760,7 @@ $HMI = [
       "y" => 0,
       "l" => 1,
     ],
-    "tr6" => [
+    "tr11" => [
       "balises" => [ "VBG1"
               ],
       "offset" => "D",
@@ -777,7 +769,7 @@ $HMI = [
       "y" => 0,
       "l" => 1,
     ],
-    "tr7" => [
+    "tr12" => [
       "balises" => [ "VBG1"
               ],
       "offset" => "D",
@@ -786,7 +778,7 @@ $HMI = [
       "y" => 4,
       "l" => 2,
     ],
-    "tr8" => [
+    "tr13" => [
       "balises" => [ "VBG1"
               ],
       "offset" => "D",
@@ -795,7 +787,7 @@ $HMI = [
       "y" => 4,
       "l" => 1,
     ],
-    "tr9" => [
+    "tr14" => [
       "balises" => [ "VBG1"
               ],
       "offset" => "C",
@@ -804,7 +796,7 @@ $HMI = [
       "y" => 0,
       "l" => 6,
     ],
-    "tr10" => [
+    "tr15" => [
       "balises" => [ "VBG1"
               ],
       "offset" => "D",
@@ -839,7 +831,7 @@ $HMI = [
     ],
     [
       "x" => 17,
-      "y" => 10,
+      "y" => 11,
       "text" => "Station B"
     ],
     [
@@ -849,7 +841,7 @@ $HMI = [
     ],
     [
       "x" => 34,
-      "y" => 8,
+      "y" => 9,
       "text" => "Station D"
     ],
 
