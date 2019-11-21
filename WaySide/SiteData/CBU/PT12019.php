@@ -19,11 +19,11 @@ $PT1 = [
 
 "S2" => [ // Signal, facing and ...
   "element" => "SU",
-  "type" => "MB",
+  "type" => "MS2",
   "EC" => [
-    "addr" => 0,
-    "type" => 0,
-    "majorDevice" => 0,
+    "addr" => 203,
+    "type" => 41,
+    "majorDevice" => 6,
     ],
   "U" => ["name" => "P1", "dist" => 0],
   "D" => ["name" => "BS1", "dist" => 0],
@@ -47,11 +47,11 @@ $PT1 = [
 
 "S4" => [ // Signal, facing and ...
   "element" => "SU",
-  "type" => "MB",
+  "type" => "MS2",
   "EC" => [
-    "addr" => 0,
-    "type" => 0,
-    "majorDevice" => 0,
+    "addr" => 203,
+    "type" => 41,
+    "majorDevice" => 7,
     ],
   "U" => ["name" => "P1", "dist" => 0],
   "D" => ["name" => "BS3", "dist" => 0],
@@ -65,12 +65,12 @@ $PT1 = [
 "P1" => [ // Point, trailing
   "element" => "PT",
   "EC" => [
-    "addr" => 0,
-    "type" => 0,
-    "majorDevice" => 0,
+    "addr" => 202,
+    "type" => 10,
+    "majorDevice" => 3,
     "minorDevice" => 0,
     ],
-  "supervisionState" => "S",
+  "supervisionState" => "P",
   "R" => ["name" => "S2", "dist" => 0],
   "L" => ["name" => "S4", "dist" => 0],
   "T" => ["name" => "S1", "dist" => 0],
@@ -102,11 +102,11 @@ $PT1 = [
 
 "S6" => [ // Signal, facing and ...
   "element" => "SU",
-  "type" => "MB",
+  "type" => "MS2",
   "EC" => [
-    "addr" => 0,
-    "type" => 0,
-    "majorDevice" => 0,
+    "addr" => 203,
+    "type" => 41,
+    "majorDevice" => 8,
     ],
   "U" => ["name" => "S3", "dist" => 0],
   "D" => ["name" => "S1", "dist" => 0],
@@ -158,12 +158,12 @@ $PT1 = [
 "P2" => [ // Point, Facing
   "element" => "PF",
   "EC" => [
-    "addr" => 0,
-    "type" => 0,
-    "majorDevice" => 0,
+    "addr" => 201,
+    "type" => 10,
+    "majorDevice" => 1,
     "minorDevice" => 0,
     ],
-  "supervisionState" => "S",
+  "supervisionState" => "P",
   "R" => ["name" => "S7", "dist" => 0],
   "L" => ["name" => "S5", "dist" => 0],
   "T" => ["name" => "S8", "dist" => 0],
@@ -246,12 +246,12 @@ $PT1 = [
 "P3" => [ // Point, trailing
   "element" => "PT",
   "EC" => [
-    "addr" => 0,
-    "type" => 0,
-    "majorDevice" => 0,
+    "addr" => 201,
+    "type" => 10,
+    "majorDevice" => 2,
     "minorDevice" => 0,
     ],
-  "supervisionState" => "S",
+  "supervisionState" => "P",
   "R" => ["name" => "S10", "dist" => 0],
   "L" => ["name" => "S12", "dist" => 0],
   "T" => ["name" => "S9", "dist" => 0],
@@ -332,13 +332,13 @@ $PT1 = [
 
 "S14" => [ // Signal, facing and ...
   "element" => "SU",
-  "type" => "MB",
+  "type" => "MS2",
   "EC" => [
-    "addr" => 0,
-    "type" => 0,
-    "majorDevice" => 0,
+    "addr" => 202,
+    "type" => 41,
+    "majorDevice" => 7,
     ],
-  "U" => ["name" => "S18", "dist" => 0],
+  "U" => ["name" => "S13", "dist" => 0],
   "D" => ["name" => "BS5", "dist" => 0],
   "HMI" => [
     "offset" => "C",
@@ -346,17 +346,35 @@ $PT1 = [
     "y" => 0,
     ],
   ],  
+
+"S13" => [ // Signal, facing and ...
+  "element" => "SD",
+  "type" => "MS2",
+  "EC" => [
+    "addr" => 202,
+    "type" => 41,
+    "majorDevice" => 8,
+    ],
+  "U" => ["name" => "S18", "dist" => 0],
+  "D" => ["name" => "S14", "dist" => 0],
+  "HMI" => [
+    "offset" => "C",
+    "x" => 3,
+    "y" => -1,
+    ],
+  ],  
+
 // ---------------------------------------------------------------------------------------------------------------------- Station D  
   "S18" => [ // Signal, facing and ...
   "element" => "SU",
-  "type" => "MB",
+  "type" => "MS2",
   "EC" => [
-    "addr" => 0,
-    "type" => 0,
-    "majorDevice" => 0,
+    "addr" => 203,
+    "type" => 41,
+    "majorDevice" => 2,
     ],
   "U" => ["name" => "P5", "dist" => 0],
-  "D" => ["name" => "S14", "dist" => 0],
+  "D" => ["name" => "S13", "dist" => 0],
   "HMI" => [
     "offset" => "D",
     "x" => 1,
@@ -366,11 +384,11 @@ $PT1 = [
     
   "S20" => [ // Signal, facing and ...
   "element" => "SU",
-  "type" => "MB",
+  "type" => "MS2",
   "EC" => [
-    "addr" => 0,
-    "type" => 0,
-    "majorDevice" => 0,
+    "addr" => 203,
+    "type" => 41,
+    "majorDevice" => 1,
     ],
   "U" => ["name" => "P4", "dist" => 0],
   "D" => ["name" => "S11", "dist" => 0],
@@ -385,12 +403,12 @@ $PT1 = [
 "P4" => [ // Point, Facing
   "element" => "PF",
   "EC" => [
-    "addr" => 0,
-    "type" => 0,
-    "majorDevice" => 0,
+    "addr" => 202,
+    "type" => 10,
+    "majorDevice" => 1,
     "minorDevice" => 0,
     ],
-  "supervisionState" => "S",
+  "supervisionState" => "P",
   "R" => ["name" => "S17", "dist" => 0],
   "L" => ["name" => "P5", "dist" => 0],
   "T" => ["name" => "S20", "dist" => 0],
@@ -405,12 +423,12 @@ $PT1 = [
 "P5" => [ // Point, trailing
   "element" => "PT",
   "EC" => [
-    "addr" => 0,
-    "type" => 0,
-    "majorDevice" => 0,
+    "addr" => 202,
+    "type" => 10,
+    "majorDevice" => 2,
     "minorDevice" => 0,
     ],
-  "supervisionState" => "S",
+  "supervisionState" => "P",
   "R" => ["name" => "S18", "dist" => 0],
   "L" => ["name" => "P4", "dist" => 0],
   "T" => ["name" => "S15", "dist" => 0],
@@ -424,11 +442,11 @@ $PT1 = [
 
 "S15" => [ // Signal, facing and ...
   "element" => "SD",
-  "type" => "MB",
+  "type" => "MS3",
   "EC" => [
-    "addr" => 0,
-    "type" => 0,
-    "majorDevice" => 0,
+    "addr" => 202,
+    "type" => 45,
+    "majorDevice" => 4,
     ],
   "U" => ["name" => "S22", "dist" => 0],
   "D" => ["name" => "P5", "dist" => 0],
@@ -439,14 +457,14 @@ $PT1 = [
     "l" => 1
     ],
   ],
-  
+
 "S17" => [ // Signal, facing and ...
   "element" => "SD",
-  "type" => "MB",
+  "type" => "MS3",
   "EC" => [
-    "addr" => 0,
-    "type" => 0,
-    "majorDevice" => 0,
+    "addr" => 203,
+    "type" => 45,
+    "majorDevice" => 3,
     ],
   "U" => ["name" => "S24", "dist" => 0],
   "D" => ["name" => "P4", "dist" => 0],
@@ -459,11 +477,11 @@ $PT1 = [
   
 "S22" => [ // Signal, facing and ...
   "element" => "SU",
-  "type" => "MB",
+  "type" => "MS2",
   "EC" => [
-    "addr" => 0,
-    "type" => 0,
-    "majorDevice" => 0,
+    "addr" => 202,
+    "type" => 41,
+    "majorDevice" => 3,
     ],
   "U" => ["name" => "VBG1", "dist" => 0],
   "D" => ["name" => "S15", "dist" => 0],
@@ -482,11 +500,11 @@ $PT1 = [
   
 "S24" => [ // Signal, facing and ...
   "element" => "SU",
-  "type" => "MB",
+  "type" => "MS2",
   "EC" => [
-    "addr" => 0,
-    "type" => 0,
-    "majorDevice" => 0,
+    "addr" => 202,
+    "type" => 41,
+    "majorDevice" => 2,
     ],
   "U" => ["name" => "P6", "dist" => 0],
   "D" => ["name" => "S17", "dist" => 0],
@@ -500,12 +518,12 @@ $PT1 = [
 "P6" => [ // Point, trailing
   "element" => "PT",
   "EC" => [
-    "addr" => 0,
-    "type" => 0,
-    "majorDevice" => 0,
+    "addr" => 202,
+    "type" => 10,
+    "majorDevice" => 4,
     "minorDevice" => 0,
     ],
-  "supervisionState" => "S",
+  "supervisionState" => "P",
   "R" => ["name" => "VBG1", "dist" => 0],
   "L" => ["name" => "S24", "dist" => 0],
   "T" => ["name" => "S19", "dist" => 0],
@@ -519,11 +537,11 @@ $PT1 = [
 
 "S19" => [ // Signal, facing and ...
   "element" => "SD",
-  "type" => "MB",
+  "type" => "MS2",
   "EC" => [
-    "addr" => 0,
-    "type" => 0,
-    "majorDevice" => 0,
+    "addr" => 202,
+    "type" => 41,
+    "majorDevice" => 1,
     ],
   "U" => ["name" => "BS2", "dist" => 0],
   "D" => ["name" => "P6", "dist" => 0],
@@ -616,7 +634,7 @@ $PT1 = [
     "y" => 0,
     ],
   ],
-  
+
 "" => [ // Signal, facing and ...
   "element" => "SU",
   "type" => "MB",
@@ -633,7 +651,7 @@ $PT1 = [
     "y" => 0,
     ],
   ],
-  
+
 "" => [ // LX
   "element" => "LX",
   "ECsignal" => [
@@ -663,7 +681,7 @@ $PT1 = [
 $HMIoffset = [
   "A" => ["x" => 0, "y" => 4],
   "B" => ["x" => 12, "y" => 6],
-  "C" => ["x" => 21, "y" => 2],
+  "C" => ["x" => 19, "y" => 2],
   "D" => ["x" => 28, "y" => 2],
 ];
 
@@ -792,7 +810,7 @@ $HMI = [
               ],
       "offset" => "C",
       "or" => "s",
-      "x" => 3,
+      "x" => 5,
       "y" => 0,
       "l" => 6,
     ],
@@ -827,7 +845,7 @@ $HMI = [
     [
       "x" => 2,
       "y" => 3,
-      "text" => "Station A"
+      "text" => "Christianshavn"
     ],
     [
       "x" => 17,
