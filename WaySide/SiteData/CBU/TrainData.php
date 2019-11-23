@@ -11,8 +11,8 @@ $trainData = [
 1 => [
   "ID" => 22,
   "name" => "Circus",
-  "lengthFront" => 45,
-  "lengthBehind" => 45,
+  "lengthFront" => 40,
+  "lengthBehind" => 40,
   "wheelFactor" => 5,
   ],
 ];

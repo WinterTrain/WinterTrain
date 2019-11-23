@@ -662,7 +662,8 @@ global $trainData, $now;
 
 function receivedFromRadioLink($data) {  // position report received via USB
   $RF12_ID_MASK = 0x1f;
-  $POSREP = 10; 
+  $POSREP = 10;
+  print ">$data<\n";
   $res = explode(" ",$data);
   if ($res[0] == "OK" and $res[2] == $POSREP) {
     $packet[3] = 1; // report valid

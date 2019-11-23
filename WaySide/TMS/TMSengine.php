@@ -131,20 +131,22 @@ function checkTimeTable($tts) {
 global $PT1, $ttError;
   $ttError = false;
   foreach ($tts as $trn => $tt) {
-    foreach ($tt["routeTable"] as $routeIndex => $route) {
-      if (!signalExists($route["start"])) {
-        ttError("TRN: $trn Route $routeIndex Unknown route start: {$route["start"]}");
+    if ($trn != "") {
+      foreach ($tt["routeTable"] as $routeIndex => $route) {
+        if (!signalExists($route["start"])) {
+          ttError("TRN: $trn Route $routeIndex Unknown route start: {$route["start"]}");
+        }
+        if ((!isset($route["condition"]) or $route["condition"] != "E" and $route["condition"] != "N") and !signalExists($route["dest"])) {
+          ttError("TRN: $trn Route $routeIndex Unknown route destination: {$route["dest"]}");
+        }
+        if (isset($route["condition"]) and $route["condition"] == "N" and !isset($route["nextTrn"])) {
+          ttError("TRN: $trn Route $routeIndex \"nextTrn\" missing for condition \"N\"");
+        }
+        if (isset($route["time"]) and $route["time"] != "" and isset($rouyte["delay"])) {
+          ttWarning("TRN: $trn Route $routeIndex: both \"time\" and \"delay\" are specified - \"delay\" will be ignored");
+        }
+        // check valid time format
       }
-      if ((!isset($route["condition"]) or $route["condition"] != "E" and $route["condition"] != "N") and !signalExists($route["dest"])) {
-        ttError("TRN: $trn Route $routeIndex Unknown route destination: {$route["dest"]}");
-      }
-      if (isset($route["condition"]) and $route["condition"] == "N" and !isset($route["nextTrn"])) {
-        ttError("TRN: $trn Route $routeIndex \"nextTrn\" missing for condition \"N\"");
-      }
-      if (isset($route["time"]) and $route["time"] != "" and isset($rouyte["delay"])) {
-        ttWarning("TRN: $trn Route $routeIndex: both \"time\" and \"delay\" are specified - \"delay\" will be ignored");
-      }
-      // check valid time format
     }
   }
   return $ttError;

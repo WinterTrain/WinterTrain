@@ -14,6 +14,7 @@ if ($debug) {
   error_reporting(0);
 }
 
+// --------------------------------------- Main
 require($DATA_FILE);
 
 switch ($command) {
@@ -33,6 +34,18 @@ switch ($command) {
     if ($PT1[$element1]["element"] != "BSB") {
       print "\nDown:\n";
       distance($PT1[$element1]["D"]["dist"], $PT1[$element1]["D"]["name"],$element2,"D", $element1)."\n";
+    }
+  break;
+  case "b":
+    ksort($PT1);
+    foreach ($PT1 as $name => $element) {
+      if ($element["element"] == "BL") {
+        if ($element["ID"]!= "") {
+          print "{{0x".substr($element["ID"],0,2).", 0x".substr($element["ID"],3,2).", 0x".substr($element["ID"],6,2).", 0x".substr($element["ID"],9,2).", 0x".substr($element["ID"],12,2)."},   },    /* $name  */\\\n";
+        } else {
+          print "($name no ID)\n";
+        }
+      }
     }
   break;
 }
@@ -108,6 +121,7 @@ Performs analysis of PT1 data for the WinterTrain
 COMMAND
 d <element1> <element2>
                   measures distance betwen centre of <element1> and <element2>
+b                 Lists all balises in C like format
 
 -f <file>         reads PT1 data from <file>
 -d                enable debug info
@@ -125,6 +139,9 @@ d <element1> <element2>
           print "Error: command d requires two element names.\n";
         exit(1);
         }
+      break;
+      case "b":
+        $command = "b";
       break;
       case "-f":
         list(,$p) = each($argv);
