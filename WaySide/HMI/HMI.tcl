@@ -1071,7 +1071,7 @@ global nTrainFrame rtoDisplay
   .f.buttonARS state disabled
   .f.buttonStop state disabled
   .f.buttonARSALL state disabled
-#  .f.buttonERBC state disabled
+  .f.buttonERBC state disabled
   .f.buttonT state disabled
   for {set x 0} {$x < $nTrainFrame} {incr x} {
     .f.fTrain.t$x.sr_allowed state disabled
@@ -1111,7 +1111,7 @@ global aColor nTrainFrame rtoDisplay
   .f.buttonStop state !disabled
   .f.buttonARSALL state !disabled
 
-#  .f.buttonERBC state !disabled
+  .f.buttonERBC state !disabled
   .f.buttonT state !disabled
   for {set x 0} {$x < $nTrainFrame} {incr x} {
     .f.fTrain.t$x.sr_allowed state !disabled
@@ -1368,7 +1368,7 @@ grid [ttk::button .f.buttonShowGrid -text "Show Grid" -command showGrid] -column
 grid [ttk::button .f.buttonShowLabel -text "Show Label" -command showLabel] -column 11 -row 8 -sticky we
 grid [ttk::button .f.buttonReloadTT -text "Load Timetable" -command loadTT] -column 12 -row 8 -sticky we
 grid [ttk::button .f.buttonEHMI -text "Exit HMI" -command exit] -column 13 -row 8 -sticky we
-#grid [ttk::button .f.buttonERBC -text "Exit RBC" -command exitRBC] -column 12 -row 8 -sticky e
+grid [ttk::button .f.buttonERBC -text "Exit RBC" -command exitRBC] -column 14 -row 8 -sticky e
 grid [ttk::button .f.buttonT -text "TEST" -command test] -column 15 -row 8 -sticky we
 
 # Train data

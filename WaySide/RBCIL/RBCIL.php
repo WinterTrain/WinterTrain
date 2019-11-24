@@ -1426,7 +1426,7 @@ function updateTrainPosition(&$train, $baliseName, $dist, $trackState) {
   recUpdateTrainPosition($train, "U", -$PT1[$baliseName]["D"]["dist"], $baliseName, $trackState);
   recUpdateTrainPosition($train, "D", -$PT1[$baliseName]["D"]["dist"], $PT1[$baliseName]["D"]["name"], $trackState); // ???
   if ($trackState !== T_CLEAR) { // Determine train location for TMS
-// print "Up: {$train["upElt"]} Down: {$train["downElt"]}\n";
+    print "Up: {$train["upElt"]} Down: {$train["downElt"]}\n";
 
     searchNextSignal("U", $train["upElt"], $train["index"], true);
     searchNextSignal("D", $train["downElt"], $train["index"], true);
@@ -1990,7 +1990,7 @@ global $trainData, $trainIndex, $DATA_FILE, $SRallowed, $SHallowed, $FSallowed, 
     $train["trn"] = "";
     $train["trnStatus"] = TRN_UDEF;
     $train["etd"] = 0;
-    $train["index"] = $index; // to know index when only the train data set is handed over
+    $train["index"] = $index; // to know index in functions where only one train data set is handed over
     $trainIndex[$train["ID"]] = $index;
   }
 }
