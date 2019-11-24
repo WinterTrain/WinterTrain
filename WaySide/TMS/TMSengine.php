@@ -78,6 +78,7 @@ do {
         $heartBeatTimer = $now + HEARTBEAT_TIMEOUT;
         if ($RBCILfh) {
           sendCommandRBCIL("TMS_HB $tmsStatus $now");
+          print "send HB $now\n";
         }
       }
       if ($pollTimer < $now) { // every 1 second

@@ -148,7 +148,7 @@ $PT1 = [
 "BG40" => [ // Balises                                      BG40
   "element" => "BL",
   "ID" => "76:00:0C:FA:7D",
-  "U" => ["name" => "S6", "dist" => 100],
+  "U" => ["name" => "S6", "dist" => 250],
   "D" => ["name" => "BG22", "dist" => 60],
   ],
 "S6" => [ // Signal                                        S6
@@ -194,12 +194,12 @@ $PT1 = [
 "BG23" => [ // Balises                                      BG23
   "element" => "BL",
   "ID" => "1E:00:8E:57:F6",
-  "U" => ["name" => "PH2", "dist" => 140],
-  "D" => ["name" => "S3", "dist" => 140],
+  "U" => ["name" => "PH2", "dist" => 10],
+  "D" => ["name" => "S3", "dist" => 270],
   ],
 "PH2" => [ //  Enforced Point Holding Up
   "element" => "PHTU",
-  "U" => ["name" => "BG24", "dist" => 50],
+  "U" => ["name" => "BG24", "dist" => 20],
   "D" => ["name" => "BG23", "dist" => 1],
   "holdPoint" => "P2",
   ],  
@@ -280,8 +280,8 @@ $PT1 = [
 "BG27" => [ // Balises                                      BG27
   "element" => "BL",
   "ID" => "FF:FF:FF:FF:FF",
-  "U" => ["name" => "S10", "dist" => 150],
-  "D" => ["name" => "S5", "dist" => 150],
+  "U" => ["name" => "S10", "dist" => 140],
+  "D" => ["name" => "S5", "dist" => 140],
   ],
 "S10" => [ // Signal                                        S10
   "element" => "SU",
@@ -433,14 +433,14 @@ $PT1 = [
 "BG42" => [ // Balises                                      BG42
   "element" => "BL",
   "ID" => "73:00:56:D9:B2",
-  "U" => ["name" => "BG44", "dist" => 35],
+  "U" => ["name" => "BG44", "dist" => 40],
   "D" => ["name" => "BG36","dist" => 160],
   ],
-"BG44" => [ // Balises                                      BG42
+"BG44" => [ // Balises                                      BG44
   "element" => "BL",
   "ID" => "73:00:56:D6:F2",
-  "U" => ["name" => "S16", "dist" => 360],
-  "D" => ["name" => "BG42","dist" => 35],
+  "U" => ["name" => "S16", "dist" => 255],
+  "D" => ["name" => "BG42","dist" => 40],
   ],
 "S16" => [ // Signal                                        S16
   "element" => "SU",
@@ -450,7 +450,7 @@ $PT1 = [
     "type" => 0,
     "majorDevice" => 0,
     ],
-  "U" => ["name" => "S11", "dist" => 0],
+  "U" => ["name" => "S11", "dist" => 10],
   "D" => ["name" => "BG44", "dist" => 1],
   "HMI" => [
     "offset" => "B",
@@ -468,7 +468,7 @@ $PT1 = [
     "majorDevice" => 0,
     ],
   "U" => ["name" => "BG37", "dist" => 1],
-  "D" => ["name" => "S16", "dist" => 0],
+  "D" => ["name" => "S16", "dist" => 10],
   "HMI" => [
     "offset" => "B",
     "x" => 13,
@@ -479,14 +479,14 @@ $PT1 = [
 "BG37" => [ // Balises                                      BG37
   "element" => "BL",
   "ID" => "75:00:14:FB:94",
-  "U" => ["name" => "BG38", "dist" => 260],
+  "U" => ["name" => "BG38", "dist" => 270],
   "D" => ["name" => "S11", "dist" => 60],
   ],
 "BG38" => [ // Balises                                      BG38
   "element" => "BL",
   "ID" => "1F:00:69:F3:BB",
   "U" => ["name" => "BG43", "dist" => 50],
-  "D" => ["name" => "BG37", "dist" => 260],
+  "D" => ["name" => "BG37", "dist" => 270],
   ],
 "BG43" => [ // Balises                                      BG43
   "element" => "BL",
@@ -643,7 +643,7 @@ $PT1 = [
   "supervisionState" => "P",
   "R" => ["name" => "BG12", "dist" => 30],
   "L" => ["name" => "BG07", "dist" => 30],
-  "T" => ["name" => "S15", "dist" => 10],
+  "T" => ["name" => "S15", "dist" => 5],
   "HMI" => [
     "offset" => "D",
     "or" => "tl",
@@ -661,7 +661,7 @@ $PT1 = [
     "majorDevice" => 4,
     ],
   "U" => ["name" => "BG10", "dist" => 1],
-  "D" => ["name" => "P5", "dist" => 10],
+  "D" => ["name" => "P5", "dist" => 5],
   "HMI" => [
     "offset" => "D",
     "x" => 4,
@@ -672,8 +672,8 @@ $PT1 = [
 "BG10" => [ // Balises                                   BG10
   "element" => "BL",
   "ID" => "1F:00:50:6E:08",
-  "U" => ["name" => "S22", "dist" => 50],
-  "D" => ["name" => "S15", "dist" => 50],
+  "U" => ["name" => "S22", "dist" => 90],
+  "D" => ["name" => "S15", "dist" => 10],
   ],
 "S22" => [ // Signal                                       S22
   "element" => "SU",
@@ -974,7 +974,7 @@ $HMI = [
       "l" => 1,
     ],
     "tr2" => [
-      "balises" => [ "BG40","BG41"
+      "balises" => [ "BG40"
               ],
       "offset" => "A",
       "or" => "s",
@@ -1019,7 +1019,7 @@ $HMI = [
       "l" => 1,
     ],
     "tr7" => [
-      "balises" => [ "BG35"
+      "balises" => [ "BG35", "BG36"
               ],
       "offset" => "B",
       "or" => "s",
@@ -1028,7 +1028,7 @@ $HMI = [
       "l" => 1,
     ],
     "tr8" => [
-      "balises" => [ "BG36","BG42"
+      "balises" => [ "BG42", "BG44"
               ],
       "offset" => "B",
       "or" => "s",
@@ -1037,7 +1037,7 @@ $HMI = [
       "l" => 1,
     ],
     "tr9" => [
-      "balises" => [ "BG37"
+      "balises" => [ "BG37", "BG38"
               ],
       "offset" => "B",
       "or" => "s",
@@ -1046,7 +1046,7 @@ $HMI = [
       "l" => 1,
     ],
     "tr10" => [
-      "balises" => [ "BG38"
+      "balises" => [ "BG43"
               ],
       "offset" => "B",
       "or" => "s",
@@ -1088,7 +1088,7 @@ $HMI = [
       "or" => "s",
       "x" => 5,
       "y" => 0,
-      "l" => 6,
+      "l" => 5,
     ],
     "tr15" => [
       "balises" => [ "BG03", "BG06"
