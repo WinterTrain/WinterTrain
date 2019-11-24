@@ -16,7 +16,7 @@ $ERRLOG = "Log/TMS_ErrLog.txt";
 $MSGLOG = "Log/TMS.log";
 
 // ---------------------------------------- Timing
-define("HEARTBEAT_TIMEOUT",5);
+define("HEARTBEAT_TIMEOUT",1);
 define("RECONNECT_TIMEOUT",3);
 
 // ----------------------------------------Enummerations

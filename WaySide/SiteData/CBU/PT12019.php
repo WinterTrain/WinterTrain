@@ -808,12 +808,12 @@ $PT1 = [
   "element" => "BL",
   "ID" => "1E:00:90:0C:8B",
   "U" => ["name" => "BG02", "dist" => 25],
-  "D" => ["name" => "S19", "dist" => 10],
+  "D" => ["name" => "S19", "dist" => 20],
   ],
 "BG02" => [ // Balises                                     BG02
   "element" => "BL",
   "ID" => "73:00:70:98:69",
-  "U" => ["name" => "BS2", "dist" => 100],
+  "U" => ["name" => "BS2", "dist" => 95],
   "D" => ["name" => "BG01", "dist" => 25],
   ],
 "BS2" => [ // Bufferstop; end of direction up              BS2
