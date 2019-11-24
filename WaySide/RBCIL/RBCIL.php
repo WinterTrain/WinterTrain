@@ -207,6 +207,7 @@ $inCharge = false;
 $inChargeMCe = false;
 $inChargeTMS = false;
 $radioBuf = "";
+$pollEC = false;
 
 //--------------------------------------- RBCIL variable
 $PT1 = array();
@@ -262,7 +263,8 @@ do {
     checkECtimeout();
     checkTrainTimeout();
     processLX();
-    pollEC();
+//    pollEC(); // takes a while
+  $pollEC = true;
     pollRadioLink();
     RBC();
     updateHMI();
@@ -280,6 +282,7 @@ do {
 //    $urTimeout = $now + 60;
 //    CBUupdate();
 //  }
+  pollNextEC();
   Server();
 } while ($run);
 msgLog("Exitting...");
@@ -663,7 +666,7 @@ global $trainData, $now;
 function receivedFromRadioLink($data) {  // position report received via USB
   $RF12_ID_MASK = 0x1f;
   $POSREP = 10;
-  print ">$data<\n";
+//  print ">$data<\n";
   $res = explode(" ",$data);
   if ($res[0] == "OK" and $res[2] == $POSREP) {
     $packet[3] = 1; // report valid
@@ -749,8 +752,20 @@ global $PT1, $EC;
 
 function pollEC() {
 global $PT1, $EC;
-  foreach ($EC as $addr => $ec) {
+  foreach ($EC as $addr => $ec) { // FIXME to be split timewise
     requestElementStatusEC($addr);
+  }
+}
+
+function pollNextEC() {
+global $EC, $pollEC;
+
+  if ($pollEC) {
+    requestElementStatusEC(key($EC));
+    if (next($EC) === FALSE) {
+      reset($EC);
+      $pollEC = false;
+    }
   }
 }
 
@@ -2552,7 +2567,7 @@ $radioLink, $radioBuf, $radio, $tmsStatus;
   }
   $except = NULL;
   $write = NULL;
-  if (stream_select($read, $write, $except, 0, 200000 )) {
+  if (stream_select($read, $write, $except, 0, 100000 )) {
     foreach ($read as $r) {
       if ($r == $listener) { // new HMI client
         if ($newClient = stream_socket_accept($listener,0,$clientName)) {
@@ -2582,16 +2597,15 @@ $radioLink, $radioBuf, $radio, $tmsStatus;
         }
       } elseif ($r == $listenerTMS) { // new TMS Client
           if ($newClient = stream_socket_accept($listenerTMS,0,$clientName)) {
-        if (!$inChargeTMS) { // Only one TMC client
-            $inChargeTMS = $newClient;
-            $clients[] = $newClient;
-            $clientsData[(int)$newClient] = [
-            "addr" => $clientName,
-            "signIn" => date("Ymd H:i:s"),
-            "inChargeSince" => "",
-            "type" => "TMS"];
-            
-            msgLog("TMS Client $clientName signed in");
+            if (!$inChargeTMS) { // Only one TMC client
+              $inChargeTMS = $newClient;
+              $clients[] = $newClient;
+              $clientsData[(int)$newClient] = [
+                "addr" => $clientName,
+                "signIn" => date("Ymd H:i:s"),
+                "inChargeSince" => "",
+                "type" => "TMS"];        
+              msgLog("TMS Client $clientName signed in");
             TMSStartup();
           } else {
             fclose($newClient);
@@ -2616,7 +2630,6 @@ $radioLink, $radioBuf, $radio, $tmsStatus;
         if ($data = fgets($r)) {
           switch ($clientsData[(int)$r]["type"]) {
             case "HMI":
-//F            print "$data\n";
               processCommand(trim($data),$r);
             break;
             case "MCe":
