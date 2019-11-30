@@ -489,13 +489,13 @@ global $DATA_FILE, $trainData, $PT1_VERSION, $PT1, $HMI, $HMIoffset, $errorFound
             $element["expectedLie"] = E_RIGTH;  // FIXME expectedLie must be either E_RIGHT or E_LEFT, 
             $element["blockingState"] = B_UNBLOCKED;
           break;
-          case "S": // Suprvision state simulated
+          case "S": // Suprvision state simulated, no real point machine
             $element["state"] = E_RIGHT;
             $element["expectedLie"] = E_RIGHT; 
             $element["blockingState"] = B_UNBLOCKED;
           break;
           case "P": // real point machine
-            $element["state"] = E_UNSUPERVISED; // Logical state
+            $element["state"] = E_UNSUPERVISED; // Physical state unknown
             $element["expectedLie"] = E_RIGHT; // Just to start somewhere
             $element["blockingState"] = B_UNBLOCKED;
           break;
@@ -510,7 +510,7 @@ global $DATA_FILE, $trainData, $PT1_VERSION, $PT1, $HMI, $HMIoffset, $errorFound
             $element["blockingState"] = B_CLAMPED_LEFT;
           break;
           default:
-            print "Element $name: Unknown supervision state.\n";
+            print "Element $name: Unknown supervision state: {$element["supervisionState"]}\n";
             $errorFound = true;
           break;
         }
@@ -750,7 +750,7 @@ global $PT1, $EC;
   }
 }
 
-function pollEC() {
+function pollEC() { // currently not used
 global $PT1, $EC;
   foreach ($EC as $addr => $ec) { // FIXME to be split timewise
     requestElementStatusEC($addr);
@@ -891,10 +891,16 @@ global $EC, $PT1;
                   case S_U_RIGHT:
                   case S_U_RIGHT_HOLDING:
                     $element["state"] = E_RIGHT;
+                    if ($element["expectedLie"] != E_RIGHT) {
+                      print "Warning: Reported point position (right), differs from expected lie ({$element["expectedLie"]})\n";
+                    }
                   break;
                   case S_U_LEFT:
                   case S_U_LEFT_HOLDING:
                     $element["state"] = E_LEFT;
+                    if ($element["expectedLie"] != E_LEFT) {
+                      print "Warning: Reported point position (left), differs from expected lie ({$element["expectedLie"]})\n";
+                    }
                   break;
                   default:
                     $element["state"] = E_UNSUPERVISED;
@@ -1162,6 +1168,7 @@ global $PT1;
     RBC_IL_DebugPrint("$s1 and $s2 are not in the same direction. Route does not exist");
     return false;
   }
+
   $isTerminal = function($elt, $dir) use ($s1, $s2) {
     global $PT1;
     if ($elt === $s2) {
@@ -1191,7 +1198,7 @@ global $PT1;
 
   $canBeLocked = function($element, $direction, $previousElement) use ($s1){
     global $PT1;
-      if ($element == $s1) {return True;} //Train is allowed to already occupy it and it can be locked in ptrevious route or clear
+      if ($element == $s1) {return True;} //Train is allowed to already occupy it and it can be locked in previous route or clear
 //      print "canBeLocked: element: $element, prev: $previousElement, direction: $direction isLocked:".isLocked($element)." isClear:".isClear($element)."\n";
       if (isLocked($element) or !isClear($element)) {return false;} 
       if ($direction == "U") {
@@ -1265,7 +1272,7 @@ global $PT1;
   $revDir = getReverseDir($dir);
   $elt = $destinationSignal;
   $signalState = E_PROCEED;
-  while (isLocked($elt)) {
+  while (isLocked($elt)) {  // FIXME add check point supervision
     if ($elt == $destinationSignal) {
       setSignalState($elt, E_STOP_FACING);
     } else {
@@ -1433,7 +1440,7 @@ function updateTrainPosition(&$train, $baliseName, $dist, $trackState) {
   }
 }
 
-function searchNextSignal($dir, $eltName, $trainIndex, $startElt) {
+function searchNextSignal($dir, $eltName, $trainIndex, $startElt) { // to determine train location for TMS
 global $PT1;
 //print ">$eltName<\n";
   if ($eltName == "") {
@@ -1493,13 +1500,13 @@ print "Warning: no eltName for Dir: $dir, TrainIndex $trainIndex\n";
   }
 }
 
-function getNextEltName($eltName, $dir) {
+function getNextEltName($eltName, $dir) { // 
   global $PT1;
   $elt = $PT1[$eltName];
   if ($dir == "U") {
     switch ($elt["element"]) {
       case "PF":
-        if ($elt["state"] == E_RIGHT) { // FIXME "state" or "expectedLie"??
+        if ($elt["state"] == E_RIGHT) { // FIXME "state" or "expectedLie"?? function used for (a.o.) building MA so use real state
           return $elt["R"]["name"];
         } elseif ($elt["state"] == E_LEFT) {
           return $elt["L"]["name"];
@@ -1560,7 +1567,7 @@ function getMA($trainID, $signal) { // FIXME check for correct point state
       $eltName = ($dir == "U" ? $train["upElt"]: $train["downElt"]);
       $dist = ($dir == "U" ? $train["upEltDist"]: $train["downEltDist"]);
 
-      while ($eltName !== $signal) {
+      while ($eltName !== $signal) { // FIXME check for point supervision
         $eltName = getNextEltName($eltName, $dir);
         if ($eltName == "") {RBC_IL_DebugPrint("Failed to compute MA because could not find next element"); $MA["bg"] =""; return $MA;}
         $dist += ($dir == "U" ? getEltLength($eltName) : -getEltLength($eltName));
@@ -1615,7 +1622,7 @@ global $PT1;
           }
         }
         //If element is occupied by train, the train should get the MA for the route
-        //Should the direction/state of the train be considered?
+        //Should the direction/state of the train be considered? No, direction is selected by driver
         //Lock approach area
         foreach($approachArea as $approachElt) {
           RBC_IL_DebugPrint("Adding ".$approachElt." to approach area");
@@ -1638,7 +1645,7 @@ global $PT1;
       $unlockedElementMet = True; //used to avoid merging routes through approach area.
     }
 
-    //Do not build an approach area over a signal in the same direction
+    //Do not build an approach area over a signal in the same (FIXME or opposite?) direction
     if ($unlockedElementMet) {
       $eltType = $PT1[$eltName]["element"];
       if ((( $dir == "U" and  $eltType == "SU") or ($dir == "D" and $eltType == "SD")) and ($eltName != $routeDestinationSignal)) {
@@ -1658,7 +1665,7 @@ global $PT1;
 }
 
 //Made a wrapper to ease locking state represantation change
-function isLocked($eltName) {
+function isLocked($eltName) { // FIXME add direction check
 global $PT1;
   //return ($PT1[$eltName]["trackState"] === T_LOCKED);
   return ($PT1[$eltName]["routeState"] == R_LOCKED);

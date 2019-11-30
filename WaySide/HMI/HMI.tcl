@@ -1358,9 +1358,9 @@ grid [tk::scrollbar .f.sbv -orient vertical -command ".f.canvas yview"] -column 
 # Status and response
 # grid [ttk::frame .f.fStatus -padding "3 3 3 3"] -column 1 -columnspan 14 -row 5 -sticky nwes
 grid [ttk::label .f.live -textvariable liveIndicator -width 1] -column 1 -row 5 -padx 5 -pady 2 -sticky e
-grid [ttk::label .f.status -textvariable status] -column 2 -columnspan 8 -row 5 -padx 5 -pady 2 -sticky w
+grid [ttk::label .f.status -textvariable status] -column 9 -columnspan 3 -row 5 -padx 5 -pady 2 -sticky w
 grid [ttk::label .f.tmsStatus -textvariable tmsStatus] -column 12 -columnspan 2 -row 5 -padx 5 -pady 2 -sticky w
-grid [ttk::label .f.response -textvariable response] -column 1 -columnspan 8 -row 6 -padx 5 -pady 2 -sticky w
+grid [ttk::label .f.response -textvariable response] -column 2 -columnspan 8 -row 5 -padx 5 -pady 2 -sticky w
 
 # System and HMI commands
 grid [ttk::button .f.buttonOpr -text "Request operation" -command rqopr] -column 9 -row 8 -sticky we

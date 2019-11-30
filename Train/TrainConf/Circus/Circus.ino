@@ -11,7 +11,7 @@
 // Capacity
 #define MAX_BALISES 8
 
-#define N_SABALISES 13 // balise list for "stop if in shunting"
+#define N_SABALISES 18 // balise list for "stop if in shunting"
 // Distances engineered in "wheel turns". OBU will start braking at that distance, allow for 80 cm braking distance
 #define SA_BALISES { \
   /* Christianshavn, end station, braking point at 100 cm in rear of buffer stop */\
@@ -22,6 +22,14 @@
   {{0x1E, 0x00, 0x90, 0x0C, 0xA5},  -11 },    /* BG20  57 cm */\
   {{0x1E, 0x00, 0x98, 0xB1, 0xC9},  -24 },    /* BG21 119 cm */\
   {{0x76, 0x00, 0x0C, 0xE3, 0xA8},  -60 },    /* BG22 300 cm */\
+  \
+  /* Station C */\
+  {{0x1F, 0x00, 0x50, 0x3C, 0x80}, -13 },    /* BG45 66 cm */\
+  {{0x1E, 0x00, 0xEA, 0xE8, 0xE9}, -37 },    /* BG46 183 cm */\
+  {{0x73, 0x00, 0x56, 0x93, 0xAA},  -2 },    /* BG47 11 cm */\
+  {{0x76, 0x00, 0x0D, 0x0B, 0xF7},  -7 },    /* BG48 33 cm */\
+  {{0x1F, 0x00, 0x4D, 0x6A, 0x29},  -4 },    /* BG49 21 cm */\
+  {{0x1F, 0x00, 0x13, 0xC9, 0x5E},  -9 },    /* BG50 43 cm */\
   \
   /* Station D, depot track */\
   {{0x1E, 0x00, 0x90, 0x0C, 0x8B},  22 },    /* BG01 110 cm */\
