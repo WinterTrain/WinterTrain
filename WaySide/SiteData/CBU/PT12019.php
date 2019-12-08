@@ -28,7 +28,7 @@ $PT1 = [
   "EC" => [
     "addr" => 203,
     "type" => 41,
-    "majorDevice" => 6,
+    "majorDevice" => 7,
     ],
   "U" => ["name" => "BG16", "dist" => 10],
   "D" => ["name" => "BG15", "dist" => 1],
@@ -73,7 +73,7 @@ $PT1 = [
   "EC" => [
     "addr" => 203,
     "type" => 41,
-    "majorDevice" => 7,
+    "majorDevice" => 6,
     ],
   "U" => ["name" => "BG19", "dist" => 10],
   "D" => ["name" => "BG18", "dist" => 1],
@@ -118,11 +118,11 @@ $PT1 = [
 //-------------------------------------------------------------------------------
 "S1" => [ // Signal                                          S1
   "element" => "SD",
-  "type" => "MB",
+  "type" => "MS2",
   "EC" => [
-    "addr" => 0,
-    "type" => 0,
-    "majorDevice" => 0,
+    "addr" => 203,
+    "type" => 41,
+    "majorDevice" => 8,
     ],
   "U" => ["name" => "BG21", "dist" => 1],
   "D" => ["name" => "P1", "dist" => 5],
@@ -153,11 +153,11 @@ $PT1 = [
   ],
 "S6" => [ // Signal                                        S6
   "element" => "SU",
-  "type" => "MS2",
+  "type" => "MB",
   "EC" => [
-    "addr" => 203,
-    "type" => 41,
-    "majorDevice" => 8,
+    "addr" => 0,
+    "type" => 0,
+    "majorDevice" => 0,
     ],
   "U" => ["name" => "BG41", "dist" => 10],
   "D" => ["name" => "BG40", "dist" => 1],
@@ -285,11 +285,11 @@ $PT1 = [
   ],
 "S10" => [ // Signal                                        S10
   "element" => "SU",
-  "type" => "MB",
+  "type" => "MS3",
   "EC" => [
-    "addr" => 0,
-    "type" => 0,
-    "majorDevice" => 0,
+    "addr" => 201,
+    "type" => 44,
+    "majorDevice" => 9,
     ],
   "U" => ["name" => "BG28", "dist" => 10],
   "D" => ["name" => "BG27", "dist" => 1],
@@ -397,11 +397,11 @@ $PT1 = [
 //-------------------------------------------------------------------------
 "S9" => [ // Signal                                          S9
   "element" => "SD",
-  "type" => "MB",
+  "type" => "MS3",
   "EC" => [
-    "addr" => 0,
-    "type" => 0,
-    "majorDevice" => 0,
+    "addr" => 201,
+    "type" => 44,
+    "majorDevice" => 12,
     ],
   "U" => ["name" => "BG35", "dist" => 1],
   "D" => ["name" => "P3", "dist" => 10],
@@ -498,7 +498,7 @@ $PT1 = [
 // ------------------------------------------------------------ Inner track
 "BS5" => [ // Bufferstop; begin of direction up         BS05
   "element" => "BSB",
-  "U" => ["name" => "BG49", "dist" => 120],
+  "U" => ["name" => "BG49", "dist" => 60],
   "HMI" => [
     "offset" => "C",
     "x" => 0,
@@ -510,7 +510,7 @@ $PT1 = [
   "element" => "BL",
   "ID" => "1F:00:4D:6A:29",
   "U" => ["name" => "S32", "dist" => 10],
-  "D" => ["name" => "BS5", "dist" => 1],
+  "D" => ["name" => "BS5", "dist" => 70],
   ],
 "S32" => [ // Signal                                        S32
   "element" => "SU",
@@ -518,7 +518,7 @@ $PT1 = [
   "EC" => [
     "addr" => 201,
     "type" => 41,
-    "majorDevice" => 1,
+    "majorDevice" => 3,
     ],
   "U" => ["name" => "BG50", "dist" => 1],
   "D" => ["name" => "BG49", "dist" => 1],
@@ -540,7 +540,7 @@ $PT1 = [
 
 "BS7" => [ // Bufferstop; begin of direction up         BS05
   "element" => "BSB",
-  "U" => ["name" => "BG47", "dist" => 110],
+  "U" => ["name" => "BG47", "dist" => 55],
   "HMI" => [
     "offset" => "C",
     "x" => 0,
@@ -552,7 +552,7 @@ $PT1 = [
   "element" => "BL",
   "ID" => "73:00:56:93:AA",
   "U" => ["name" => "S34", "dist" => 10],
-  "D" => ["name" => "BS7", "dist" => 1],
+  "D" => ["name" => "BS7", "dist" => 70],
   ],
 "S34" => [ // Signal                                        S34
   "element" => "SU",
@@ -613,7 +613,7 @@ $PT1 = [
   "EC" => [
     "addr" => 201,
     "type" => 41,
-    "majorDevice" => 3,
+    "majorDevice" => 1,
     ],
   "U" => ["name" => "BG46", "dist" => 1],
   "D" => ["name" => "BG45", "dist" => 10],
@@ -1263,17 +1263,17 @@ $HMI = [
     [
       "x" => 17,
       "y" => 6,
-      "text" => "Station B"
+      "text" => "Alperne"
     ],
     [
       "x" => 18,
       "y" => 0.5,
-      "text" => "Station C"
+      "text" => "Langbortistan"
     ],
     [
       "x" => 34,
       "y" => 7,
-      "text" => "Station D"
+      "text" => "Hovedbanen"
     ],
 
   ],

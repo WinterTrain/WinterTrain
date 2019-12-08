@@ -190,7 +190,7 @@ $RTOMODE_TXT = [RTO_UDEF => "Udef.", RTO_DMI => "DMI", RTO_REMOTE => "Remote tak
                 RTO_PEND_RELEASE => "Pending release"];
 $RS_TXT = [RS_UDEF => "Route state undefined", RS_ROUTE_SET => "Route set", RS_BLOCKED => "Route rejected, destination already locked",
            RS_REJECTED => "Rute rejected"];
-$TMS_STATUS_TXT = [TMS_UDEF => "TMS: state undefined", TMS_NO_TT => "TMS: no Time Table", TMS_OK => "TMS: Running", 
+$TMS_STATUS_TXT = [TMS_UDEF => "TMS: state undefined", TMS_NO_TT => "TMS: Running, Error in Time Table", TMS_OK => "TMS: Running", 
                    TMS_NO_TMS => "TMS: not running"];
 
 //--------------------------------------- System variable
@@ -1999,6 +1999,7 @@ global $trainData, $trainIndex, $DATA_FILE, $SRallowed, $SHallowed, $FSallowed, 
     $train["etd"] = 0;
     $train["index"] = $index; // to know index in functions where only one train data set is handed over
     $trainIndex[$train["ID"]] = $index;
+    // send clear MA to train for RBC startup---------------------------------------------------------------------------------------- FIXME
   }
 }
 
