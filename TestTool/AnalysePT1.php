@@ -4,6 +4,23 @@
 
 $DATA_FILE = "../WaySide/SiteData/CBU/CBU.php";
 
+//--------------------------------------- Text
+
+$EC_TYPE_TXT = array(0 => "(Reserved)",
+10 => "Point Machine, without end position detector, 1 x P-device ",
+11 =>	"Point Machine, with end position detector, 1 x P-device, 2 x U-device ",
+21 =>	"Semaphore signal, 1 x P-device",
+30 =>	"Level crossing, road signal, 1 x L-device",	
+31 =>	"Level crossing, road signal, 1 x U-device", 		
+32 =>	"Level crossing, barrier, 1 x P-Device",
+40 =>	"Light Signal, 2 lanterns, 2 aspects,	2 x L-device",
+41 =>	"Light Signal, 2 lanterns, 2 aspects,	1 x U-device",	
+42 =>	"Light Signal, 2 lanterns, 3 aspects,	2 x L-device",	
+43 =>	"Light Signal, 2 lantern, 3 aspects, 2 x U-device",	
+44 =>	"Light Signal, 3 lanterns, 3 aspects,	3 x L-device",	
+45 =>	"Light Signal, 3 lanterns, 3 aspects,	3 x U-device"
+);
+
 //--------------------------------------- System variable
 $debug = FALSE;
 print "WinterTrain, PT1 analyser\n";
@@ -47,6 +64,29 @@ switch ($command) {
         }
       }
     }
+  break;
+  case "e":
+    $EC = array();
+    foreach ($PT1 as $name => $element) {
+      if ($element["EC"]["addr"] != "" and $element["EC"]["addr"] != "0") {
+        $EC[$element["EC"]["addr"]][$element["EC"]["type"]][] = array("name" => $name, "majorDevice" => $element["EC"]["majorDevice"],
+          "element" => $element["element"], "minorDevice" => (isset($element["EC"]["minorDevice"]) ? $element["EC"]["minorDevice"] : "0") );
+      }
+    }
+    ksort($EC);
+    foreach ($EC as $addr => $hwtype) {
+      print "EC addr: $addr\n";
+      ksort($hwtype);
+      foreach ($hwtype as $type => $elem) {
+        print "  $type: {$EC_TYPE_TXT[$type]}\n";
+        foreach ($elem as $e) {
+          print "    {$e[majorDevice]}, {$e[minorDevice]}: {$e["name"]} {$e["element"]}\n";
+        }
+        print "\n";
+      }
+      print "\n";
+    }
+//    print_r($EC);
   break;
 }
 
@@ -122,6 +162,7 @@ COMMAND
 d <element1> <element2>
                   measures distance betwen centre of <element1> and <element2>
 b                 Lists all balises in C like format
+e                 List HW assignment of each element controller
 
 -f <file>         reads PT1 data from <file>
 -d                enable debug info
@@ -142,6 +183,9 @@ b                 Lists all balises in C like format
       break;
       case "b":
         $command = "b";
+      break;
+      case "e":
+        $command = "e";
       break;
       case "-f":
         list(,$p) = each($argv);
