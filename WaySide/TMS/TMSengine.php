@@ -78,7 +78,7 @@ do {
         $heartBeatTimer = $now + HEARTBEAT_TIMEOUT;
         if ($RBCILfh) {
           sendCommandRBCIL("TMS_HB $tmsStatus $now");
-          print "send HB $now\n";
+//          print "send HB $now\n";
         }
       }
       if ($pollTimer < $now) { // every 1 second
@@ -140,8 +140,14 @@ global $PT1, $ttError;
         if ((!isset($route["condition"]) or $route["condition"] != "E" and $route["condition"] != "N") and !signalExists($route["dest"])) {
           ttError("TRN: $trn Route $routeIndex Unknown route destination: {$route["dest"]}");
         }
-        if (isset($route["condition"]) and $route["condition"] == "N" and !isset($route["nextTrn"])) {
+        if (isset($route["condition"]) and $route["condition"] == "N" and !isset($route["nextTrn"])) { // ??
           ttError("TRN: $trn Route $routeIndex \"nextTrn\" missing for condition \"N\"");
+        }
+        if (isset($route["condition"]) and $route["condition"] == "M" and !isset($route["mTrain"])) {
+          ttError("TRN: $trn Route $routeIndex \"mTrain\" missing for condition \"M\"");
+        }
+        if (isset($route["condition"]) and $route["condition"] == "M" and (!isset($route["mSignal"]) or !signalExists($route["mSignal"]) )) { // ??
+          ttError("TRN: $trn Route $routeIndex \"mSignal\" missing or signal unknown for condition \"M\"");
         }
         if (isset($route["time"]) and $route["time"] != "" and isset($rouyte["delay"])) {
           ttWarning("TRN: $trn Route $routeIndex: both \"time\" and \"delay\" are specified - \"delay\" will be ignored");
@@ -399,7 +405,8 @@ global $trainData;
     break;
     case RS_BLOCKED:
     case RS_REJECTED: // destinguish between impossible routes (= time table failure), routes temporary blocked by other routes and routes blocked by inhibitions
-    // check for alternative routes in route table. Set the route, set status to pending and set routeIndex
+    // FIXME check for alternative routes in route table. Set the route, set status to pending and set routeIndex
+    
       $train["routeState"][$dir] = RS_BLOCKED;
       $train["trnState"] = TRN_BLOCKED;
     break;
