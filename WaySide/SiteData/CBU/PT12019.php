@@ -73,7 +73,7 @@ $PT1 = [
   "EC" => [
     "addr" => 203,
     "type" => 41,
-    "majorDevice" => 6,
+    "majorDevice" => 8,
     ],
   "U" => ["name" => "BG19", "dist" => 10],
   "D" => ["name" => "BG18", "dist" => 1],
@@ -122,7 +122,7 @@ $PT1 = [
   "EC" => [
     "addr" => 203,
     "type" => 41,
-    "majorDevice" => 8,
+    "majorDevice" => 6,
     ],
   "U" => ["name" => "BG21", "dist" => 1],
   "D" => ["name" => "P1", "dist" => 5],
