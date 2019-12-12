@@ -192,6 +192,8 @@ $RS_TXT = [RS_UDEF => "Route state undefined", RS_ROUTE_SET => "Route set", RS_B
            RS_REJECTED => "Rute rejected"];
 $TMS_STATUS_TXT = [TMS_UDEF => "TMS: state undefined", TMS_NO_TT => "TMS: Running, Error in Time Table", TMS_OK => "TMS: Running", 
                    TMS_NO_TMS => "TMS: not running"];
+$MULT_OCCUP_TXT = "XX"; // Symbol for occupation of multiple trains
+$UNAMB_TXT = [true => "Valid", false => "Ambiguous"];
 
 //--------------------------------------- System variable
 $debug = 0x00; $background = FALSE; $run = true; $doInitEC = true;
@@ -1374,13 +1376,13 @@ function recUpdateTrainPosition(&$train, $dir, $x, $eltName, $trackState) {
     switch ($elt["element"]) {
       case "PF": // --------------------FIXME position gets ambiguous if point is thrown behind the train before train reads a new balise
       // FIXME reimplement the JP invalidation function: discharge position if train is no longer occupying a facing point (seen from the reported balise. As long as the train is occupying the facint point, the position is uniquely given by the lie of the point.
-/* JP:       //stop and invalidate position
+       //stop and invalidate position
         $train["positionUnambiguous"] = False;
         RBC_IL_DebugPrint("Invalidating postion in $eltName due to b=".$b." <= train[upFront]=".$train["upFront"]);
         return;
-*/
+/* JB
         recUpdateTrainPosition($train, $dir, $b, $elt[($elt["expectedLie"] == E_RIGHT ? "R" : "L")]["name"], $trackState);
-        return;
+        return;*/
       case "PT":
         recUpdateTrainPosition($train, $dir, $b, $elt["T"]["name"], $trackState);
         return;
@@ -1393,13 +1395,12 @@ function recUpdateTrainPosition(&$train, $dir, $x, $eltName, $trackState) {
     //keep looking dow unless it was facing point
     switch ($elt["element"]) {
       case "PT":
-/* JP:        //stop and invalidate position
+        //stop and invalidate position
         $train["positionUnambiguous"] = False;
         RBC_IL_DebugPrint("Invalidating postion in $eltName due to a=".$a." >= train[downFront]=".$train["downFront"]);
         return;
-*/
 //print "Exp Lie: {$elt["expectedLie"]}\n";
-        recUpdateTrainPosition($train, $dir, $a, $elt[($elt["expectedLie"] == E_RIGHT ? "R" : "L")]["name"], $trackState);
+//        recUpdateTrainPosition($train, $dir, $a, $elt[($elt["expectedLie"] == E_RIGHT ? "R" : "L")]["name"], $trackState);
         return;
       case "PF":
         recUpdateTrainPosition($train, $dir, $a, $elt["T"]["name"], $trackState);
@@ -1978,6 +1979,7 @@ global $trainData, $trainIndex, $DATA_FILE, $SRallowed, $SHallowed, $FSallowed, 
     $train["balise"] = "00:00:00:00:00"; 
     $train["baliseName"] = "(00:00:00:00:00)"; // PT1 name
     $train["distance"] = 0;
+    $train["positionUnambiguous"] = false;
     $train["speed"] = 0;
     $train["nomDir"] = D_UDEF; // nominel driving direction (UP/DOWN)
     $train["front"] = D_UDEF;
@@ -2043,7 +2045,7 @@ global $trainIndex, $trainData, $balisesID, $SR_MAX_SPEED, $SH_MAX_SPEED, $ATO_M
         break;
         case M_ATO:
           $train["authMode"] = $train["ATOallowed"] ? M_ATO : M_N;
-          $train["maxSpeed"] = $ATO_MAX_SPEED;
+          $train["maxSpeed"] = (isset($train["ATOmaxSpeed"]) ? $train["ATOmaxSpeed"] : $ATO_MAX_SPEED);
           if (!$train["MAreceived"]) { // MA request
           // generate MA  
           }
@@ -2776,7 +2778,7 @@ global $PT1, $HMI, $HMIoffset, $trainData, $VERSION, $PT1_VERSION, $tmsStatus, $
 }
 
 function updateHMI() {
-global $HMI, $PT1, $emergencyStop, $arsEnabled, $tmsStatus, $TMS_STATUS_TXT;
+global $HMI, $PT1, $emergencyStop, $arsEnabled, $tmsStatus, $TMS_STATUS_TXT, $MULT_OCCUP_TXT;
   HMIindicationAll("set ::tmsStatus {{$TMS_STATUS_TXT[$tmsStatus]}}\n");  
   HMIindicationAll("eStopInd ".($emergencyStop ? "true" : "false")."\n");
   HMIindicationAll("arsAllInd ".($arsEnabled ? "true" : "false")."\n");
@@ -2799,10 +2801,10 @@ global $HMI, $PT1, $emergencyStop, $arsEnabled, $tmsStatus, $TMS_STATUS_TXT;
           //already occupied. Occupy has priority on the rest.
         }
         foreach ($PT1[$baliseName]["trainIDs"] as $trainID ) {
-          #Giving the name to the HMI and "??" in case of multiple occupation
+          #Giving the name to the HMI and $MULT_OCCUP_TXT in case of multiple occupation
           if (($baliseTrack["trainID"] != "")  and ($baliseTrack["trainID"] != $trainID)) {
-            $baliseTrack["trainID"] = "??";
-          } elseif ($baliseTrack["trainID"] != "??") {
+            $baliseTrack["trainID"] = $MULT_OCCUP_TXT;
+          } elseif ($baliseTrack["trainID"] != $MULT_OCCUP_TXT) {
             $baliseTrack["trainID"] = $trainID;
           }
         }
@@ -2814,10 +2816,10 @@ global $HMI, $PT1, $emergencyStop, $arsEnabled, $tmsStatus, $TMS_STATUS_TXT;
   foreach ($PT1 as $name => $element) {
     $displayedTrainID = "";
     foreach ($element["trainIDs"] as $trainID ) {
-      #Giving the name to the HMI and "??" in case of multiple occupation
+      #Giving the name to the HMI and $MULT_OCCUP_TXT in case of multiple occupation
       if (($displayedTrainID != "")  and ($displayedTrainID != $trainID)) {
-        $displayedTrainID = "??";
-      } elseif ($displayedTrainID != "??") {
+        $displayedTrainID = $MULT_OCCUP_TXT;
+      } elseif ($displayedTrainID != $MULT_OCCUP_TXT) {
         $displayedTrainID = $trainID;
       }
     }
@@ -2851,10 +2853,10 @@ global $HMI, $PT1, $emergencyStop, $arsEnabled, $tmsStatus, $TMS_STATUS_TXT;
 }
 
 function updateTrainDataHMI($index) {
-global $trainData, $MODE_TXT, $DIR_TXT, $PWR_TXT, $ACK_TXT, $RTOMODE_TXT;
+global $trainData, $MODE_TXT, $DIR_TXT, $PWR_TXT, $ACK_TXT, $RTOMODE_TXT, $UNAMB_TXT;
   $train = $trainData[$index];
   HMIindicationAll("trainDataD ".$index." {".$MODE_TXT[$train["authMode"]]." (".$MODE_TXT[$train["reqMode"]].")} ".$train["baliseName"]." {".
-        $train["distance"]."} {".$train["speed"]."} {".$DIR_TXT[$train["nomDir"]]."} {".$PWR_TXT[$train["pwr"]]."} {".
+        $train["distance"]."} {".$UNAMB_TXT[$train["positionUnambiguous"]]."} {".$train["speed"]."} {".$DIR_TXT[$train["nomDir"]]."} {".$PWR_TXT[$train["pwr"]]."} {".
         $ACK_TXT[$train["MAreceived"]]."} ".$train["dataValid"]." {".$RTOMODE_TXT[$train["rtoMode"]]."} {".
         $train["MAbaliseName"]."} {".$train["MAdist"]."} {".$train["trn"]."} {".$train["trnStatus"]."} {".
         ($train["etd"] != 0 ? date("H:i:s",$train["etd"]) : "")."}\n");

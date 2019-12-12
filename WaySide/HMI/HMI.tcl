@@ -254,6 +254,7 @@ global nTrainFrame  trainMA entryFontSize rtoMode toMode toDrive toDir trnSetVal
 
   grid [ttk::label .f.fTrain.t$index.positionX -text "Position:"] -column 0 -columnspan 2 -row 4 -padx 5 -pady 2 -sticky we
   grid [ttk::label .f.fTrain.t$index.position -text "--- ---" -textvariable trainPosition($index)] -column 2 -columnspan 6 -row 4 -padx 5 -pady 2 -sticky we
+  grid [ttk::label .f.fTrain.t$index.unAmb -text "--" -textvariable trainPosUnamb($index)] -column 6 -columnspan 2 -row 4 -padx 5 -pady 2 -sticky we
 
   grid [ttk::label .f.fTrain.t$index.speedX -text "Speed:"] -column 0 -columnspan 2 -row 5 -padx 5 -pady 2 -sticky we
   grid [ttk::label .f.fTrain.t$index.speed -text "---" -textvariable trainSpeed($index)] -column 2 -columnspan 2 -row 5 -padx 5 -pady 2 -sticky we
@@ -714,10 +715,11 @@ global trainName trainLength
   set trainLength($trainIndex) $length
 }
 
-proc trainDataD {trainIndex mode balise distance speed nomDir pwr maAck valid status MAbalise MAdist trn trnStatus etd} { ;# dynamic train data
-global trainMode trainPosition trainSpeed trainNomDir trainPWR trainACK trainValid rtoMode trainMA trainTRN trainETD trnStatusColor rtoDisplay
+proc trainDataD {trainIndex mode balise distance posUnamb speed nomDir pwr maAck valid status MAbalise MAdist trn trnStatus etd} { ;# dynamic train data
+global trainMode trainPosition trainPosUnamb trainSpeed trainNomDir trainPWR trainACK trainValid rtoMode trainMA trainTRN trainETD trnStatusColor rtoDisplay
   set trainMode($trainIndex) $mode
   set trainPosition($trainIndex) "$balise $distance"
+  set trainPosUnamb($trainIndex) "$posUnamb"
   set trainSpeed($trainIndex) $speed
   set trainNomDir($trainIndex) $nomDir
   set trainPWR($trainIndex) $pwr
@@ -1229,7 +1231,7 @@ global response status nColor nTrainFrame
   .f.canvas itemconfigure {!button} -fill $nColor
   .f.canvas itemconfigure button -activefill "" -activeoutline ""
   for {set index 0} {$index < $nTrainFrame} {incr index} {
-    trainDataD $index "--" "--:--:--:--:--" "---" "---" "--" "--" "--" "VOID" "--" "--:--:--:--:--" "--" "" 8 ""
+    trainDataD $index "--" "--:--:--:--:--" "---" "---" "---" "--" "--" "--" "VOID" "--" "--:--:--:--:--" "--" "" 8 ""
   }
 }
 
