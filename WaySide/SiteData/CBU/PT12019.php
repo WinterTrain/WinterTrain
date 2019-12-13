@@ -800,7 +800,7 @@ $PT1 = [
 "BG10" => [ // Balises                                   BG10
   "element" => "BL",
   "ID" => "1F:00:50:6E:08",
-  "U" => ["name" => "S22", "dist" => 90],
+  "U" => ["name" => "S22", "dist" => 105],
   "D" => ["name" => "S15", "dist" => 10],
   ],
 "S22" => [ // Signal                                       S22
