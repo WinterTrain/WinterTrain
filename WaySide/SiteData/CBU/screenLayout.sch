@@ -1,0 +1,21 @@
+v 20130925 2
+C 40000 40000 0 0 0 title-B.sym
+C 41500 48000 1 0 0 HMI_corner-0.sym
+{
+T 42200 49200 5 10 0 1 0 0 1
+device=HMI_corner
+}
+C 42000 48500 1 0 0 HMI_BSB-0.sym
+{
+T 42000 49100 5 10 0 1 0 0 1
+device=HMI_BSB
+T 42000 48300 5 10 1 1 0 0 1
+refdes=BS1
+}
+C 42000 48000 1 0 0 HMI_BSB-0.sym
+{
+T 42000 48600 5 10 0 1 0 0 1
+device=HMI_BSB
+T 42000 47800 5 10 0 1 0 0 1
+refdes=BS2
+}

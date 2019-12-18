@@ -2,6 +2,81 @@
 
 $timeTables = [
 
+"11" => [
+  "start" => "Langbortistan",
+  "destination" => "Christianshavn",
+  "description" => "InterCity",
+  "group" => "",
+  "routeTable" => [
+    ["time" => "**:*0:10", "start" => "S32", "dest" => "S14", "condition" => "", "delay" => ""],
+    ["time" => "", "start" => "S14", "dest" => "S18", "condition" => "", "delay" => ""],
+    ["time" => "", "start" => "S18", "dest" => "S22", "condition" => "", "delay" => ""],
+    ["time" => "**:*3:00", "start" => "S15", "dest" => "S11", "condition" => "", "delay" => ""],
+    ["time" => "", "start" => "S11", "dest" => "S9", "condition" => "", "delay" => ""],
+    ["time" => "", "start" => "S9", "dest" => "S7", "condition" => "", "delay" => ""],
+    ["time" => "", "start" => "S7", "dest" => "S3", "condition" => "", "delay" => 40],
+    ["time" => "", "start" => "S3", "dest" => "S1", "condition" => "", "delay" => ""],
+    ["time" => "", "start" => "S1", "dest" => "BS1", "condition" => "", "delay" => ""],
+    ["time" => "", "start" => "BS1", "condition" => "N", "nextTrn" => "12", "delay" => 20],
+  ],
+  "remarks" => "",
+],
+
+"12" => [
+  "start" => "Christianshavn",
+  "destination" => "Langbortistan",
+  "description" => "InterCity",
+  "group" => "",
+  "routeTable" => [
+    ["time" => "**:*1:00", "start" => "S2", "dest" => "S6", "condition" => "", "delay" => ""],
+    ["time" => "", "start" => "S6", "dest" => "S12", "condition" => "", "delay" => ""],
+    ["time" => "", "start" => "S12", "dest" => "S16", "condition" => "", "delay" => 40],
+    ["time" => "", "start" => "S16", "dest" => "S20", "condition" => "", "delay" => ""],
+    ["time" => "", "start" => "S20", "dest" => "S22", "condition" => "", "delay" => ""],
+    ["time" => "**:*4*00", "start" => "S15", "dest" => "S13", "condition" => "", "delay" => ""],
+    ["time" => "", "start" => "S13", "dest" => "S33", "condition" => "", "delay" => ""],
+    ["time" => "", "start" => "S33", "dest" => "BS5", "condition" => "", "delay" => ""],
+    ["time" => "", "start" => "BS5", "condition" => "N", "nextTrn" => "11", "delay" => 20],
+  ],
+  "remarks" => "",
+],
+
+"21" => [
+  "start" => "Langbortistan",
+  "destination" => "Alperne",
+  "description" => "Regionaltog",
+  "group" => "",
+  "routeTable" => [
+    ["time" => "**:*2:00", "start" => "S32", "dest" => "S14", "condition" => "", "delay" => ""],
+    ["time" => "", "start" => "S14", "dest" => "S22", "condition" => "", "delay" => ""],
+    ["time" => "", "start" => "S22", "dest" => "BS2", "condition" => "", "delay" => ""],
+    ["time" => "", "start" => "S19", "dest" => "S17", "condition" => "", "delay" => 20],
+    ["time" => "**:*4*00", "start" => "S17", "dest" => "S11", "condition" => "", "delay" => ""],
+    ["time" => "", "start" => "S11", "dest" => "S5", "condition" => "", "delay" => ""],
+    ["time" => "", "start" => "S5", "condition" => "N", "nextTrn" => "22", "delay" => 20],
+  ],
+  "remarks" => "",
+],
+
+"22" => [
+  "start" => "Alperne",
+  "destination" => "Langbortistan",
+  "description" => "Regionaltog",
+  "group" => "",
+  "routeTable" => [
+    ["time" => "**:*0:10", "start" => "S10", "dest" => "S16", "condition" => "", "delay" => ""],
+    ["time" => "", "start" => "S16", "dest" => "S20", "condition" => "", "delay" => ""],
+    ["time" => "", "start" => "S20", "dest" => "S24", "condition" => "", "delay" => ""],
+    ["time" => "**:*3:00", "start" => "S24", "dest" => "BS2", "condition" => "", "delay" => ""],
+    ["time" => "", "start" => "S19", "dest" => "S15", "condition" => "", "delay" => 20],
+    ["time" => "", "start" => "S15", "dest" => "S13", "condition" => "", "delay" => ""],
+    ["time" => "", "start" => "S13", "dest" => "S33", "condition" => "", "delay" => ""],
+    ["time" => "", "start" => "S33", "dest" => "BS5", "condition" => "", "delay" => ""],
+    ["time" => "", "start" => "BS5", "condition" => "N", "nextTrn" => "21", "delay" => 20],
+  ],
+  "remarks" => "",
+],
+
 "1002" => [
   "start" => "Christianshavn",
   "destination" => "Station C",

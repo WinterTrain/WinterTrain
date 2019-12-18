@@ -1,0 +1,22 @@
+v 20130925 2
+P 0 400 300 400 1 0 0
+{
+T 0 400 5 10 0 0 0 0 1
+pintype=down
+T 355 395 5 10 0 1 0 0 1
+pinlabel=unknown
+T 205 445 5 10 0 1 0 6 1
+pinnumber=0
+T 0 400 5 10 0 0 0 0 1
+pinseq=0
+}
+L 500 400 300 400 3 0 0 0 -1 -1
+L 500 600 500 200 3 10 0 0 -1 -1
+T -5 -5 8 10 1 1 0 0 1
+refdes=BS?
+T -5 693 8 10 0 1 0 0 1
+device=BufferStop_end
+T -5 -207 8 10 0 0 0 0 1
+element=BSE
+T 95 493 8 10 1 1 0 0 1
+dDown=0

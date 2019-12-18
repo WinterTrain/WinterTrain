@@ -1,0 +1,59 @@
+v 20130925 2
+P 0 300 300 300 1 0 0
+{
+T 0 300 5 10 0 0 0 0 1
+pintype=tip
+T 355 295 5 10 0 1 0 0 1
+pinlabel=unknown
+T 205 345 5 10 0 1 0 6 1
+pinnumber=0
+T 0 300 5 10 0 0 0 0 1
+pinseq=0
+}
+P 1500 300 1200 300 1 0 0
+{
+T 1500 300 5 10 0 0 0 0 1
+pintype=right
+T 1145 295 5 10 0 1 0 6 1
+pinlabel=unknown
+T 1295 345 5 10 0 1 0 0 1
+pinnumber=1
+T 1500 300 5 10 0 0 0 0 1
+pinseq=0
+}
+P 1500 1300 1200 1300 1 0 0
+{
+T 1500 1300 5 10 0 0 0 0 1
+pintype=left
+T 1145 1295 5 10 0 1 0 6 1
+pinlabel=unknown
+T 1295 1345 5 10 0 1 0 0 1
+pinnumber=2
+T 1500 1300 5 10 0 0 0 0 1
+pinseq=0
+}
+L 300 300 1200 300 3 0 0 0 -1 -1
+L 1000 1300 1200 1300 3 0 0 0 -1 -1
+L 1000 1300 500 300 3 0 0 0 -1 -1
+T -5 1495 8 10 0 1 0 0 1
+device=PointFacing_branchLeft
+T 310 -5 8 10 1 1 0 0 1
+refdes=P?
+T -5 -305 8 10 0 0 0 0 1
+element=PF
+T -5 -507 8 10 0 0 0 0 1
+EC_addr=0
+T -5 -707 8 10 0 0 0 0 1
+EC_type=0
+T -5 -895 8 10 0 0 0 0 1
+EC_major=0
+T -5 -1095 8 10 0 0 0 0 1
+EC_minor=0
+T -5 -1280 8 10 0 0 0 0 1
+supervisionState=S
+T 95 395 8 10 1 1 0 0 1
+dTip=1
+T 1095 395 8 10 1 1 0 0 1
+dRight=30
+T 1095 1395 8 10 1 1 0 0 1
+dLeft=30
