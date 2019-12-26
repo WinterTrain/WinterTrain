@@ -21,7 +21,7 @@ print "<html>
   <th>Time</th>
   <th>Delay</th>
   <th>Route</th>
-  <th>Action</th>
+  <th>Condition</th>
 ";
 
 $nextTrn = "";
@@ -33,24 +33,26 @@ print "
   <td>".(isset($route["time"]) ? $route["time"] : ""). "</td>
   <td>".(isset($route["delay"]) ? $route["delay"] : ""). "</td>
   <td>{$route["start"]}".(isset($route["dest"]) ? " => {$route["dest"]}" : "")."</td>
-  <td>".(isset($route["action"]) ? $route["action"] : ""). "</td>
-</tr>
+  <td>".(isset($route["condition"]) ? $route["condition"] : ""). "</td>
 ";
-  if (isset($route["action"]) and $route["action"] == "N") {
-    $nextTrn = $route["nextTrn"];
+  if (isset($route["condition"]) and $route["condition"] == "N") {
+    print "<td> NextTrn: <a href='showTimeTable.php?trn={$route["nextTrn"]}'>{$route["nextTrn"]}</a>";
+  } else {
+    print "<td>";
   }
+
+print "</tr>
+";
 }
 
 print "</table>
-
 <hr>
-<p>Train Running Number to be assigned at destination station: ".($nextTrn == "" ? "(none)" : "<a href='showTimeTable.php?trn=$nextTrn'>$nextTrn</a>")."
 ";
 
-print "<p>Actions:
+print "<p>Conditions:
 <dl>
   <dt>R</dt>
-    <dd>Set route unconditional. Action \"R\" is default action.</dd>
+    <dd>Set route unconditional. condition \"R\" is default condition.</dd>
   <dt>E</dt>
     <dd>Signal is destination.</dd>
   <dt>N</dt>

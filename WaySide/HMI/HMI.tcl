@@ -255,6 +255,7 @@ global nTrainFrame  trainMA entryFontSize rtoMode toMode toDrive toDir trnSetVal
   grid [ttk::label .f.fTrain.t$index.positionX -text "Position:"] -column 0 -columnspan 2 -row 4 -padx 5 -pady 2 -sticky we
   grid [ttk::label .f.fTrain.t$index.position -text "--- ---" -textvariable trainPosition($index)] -column 2 -columnspan 6 -row 4 -padx 5 -pady 2 -sticky we
   grid [ttk::label .f.fTrain.t$index.unAmb -text "--" -textvariable trainPosUnamb($index)] -column 6 -columnspan 2 -row 4 -padx 5 -pady 2 -sticky we
+.f.fTrain.t$index.unAmb configure -foreground red
 
   grid [ttk::label .f.fTrain.t$index.speedX -text "Speed:"] -column 0 -columnspan 2 -row 5 -padx 5 -pady 2 -sticky we
   grid [ttk::label .f.fTrain.t$index.speed -text "---" -textvariable trainSpeed($index)] -column 2 -columnspan 2 -row 5 -padx 5 -pady 2 -sticky we

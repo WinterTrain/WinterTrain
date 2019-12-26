@@ -3,6 +3,7 @@
 require("webConfig.php");
 
 include($TT_FILE);
+
 ksort($timeTables);
 print "<html>
 
@@ -19,7 +20,11 @@ Welcome to the WinterTrain at Christianshavns B&aringdudlejning og Café.
 
 
 foreach ($timeTables as $trn => $tt) {
-  print "<li><a href='/showTimeTable.php?trn=$trn'>$trn</a> {$tt["start"]} - {$tt["destination"]}  ";
+  if ($trn != "") {
+    print "<li><a href='/showTimeTable.php?trn=$trn'>$trn</a> {$tt["start"]} - {$tt["destination"]}  ";
+    print "<ul><li>{$tt["description"]}\n";
+    print "</ul>\n";
+  }
 }
 
 print "</ul>

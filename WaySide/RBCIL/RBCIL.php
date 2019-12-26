@@ -193,7 +193,7 @@ $RS_TXT = [RS_UDEF => "Route state undefined", RS_ROUTE_SET => "Route set", RS_B
 $TMS_STATUS_TXT = [TMS_UDEF => "TMS: state undefined", TMS_NO_TT => "TMS: Running, Error in Time Table", TMS_OK => "TMS: Running", 
                    TMS_NO_TMS => "TMS: not running"];
 $MULT_OCCUP_TXT = "XX"; // Symbol for occupation of multiple trains
-$UNAMB_TXT = [true => "Valid", false => "Ambiguous"];
+$UNAMB_TXT = [true => "", false => "Ambiguous"];
 
 //--------------------------------------- System variable
 $debug = 0x00; $background = FALSE; $run = true; $doInitEC = true;
@@ -2682,8 +2682,10 @@ global $PT1, $HMI, $HMIoffset, $trainData, $VERSION, $PT1_VERSION, $tmsStatus, $
   HMIindication($client,"set ::tmsStatus {{$TMS_STATUS_TXT[$tmsStatus]}}\n");
     HMIindication($client, "eStopInd ".($emergencyStop ? "true" : "false")."\n");
   HMIindication($client, "arsAllInd ".($arsEnabled ? "true" : "false")."\n");
-  foreach ($HMI["color"] as $param => $color) {
-    HMIindication($client,"set ::$param $color\n");  
+  if (isset($HMI["color"])) {
+    foreach ($HMI["color"] as $param => $color) {
+      HMIindication($client,"set ::$param $color\n");  
+    }
   }
 //  if (isset($HMI["scale"])) {    // HMI scale to be set by HMI only
 //    HMIindication($client,"set ::scale ".$HMI["scale"]."\n");

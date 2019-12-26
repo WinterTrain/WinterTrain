@@ -279,7 +279,7 @@ $PT1 = [
   ],
 "BG27" => [ // Balises                                      BG27
   "element" => "BL",
-  "ID" => "FF:FF:FF:FF:FF",
+  "ID" => "1F:00:62:25:B2",
   "U" => ["name" => "S10", "dist" => 140],
   "D" => ["name" => "S5", "dist" => 140],
   ],
@@ -342,7 +342,7 @@ $PT1 = [
   ],
 "BG32" => [ // Balises                                      BG32
   "element" => "BL",
-  "ID" => "FF:FF:FF:FF:FF",
+  "ID" => "1E:00:8E:B8:97",
   "U" => ["name" => "S12", "dist" => 115],
   "D" => ["name" => "S7", "dist" => 115],
   ],
@@ -681,8 +681,14 @@ $PT1 = [
 "BG14" => [ // Balises                                      BG14
   "element" => "BL",
   "ID" => "1F:00:62:A3:D5",
-  "U" => ["name" => "S18", "dist" => 100],
+  "U" => ["name" => "BG114", "dist" => 20],
   "D" => ["name" => "BG13", "dist" => 165],
+  ],
+"BG114" => [ // Balises                                      BG114
+  "element" => "BL",
+  "ID" => "1E:00:AC:98:25",
+  "U" => ["name" => "S18", "dist" => 40],
+  "D" => ["name" => "BG14", "dist" => 40],
   ],
 // ---------------------------------------------------------------------------------------------------------------------- Station D  
 // ----------------------------------------------------------------- From station C
@@ -695,7 +701,7 @@ $PT1 = [
     "majorDevice" => 2,
     ],
   "U" => ["name" => "BG11", "dist" => 5],
-  "D" => ["name" => "BG14", "dist" => 1],
+  "D" => ["name" => "BG114", "dist" => 1],
   "HMI" => [
     "offset" => "D",
     "x" => 1,
@@ -704,13 +710,13 @@ $PT1 = [
   ],
 "BG11" => [ // Balises                                  BG11
   "element" => "BL",
-  "ID" => "74:00:15:50:C0",
+  "ID" => "74:00:15:55:26",
   "U" => ["name" => "BG12", "dist" => 10],
   "D" => ["name" => "S18", "dist" => 5],
   ],
 "BG12" => [ // Balises                                   BG12
   "element" => "BL",
-  "ID" => "74:00:15:55:26",
+  "ID" => "74:00:15:50:C0",
   "U" => ["name" => "P5", "dist" => 1],
   "D" => ["name" => "BG11", "dist" => 10],
   ],  
@@ -771,7 +777,7 @@ $PT1 = [
   "supervisionState" => "P",
   "R" => ["name" => "BG12", "dist" => 30],
   "L" => ["name" => "BG07", "dist" => 30],
-  "T" => ["name" => "S15", "dist" => 5],
+  "T" => ["name" => "S15", "dist" => 1],
   "HMI" => [
     "offset" => "D",
     "or" => "tl",
@@ -789,7 +795,7 @@ $PT1 = [
     "majorDevice" => 4,
     ],
   "U" => ["name" => "BG10", "dist" => 1],
-  "D" => ["name" => "P5", "dist" => 5],
+  "D" => ["name" => "P5", "dist" => 1],
   "HMI" => [
     "offset" => "D",
     "x" => 4,
@@ -800,9 +806,22 @@ $PT1 = [
 "BG10" => [ // Balises                                   BG10
   "element" => "BL",
   "ID" => "1F:00:50:6E:08",
-  "U" => ["name" => "S22", "dist" => 105],
-  "D" => ["name" => "S15", "dist" => 10],
+  "U" => ["name" => "BG110", "dist" => 10],
+  "D" => ["name" => "S15", "dist" => 20],
   ],
+"BG110" => [ // Balises                                   BG10
+  "element" => "BL",
+  "ID" => "74:00:11:07:0B",
+  "U" => ["name" => "BG111", "dist" => 10],
+  "D" => ["name" => "BG10", "dist" => 10],
+  ],
+"BG111" => [ // Balises                                   BG10
+  "element" => "BL",
+  "ID" => "76:00:0C:B7:36",
+  "U" => ["name" => "S22", "dist" => 60],
+  "D" => ["name" => "BG110", "dist" => 10],
+  ],
+  
 "S22" => [ // Signal                                       S22
   "element" => "SU",
   "type" => "MS2",
@@ -812,7 +831,7 @@ $PT1 = [
     "majorDevice" => 3,
     ],
   "U" => ["name" => "BG03", "dist" => 1],
-  "D" => ["name" => "BG10", "dist" => 1],
+  "D" => ["name" => "BG111", "dist" => 1],
   "HMI" => [
     "offset" => "D",
     "x" => 6,
@@ -823,7 +842,7 @@ $PT1 = [
   "element" => "BL",
   "ID" => "76:00:0C:FC:CB",
   "U" => ["name" => "BG06", "dist" => 1],
-  "D" => ["name" => "S22", "dist" => 20],
+  "D" => ["name" => "S22", "dist" => 5],
   ],
 "BG06" => [ // Balises                                    BG06
   "element" => "BL",
@@ -844,6 +863,7 @@ $PT1 = [
   "U" => ["name" => "S17", "dist" => 1],
   "D" => ["name" => "BG08", "dist" => 10],
   ],
+
 "S17" => [ // Signal                                      S17
   "element" => "SD",
   "type" => "MS3",
@@ -852,19 +872,19 @@ $PT1 = [
     "type" => 45,
     "majorDevice" => 3,
     ],
-  "U" => ["name" => "VBG02", "dist" => 1],
-  "D" => ["name" => "BG09", "dist" => 10],
+  "U" => ["name" => "BG109", "dist" => 1],
+  "D" => ["name" => "BG09", "dist" => 1],
   "HMI" => [
     "offset" => "D",
     "x" => 3,
     "y" => 3,
     ],
   ],
-"VBG02" => [ // Balises
+"BG109" => [ // Balises                                  BG109
   "element" => "BL",
-  "ID" => "FF:FF:FF:FF:FF",
-  "U" => ["name" => "S24", "dist" => 60],
-  "D" => ["name" => "S17", "dist" => 60],
+  "ID" => "76:00:0D:19:5B",
+  "U" => ["name" => "S24", "dist" => 85],
+  "D" => ["name" => "S17", "dist" => 43],
   ],
 "S24" => [ // Signal                                       S24
   "element" => "SU",
@@ -874,8 +894,8 @@ $PT1 = [
     "type" => 41,
     "majorDevice" => 2,
     ],
-  "U" => ["name" => "BG04", "dist" => 10],
-  "D" => ["name" => "VBG02", "dist" => 1],
+  "U" => ["name" => "BG04", "dist" => 5],
+  "D" => ["name" => "BG109", "dist" => 1],
   "HMI" => [
     "offset" => "D",
     "x" => 7,
@@ -886,7 +906,7 @@ $PT1 = [
   "element" => "BL",
   "ID" => "74:00:10:F3:3E",
   "U" => ["name" => "BG05", "dist" => 1],
-  "D" => ["name" => "S24", "dist" => 20],
+  "D" => ["name" => "S24", "dist" => 5],
   ],
 "BG05" => [ // Balises                                    BG05
   "element" => "BL",
@@ -1192,7 +1212,7 @@ $HMI = [
       "l" => 1,
     ],
     "tr12" => [
-      "balises" => [ "VBG02",
+      "balises" => [ "BG109",
               ],
       "offset" => "D",
       "or" => "s",

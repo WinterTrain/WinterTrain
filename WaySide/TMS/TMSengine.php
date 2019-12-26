@@ -363,7 +363,7 @@ global $trainData, $tts, $now;
       break;
       case RS_COMPLETED:
         $route = $tts[$train["trn"]]["routeTable"][$train["routeIndex"]];
-        if ($route["command"] == "N" and $now > $train["ETD"]) {
+        if ($route["condition"] == "N" and $now > $train["ETD"]) {
           resetTrainState($train);
           $train["trn"] = $route["nextTrn"];
           $train["trnState"] = TRN_NORMAL;
