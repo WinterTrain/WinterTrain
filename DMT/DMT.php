@@ -32,6 +32,7 @@ $debug = FALSE;
 $PT1 = [];
 $PT1_VERSION = "";
 $HMI = [];
+$elementCount = ["BL" => 0, "SU" => 0, "SD" => 0, "PF" => 0, "PT" => 0, "PHTU" => 0, "PHTD" => 0, "BSB" => 0, "BSE" => 0];
 
 // --------------------------------------- Main
 
@@ -217,16 +218,75 @@ global $DIRECTORY, $GNETLIST_CMD, $SIGNALLING_LAYOUT_FILE, $PT1;
   unlink("$DIRECTORY/output.net");
 }
 
+function verifySignallingLayout() {
+global $PT1, $elementCount;
+
+  foreach($PT1 as $name => $element) {
+    switch($element["element"]) {
+    case "BL":
+      if ($element["ID"] == "FF:FF:FF:FF:FF" or $element["ID"] == "00:00:00:00:00" or $element["ID"] == "") {
+        print "Warning: Empty or default Balise ID assigned to element $name\n";
+      }
+      if (preg_match("/^[0-9a-fA-F]{2}[:][0-9a-fA-F]{2}[:][0-9a-fA-F]{2}[:][0-9a-fA-F]{2}[:][0-9a-fA-F]{2}$/", $element["ID"]) == 0){
+        print "Error: Invalid balise ID format: \"{$element["ID"]}\", element $name\n";
+      }
+      if (isset($baliseID[$element["ID"]])) {
+        print "Error: Dublicated balise ID {$element["ID"]} found in elements $name and {$baliseID[$element["ID"]]}\n";
+      }
+      $baliseID[$element["ID"]] = $name;
+    break;
+    case "SU":
+    case "SD":
+      if ($element["type"] != "MB" and ($element["EC"]["addr"] == 0 or ! is_int($element["EC"]["addr"]))) {
+        print "Warning: No EC address assigned to real signal $name. Use element type \"MB\" (marker board)\n";
+      }
+    break;
+    case "PF":
+    case "PT":
+      if (($element["supervisionState"] == "P" or $element["supervision State"] == "F") and 
+        ($element["EC"]["addr"] == 0 or ! is_int($element["EC"]["addr"]))) {
+        print "Warning: No EC address assigned to  point $name having supervision state {$element["supervisionState"]} \n";
+      }
+    break;
+    case "PHTU":
+    case "PHTD":
+      if (!isset($PT1[$element["holdPoint"]])) {
+        print "Error: Unknown or empty point {$element["holdPoint"]} assigned to {$element["element"]} element $name\n";
+      }
+    break;
+    case "BSB":
+    case "BSE":
+    break;
+    default:
+      print ("Error: Element type {$element["element"]} (instance: $name) not implemented.\n");
+    }
+    $elementCount[$element["element"]] += 1;
+  }
+}
+
 function compilePT2() {
-global $PT1, $HMI, $SCREEN_LAYOUT_FILE, $SIGNALLING_LAYOUT_FILE, $PT2_FILE, $DIRECTORY, $xOffset, $yOffset, $CORNER_X_WIDTH, $CORNER_Y_HIGHT, $scFh, $siFh, $PT1_VERSION;
+global $PT1, $HMI, $SCREEN_LAYOUT_FILE, $SIGNALLING_LAYOUT_FILE, $PT2_FILE, $DIRECTORY, $xOffset, $yOffset, $CORNER_X_WIDTH, $CORNER_Y_HIGHT, $scFh, $siFh, $PT1_VERSION, $elementCount;
+
+print "Compiling\n  Signalling Layout: \"$DIRECTORY/$SIGNALLING_LAYOUT_FILE\" and
+  Screen Layout: \"$DIRECTORY/$SCREEN_LAYOUT_FILE\" into
+  Output file: \"$DIRECTORY/$PT2_FILE\"
+";
 
   $scFh = fopen("$DIRECTORY/$SCREEN_LAYOUT_FILE", "r");
   $siFh = fopen("$DIRECTORY/$SIGNALLING_LAYOUT_FILE", "r");
   $pt2Fh = fopen("$DIRECTORY/$PT2_FILE", "w");
 
   readSignallingLayout();
+  verifySignallingLayout();
   readScreenLayout();
+  
+  print "Element count: ";
+  foreach ($elementCount as $e => $c) {
+    print "$e: $c, ";
+  }
+  print "\n";
   // FIXME generation date etc.
+  
 $buffer = "<?php
 \$PT1_VERSION = \"FIXME\";
 
@@ -252,8 +312,8 @@ global $debug, $SCREEN_LAYOUT_FILE, $SIGNALLING_LAYOUT_FILE, $PT2_FILE, $DIRECTO
     print "Usage: [option] COMMAND [PARAM]
 Generate PT2 data for the WinterTrain
 COMMAND
-C                 Compile PT2 data from input file \"signallingLayout.sch\" og \"screenLayout.sch\" into output file \"PT2.php\"
-                  All files are located in working directory. 
+C                 Compile and verify PT2 data from input file \"signallingLayout.sch\" and \"screenLayout.sch\" into output file \"PT2.php\"
+                  All files located in working directory. 
                   
 -D <dir>          use <dir> as working directory for all files. Must be given before -sc -si and -p2 in order to take effect.
 -sc <file>        read screenLayout from <file>

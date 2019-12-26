@@ -1,8 +1,9 @@
 #!/usr/bin/php
 <?php
-// WinterTrain, PT1 analyser
+// WinterTrain, PT2 analyser
 
-$DATA_FILE = "../WaySide/SiteData/CBU/CBU.php";
+$DATA_FILE = "PT2.php";
+$DIRECTORY = ".";
 
 //--------------------------------------- Text
 
@@ -23,7 +24,7 @@ $EC_TYPE_TXT = array(0 => "(Reserved)",
 
 //--------------------------------------- System variable
 $debug = FALSE;
-print "WinterTrain, PT1 analyser\n";
+print "WinterTrain, PT2 analyser\n";
 cmdLineParam();
 if ($debug) {
   error_reporting(E_ALL);
@@ -32,28 +33,90 @@ if ($debug) {
 }
 
 // --------------------------------------- Main
-require($DATA_FILE);
+print "Analysing PT2 data from file \"$DATA_FILE\"\n";
+require("$DATA_FILE");
 
 switch ($command) {
-  case 'd':
+  case 'd': // ------------------------------------------------ distance
+    $found = false;
     if (!array_key_exists($element1,$PT1)) {
-      print "Error: Element $element1 is not defined in PT1 data\n";
+      print "Error: Element $element1 is not defined in PT2 data\n";
       exit(1);
     }
     if (!array_key_exists($element2,$PT1)) {
-      print "Error: Element $element2 is not defined in PT1 data\n";
+      print "Error: Element $element2 is not defined in PT2 data\n";
       exit(1);
     }
-    if ($PT1[$element1]["element"] != "BSE") {
-      print "Up:\n";
-      distance($PT1[$element1]["U"]["dist"], $PT1[$element1]["U"]["name"],$element2,"U", $element1)."\n";
+    switch ($PT1[$element1]["element"]) {
+      case "BSB":
+        print "Up:\n";
+        distance($PT1[$element1]["U"]["dist"], $PT1[$element1]["U"]["name"],$element2,"U", $element1)."\n";
+      break;
+      case "BSE":
+        print "\nDown:\n";
+        distance($PT1[$element1]["D"]["dist"], $PT1[$element1]["D"]["name"],$element2,"D", $element1)."\n";
+      break;
+      case "PF":
+        print "Right:\n";
+        distance($PT1[$element1]["R"]["dist"], $PT1[$element1]["R"]["name"],$element2,"U", $element1)."\n";
+        print "Left:\n";
+        distance($PT1[$element1]["L"]["dist"], $PT1[$element1]["L"]["name"],$element2,"U", $element1)."\n";
+        print "\nTip:\n";
+        distance($PT1[$element1]["T"]["dist"], $PT1[$element1]["T"]["name"],$element2,"D", $element1)."\n";      
+      break;
+      case "PT":
+        print "Right:\n";
+        distance($PT1[$element1]["R"]["dist"], $PT1[$element1]["R"]["name"],$element2,"D", $element1)."\n";
+        print "Left:\n";
+        distance($PT1[$element1]["L"]["dist"], $PT1[$element1]["L"]["name"],$element2,"D", $element1)."\n";
+        print "\nTip:\n";
+        distance($PT1[$element1]["T"]["dist"], $PT1[$element1]["T"]["name"],$element2,"U", $element1)."\n";      
+      break;
+      case "BL":
+      case "SU":
+      case "SD":
+      case "PHTU":
+      case "PHTD":
+        print "Up:\n";
+        distance($PT1[$element1]["U"]["dist"], $PT1[$element1]["U"]["name"],$element2,"U", $element1)."\n";
+        print "\nDown:\n";
+        distance($PT1[$element1]["D"]["dist"], $PT1[$element1]["D"]["name"],$element2,"D", $element1)."\n";      
+      break;
+      default:
+        print "Ups 2: {$PT1[$element1]["element"]}\n";
     }
-    if ($PT1[$element1]["element"] != "BSB") {
-      print "\nDown:\n";
-      distance($PT1[$element1]["D"]["dist"], $PT1[$element1]["D"]["name"],$element2,"D", $element1)."\n";
+    if (!$found) {
+      print "$element2 cannot be reached from $element1";
     }
   break;
-  case "b":
+  case "t": // ---------------------------------------------------------- Total length
+    $sum = 0;
+    foreach ($PT1 as $element) {
+      switch ($element["element"]) {
+        case "BL":
+        case "SU":
+        case "SD":
+        case "PHTU":
+        case "PHTD":
+          $sum += $element["U"]["dist"] + $element["D"]["dist"];
+        break;
+        case "PF":
+        case "PT":
+          $sum += $element["T"]["dist"] + $element["R"]["dist"] + $element["L"]["dist"];
+        break;
+        case "BSB":
+          $sum += $element["U"]["dist"];
+        break;
+        case "BSE":
+          $sum += $element["D"]["dist"];
+        break;
+        default:
+          print "Ups 3: {$element["element"]}\n";
+      }
+    }
+    print "Total track length: $sum\n";
+  break;
+  case "b": // --------------------------------------------------------- Balise list
     ksort($PT1);
     foreach ($PT1 as $name => $element) {
       if ($element["element"] == "BL") {
@@ -65,7 +128,7 @@ switch ($command) {
       }
     }
   break;
-  case "e":
+  case "e": // ----------------------------------------------------------- HW list
     $EC = array();
     foreach ($PT1 as $name => $element) {
       if ($element["EC"]["addr"] != "" and $element["EC"]["addr"] != "0") {
@@ -91,11 +154,28 @@ switch ($command) {
 }
 
 function distance($sum, $element1, $element2, $direction, $previousElement) {
-global $PT1;
+global $PT1, $found;
 
 //print "A: $sum, $element1, $element2, $direction\n";
   if ($element1 == $element2) {
-  print "Sum: ".($sum + $PT1[$element1][($direction == "U" ? "D" : "U")]["dist"])."\n";
+    switch ($PT1[$element1]["element"]) {
+      case "BL":
+      case "SU":
+      case "SD":
+      case "PHTU":
+      case "PHTD":
+        $sum += $PT1[$element1][($direction == "U" ? "D" : "U")]["dist"];
+      break;
+      case "PF":
+        $sum += $PT1[$element1][($direction == "U" ? "T" : ($previousElement == $PT1[$element1]["R"]["name"] ? "R" : "L"))]["dist"];
+      break;
+      case "PT":
+        $sum += $PT1[$element1][($direction == "D" ? "T" : ($previousElement == $PT1[$element1]["R"]["name"] ? "R" : "L"))]["dist"];
+      break;
+    }
+    print "Sum: $sum\n";
+    $found = true;
+//  print "Sum: ".($sum + $PT1[$element1][($direction == "U" ? "D" : "U")]["dist"])."\n";
     return;
   } else {
     switch ($PT1[$element1]["element"]) {
@@ -142,7 +222,7 @@ global $PT1;
       case "PHTU":
       case "PHTD":
         distance($PT1[$element1]["D"]["dist"] + $PT1[$element1]["U"]["dist"] + $sum, 
-          $PT1[$element1][$direction]["name"],$element2, $direction, $element1);
+          $PT1[$element1][$direction]["name"], $element2, $direction, $element1);
         return;
       break;
       default:
@@ -157,14 +237,15 @@ function CmdLineParam() {
 global $debug, $DATA_FILE, $element1, $element2, $argv, $PT1, $command;
   if (in_array("-h",$argv) or count($argv) == 1) {
     print "Usage: [option] COMMAND [PARAM]
-Performs analysis of PT1 data for the WinterTrain
+Performs analysis of PT2 data from file \"PT2.php\" for the WinterTrain
 COMMAND
 d <element1> <element2>
                   measures distance betwen centre of <element1> and <element2>
 b                 Lists all balises in C like format
 e                 List HW assignment of each element controller
+t                 Calculate total track length
 
--f <file>         reads PT1 data from <file>
+-f <file>         read PT2 data from <file>
 -d                enable debug info
 ";
     exit();
@@ -183,6 +264,9 @@ e                 List HW assignment of each element controller
       break;
       case "b":
         $command = "b";
+      break;
+      case "t":
+        $command = "t";
       break;
       case "e":
         $command = "e";
