@@ -2,7 +2,7 @@
 <?php
 // WinterTrain, PT2 analyser
 
-$DATA_FILE = "PT2.php";
+$PT2_FILE = "PT2.php";
 $DIRECTORY = ".";
 
 //--------------------------------------- Text
@@ -33,8 +33,8 @@ if ($debug) {
 }
 
 // --------------------------------------- Main
-print "Analysing PT2 data from file \"$DATA_FILE\"\n";
-require("$DATA_FILE");
+print "Analysing PT2 data from file \"$PT2_FILE\"\n";
+require("$PT2_FILE");
 
 switch ($command) {
   case 'd': // ------------------------------------------------ distance
@@ -57,17 +57,17 @@ switch ($command) {
         distance($PT1[$element1]["D"]["dist"], $PT1[$element1]["D"]["name"],$element2,"D", $element1)."\n";
       break;
       case "PF":
-        print "Right:\n";
+        print "\nRight:\n";
         distance($PT1[$element1]["R"]["dist"], $PT1[$element1]["R"]["name"],$element2,"U", $element1)."\n";
-        print "Left:\n";
+        print "\nLeft:\n";
         distance($PT1[$element1]["L"]["dist"], $PT1[$element1]["L"]["name"],$element2,"U", $element1)."\n";
         print "\nTip:\n";
         distance($PT1[$element1]["T"]["dist"], $PT1[$element1]["T"]["name"],$element2,"D", $element1)."\n";      
       break;
       case "PT":
-        print "Right:\n";
+        print "\nRight:\n";
         distance($PT1[$element1]["R"]["dist"], $PT1[$element1]["R"]["name"],$element2,"D", $element1)."\n";
-        print "Left:\n";
+        print "\nLeft:\n";
         distance($PT1[$element1]["L"]["dist"], $PT1[$element1]["L"]["name"],$element2,"D", $element1)."\n";
         print "\nTip:\n";
         distance($PT1[$element1]["T"]["dist"], $PT1[$element1]["T"]["name"],$element2,"U", $element1)."\n";      
@@ -234,7 +234,7 @@ global $PT1, $found;
 }
 
 function CmdLineParam() {
-global $debug, $DATA_FILE, $element1, $element2, $argv, $PT1, $command;
+global $debug, $PT2_FILE, $element1, $element2, $argv, $PT1, $command, $DIRECTORY;
   if (in_array("-h",$argv) or count($argv) == 1) {
     print "Usage: [option] COMMAND [PARAM]
 Performs analysis of PT2 data from file \"PT2.php\" for the WinterTrain
@@ -245,7 +245,8 @@ b                 Lists all balises in C like format
 e                 List HW assignment of each element controller
 t                 Calculate total track length
 
--f <file>         read PT2 data from <file>
+-pt2 <file>       read PT2 data from <file>
+-D <directory>    use <directory> as working directory for all files. Must be given before -pt2 in order to take effect
 -d                enable debug info
 ";
     exit();
@@ -271,16 +272,29 @@ t                 Calculate total track length
       case "e":
         $command = "e";
       break;
-      case "-f":
+      case "-pt2":
         list(,$p) = each($argv);
         if ($p) {
-          $DATA_FILE = $p;
-          if (!is_readable($DATA_FILE)) {
-            print "Error: option -f: Cannot read $DATA_FILE \n";
+          $PT2_FILE = $p;
+          if (!is_readable("$DIRECTORY/$PT2_FILE")) {
+            print "Error: option -pt2: Cannot read $DIRECTORY/$PT2_FILE \n";
             exit(1); // If a data file is specified at the cmd line, it has to exist
           }
         } else {
-          print "Error: option -f: File name is missing \n";
+          print "Error: option -pt2: File name is missing \n";
+          exit(1);
+        }
+        break;
+      case "-D":
+        list(,$p) = each($argv);
+        if ($p) {
+          $DIRECTORY = $p;
+          if (!is_dir($DIRECTORY)) {
+            print "Error: option -D: Cannot access directory: $DIRECTORY\n";
+            exit(1);
+          }
+        } else {
+          print "Error: option -D: Directory name is missing\n";
           exit(1);
         }
         break;

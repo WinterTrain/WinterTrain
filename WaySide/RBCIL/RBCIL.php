@@ -7,7 +7,7 @@ $arduino = 0x33; // CBU Master, I2C addresse
 $ABUS = "";
 
 //--------------------------------------- Default Configuration
-$VERSION = "03P02";  // What does this mean with git?? FIXME
+$RBC_VERSION = date("Y-m-d H:i:s",filemtime( __FILE__));
 $HMIport = 9900;
 $MCePort = 9901;
 $TMSport = 9903;
@@ -26,10 +26,11 @@ $MaxAbusBuf = 20;
 $AbusMasterI2Caddress = 0x33; // Address of AbusMaster (arduino) connected to RasPI via I2C
 define("N_I2CSET",2);
 
-// File names
+// ------------------------------------------ File names
+$DIRECTORY = ".";
 $RBCIL_CONFIG = "RBCILconf.php";
-$DATA_FILE = "../SiteData/CBU/CBU.php";
-//$DATA_FILE = "../SiteData/W57/W57.php";
+$PT2_FILE = "PT2.php";
+$TRAIN_DATA_FILE = "TrainData.php";
 $ERRLOG = "Log/RBCIL_ErrLog.txt";
 $MSGLOG = "Log/RBCIL.log";
 
@@ -63,7 +64,7 @@ define("E_PROCEEDPROCEED",12);
 define("E_STOP_FACING",13);       //Signal
 define("E_LEFT",20);              // Point, supervised left
 define("E_RIGHT",21);             // supervised right
-define("E_MOVING",22);            //   point is (supposed to be) movingng
+define("E_MOVING",22);            // point is (supposed to be) movingng
 define("E_LX_DEACTIVATED",50);    // Normal state
 define("E_LX_WARNING",51);        // Warning signals flashing
 define("E_LX_ACTIVATED",52);      // Barrier closed
@@ -249,8 +250,9 @@ if ($ABUS == "cbu") {
 //  include '/home/jabe/scripts/AbusMasterLib.php'; // must be included at global level
 }
 prepareMainProgram();
+processPT1(); // read PT2 data
+processTrainData();
 versionInfo();
-processPT1();
 initRBCIL();
 forkToBackground();
 initMainProgram();
@@ -289,16 +291,27 @@ do {
 } while ($run);
 msgLog("Exitting...");
 
-//-----------------------------------------------------------------------------------------------------------------------  Analyse PT1
+//-------------------------------------------------------------------------------------------------------  Analyse Train Data
+function processTrainData() {
+global $trainData, $TRAIN_DATA_FILE;
+
+  require($TRAIN_DATA_FILE);
+  $totalTrain = 0;
+  foreach($trainData as $index => $train) {
+    $totalTrain +=1;
+  }
+  print "Count of trains: $totalTrain\n";
+}
+
+//-------------------------------------------------------------------------------------------------------  Analyse PT1/PT2 and Train Data
 function processPT1() {
-global $DATA_FILE, $trainData, $PT1_VERSION, $PT1, $HMI, $HMIoffset, $errorFound, $totalElement, $points, $signals, $levelCrossings,
-  $balises, $balisesID, $bufferstops, $triggers, $tracks;
+global $DIRECTORY, $PT2_FILE, $TRAIN_DATA_FILE, $PT2_GENERATION_TIME, $PT1, $HMI, $HMIoffset, $errorFound, $totalElement,
+  $points, $signals, $levelCrossings, $balises, $balisesID, $bufferstops, $triggers, $tracks;
 
   function inspect($this, $prevName, $up) { // check each edge in the graph
   global $PT1, $nInspection, $totalElement, $errorFound;
     $nInspection +=1;
     $name = $this["name"];
-//  print "Inspecting node $name ($nInspection) ".($up ? "Up" : "Down")."\n";
     if ($nInspection < 3 * $totalElement) {
       if (array_key_exists($this["name"], $PT1)) {
         $thisNode = $PT1[$name];
@@ -442,10 +455,9 @@ global $DATA_FILE, $trainData, $PT1_VERSION, $PT1, $HMI, $HMIoffset, $errorFound
       print "Error: Looping references detected.\n";
       $errorFound = true;
     }
-//  print "Done with node $name ".($up ? "Up" : "Down")."\n";
   }
 
-  require($DATA_FILE);
+  require($PT2_FILE);
 
   if (array_key_exists("", $PT1)) { unset($PT1[""]); } // delete any remaining template entry
   $totalElement = count($PT1);
@@ -454,7 +466,7 @@ global $DATA_FILE, $trainData, $PT1_VERSION, $PT1, $HMI, $HMIoffset, $errorFound
     $element["routeState"] = R_IDLE;
     $element["trackState"] = T_CLEAR;
     $element["trainIDs"] = [];
-//    $element["locked"] = False;
+//    $element["locked"] = False; FIXME
     switch ($element["element"]) {
       case "BL":
         $balises[] = $name;
@@ -561,13 +573,14 @@ global $DATA_FILE, $trainData, $PT1_VERSION, $PT1, $HMI, $HMIoffset, $errorFound
     }
   }
   if ($errorFound) {
-    print "Error: Track network not OK. Source: $DATA_FILE\n";
-    fatalError("Track network not OK. Source: $DATA_FILE");
+    print "Error: Track network not OK. Source: $DIRECTORY/$PT2_FILE\n";
+    fatalError("Track network not OK. Source: $DIRECTORY/$PT2_FILE");
   } else {
-    msgLog("Found $totalElement elements in PT1 data file: $DATA_FILE");
+    msgLog("Found $totalElement elements in PT1 data file: $DIRECTORY/$PT2_FILE");
   }
   
-// FIXME Check uniqueness of balises. Allow for virtual balises with same ID
+// FIXME Check uniqueness of balises - done by DMT. Allow for virtual balises with same ID
+
 // HMI data
   if (array_key_exists("", $HMI["baliseTrack"])) { unset($HMI["baliseTrack"][""]); } // delete any remaining template entry
   foreach ($HMI["baliseTrack"] as $trackName => $baliseTrack ) {
@@ -580,8 +593,8 @@ global $DATA_FILE, $trainData, $PT1_VERSION, $PT1, $HMI, $HMIoffset, $errorFound
     }
   }
   if ($errorFound) {
-    print "Error: HMI data not OK. Source: $DATA_FILE\n";
-    fatalError("HMI data not OK. Source: $DATA_FILE");
+    print "Error: HMI data not OK. Source: $DIRECTORY/$PT2_FILE\n";
+    fatalError("HMI data not OK. Source: $DIRECTORY/$PT2_FILE");
   }
 }
 
@@ -603,7 +616,6 @@ global $trainData, $emergencyStop;
 function sendMA($trainID, $authMode, $balise, $dist, $speed) { // $balise as : sep. string
 // Send mode and movement authorization. Request position report for same train from Abus Master / RadioLink
 global $radioLinkAddr, $radioLink, $radio, $trainData, $trainIndex;
-//print "SendMA: $trainID $balise $dist\n";
   $baliseArray = explode(":",$balise);
   $distTurn = round($dist / $trainData[$trainIndex[$trainID]]["wheelFactor"]);
   switch ($radio) {
@@ -627,7 +639,6 @@ global $radioLinkAddr, $radioLink, $radio, $trainData, $trainIndex;
 
 function sendPosRestore($trainID, $balise, $distance) { 
 global $radioLinkAddr, $radioLink, $radio;
-//    debugPrint ("Position restore ID: $trainID, Balise: >$balise< Distance: $distance");
   switch ($radio) { 
     case "USB":
       fwrite($radioLink,"33,$trainID,");
@@ -647,7 +658,6 @@ global $radioLinkAddr, $radioLink, $radio;
   switch ($radio) { 
     case "USB":
       fwrite($radioLink,"32,$trainID,$cmd,".($mode | ($dir << 3) | ($drive << 5)).",0s\n");
-//      print "sendRTO: >"."32,$trainID,$cmd,".($mode | ($dir << 3) | ($drive << 5)).",0s\n";
     break;
     case "ABUS":
       print "RTO via Abus not implemented\n";
@@ -668,7 +678,6 @@ global $trainData, $now;
 function receivedFromRadioLink($data) {  // position report received via USB
   $RF12_ID_MASK = 0x1f;
   $POSREP = 10;
-//  print ">$data<\n";
   $res = explode(" ",$data);
   if ($res[0] == "OK" and $res[2] == $POSREP) {
     $packet[3] = 1; // report valid
@@ -1097,15 +1106,15 @@ function trackRecTraverse($acceptionCriteria, #Name of function used to determin
 
 function acceptAll($element, $direction, $previousElement) { return True;}
 
+/*
 function addToListPayload($element, &$sharedVar, $direction, $next) { // FIXME Currently not used
   #Push $element into list
   $sharedVar[] = $element;
   return TRACK_TRAVERSALE_ACCEPT_DO_NOTHING; #Only the terminal element must be added
-}
+} */
 
 function lockingPayload($eltName, &$sharedVar, $direction, $next) {
 global $PT1;
-//print_r($sharedVar);
   //Set point in position
   if (isMoveablePoint($eltName)) {
     $pos = $next["position"];
@@ -1117,6 +1126,7 @@ global $PT1;
   return TRACK_TRAVERSALE_ACCEPT_ACTIVATE_PAYLOAD; #Lock all elments in route
 }
 
+/*
 function findSignalsFrom($element, $direction) { // FIXME Currently not used
   $isTerminal = function($elt, $dir) use ($element) {
     global $PT1;
@@ -1146,7 +1156,7 @@ function findSignalsFrom($element, $direction) { // FIXME Currently not used
   foreach ($signals as $sig) {
     RBC_IL_DebugPrint("$sig is next signal in direction $direction of $element");
   }
-}
+} */
 
 function getSignalDirection($element) {
   global $PT1;
@@ -1368,8 +1378,6 @@ function recUpdateTrainPosition(&$train, $dir, $x, $eltName, $trackState) {
       }
     }
   }
-//    print "Element: $eltName type: {$elt["element"]} retn $dir\n";
-
   //Check if further element in this direction may be occupied
   if (($dir == "U") and ($b <= $train["upFront"])) {
     //keep looking up unless it was facing point
@@ -1443,7 +1451,6 @@ function updateTrainPosition(&$train, $baliseName, $dist, $trackState) {
 
 function searchNextSignal($dir, $eltName, $trainIndex, $startElt) { // to determine train location for TMS
 global $PT1;
-//print ">$eltName<\n";
   if ($eltName == "") {
 print "Warning: no eltName for Dir: $dir, TrainIndex $trainIndex\n";
   return;
@@ -1967,7 +1974,7 @@ global $trainData, $trainIndex;
 }
 
 function initRBCIL() {
-global $trainData, $trainIndex, $DATA_FILE, $SRallowed, $SHallowed, $FSallowed, $ATOallowed;
+global $trainData, $trainIndex, $SRallowed, $SHallowed, $FSallowed, $ATOallowed;
 
   foreach ($trainData as $index => &$train) {
     $train["SRallowed"] = $SRallowed;
@@ -2514,8 +2521,8 @@ global $inChargeTMS;
 }
 
 function TMSStartup() {
-global $inChargeTMS, $trainData, $version;
- fwrite($inChargeTMS,"Hello this is RBCIL version $version\n");
+global $inChargeTMS, $trainData, $RBC_VERSION;
+ fwrite($inChargeTMS,"Hello this is RBCIL version $RBC_VERSION\n");
   foreach ($trainData as $index => $train) { // train data
     notifyTMS("setTRN {$index} {$train["trn"]}");
     // send current locaiton of train FIXME
@@ -2671,10 +2678,10 @@ $radioLink, $radioBuf, $radio, $tmsStatus;
 // --------------------------------------------------------------------------------------------------------------------------------- HMI
 
 function HMIstartup($client) { // Initialize specific client and send track layout, status, train data, version info
-global $PT1, $HMI, $HMIoffset, $trainData, $VERSION, $PT1_VERSION, $tmsStatus, $TMS_STATUS_TXT, $emergencyStop, $arsEnabled;
+global $PT1, $HMI, $HMIoffset, $trainData, $RBC_VERSION, $PT2_GENERATION_TIME, $tmsStatus, $TMS_STATUS_TXT, $emergencyStop, $arsEnabled;
 // HMI screen layout
 
-  HMIindication($client,"RBCversion $VERSION $PT1_VERSION\n");
+  HMIindication($client,"RBCversion {{$RBC_VERSION}} {{$PT2_GENERATION_TIME}}\n");
   HMIindication($client,".f.canvas delete all\n");
   HMIindication($client,"destroyTrainFrame\n");
   HMIindication($client,"dGrid\n");  
@@ -2687,9 +2694,6 @@ global $PT1, $HMI, $HMIoffset, $trainData, $VERSION, $PT1_VERSION, $tmsStatus, $
       HMIindication($client,"set ::$param $color\n");  
     }
   }
-//  if (isset($HMI["scale"])) {    // HMI scale to be set by HMI only
-//    HMIindication($client,"set ::scale ".$HMI["scale"]."\n");
-//  }
   foreach ($HMI["label"] as $label) {
     HMIindication($client,"label {".$label["text"]."} ".$label["x"]." ".$label["y"]."\n");  
   }
@@ -3093,25 +3097,34 @@ function toSigned($b1, $b2) {
 }
 
 function versionInfo() {
-global $VERSION, $PT1_VERSION;
-  fwrite(STDERR,"RBCIL, version: $VERSION\n");
-  fwrite(STDERR,"PT1 data, version: $PT1_VERSION\n");
+global $RBC_VERSION, $PT2_GENERATION_TIME ;
+  fwrite(STDERR,"RBCIL, version: $RBC_VERSION\n");
+  fwrite(STDERR,"PT2 data, version: $PT2_GENERATION_TIME\n");
 }
 
 function CmdLineParam() {
-global $debug, $background, $RBCIL_CONFIG, $DATA_FILE, $VERSION, $argv, $ABUS, $SRallowed, $SHallowed, $FSallowed, $ATOallowed, $doInitEC, $radio;
+global $debug, $background, $DIRECTORY, $RBCIL_CONFIG, $PT2_FILE, $TRAIN_DATA_FILE, $RBC_VERSION, $argv, $ABUS, $SRallowed,
+  $SHallowed, $FSallowed, $ATOallowed, $doInitEC, $radio;
   if (in_array("-h",$argv)) {
-    fwrite(STDERR,"Usage:
+    fwrite(STDERR,"RBC/IL for the WinterTrain
+The RBC/IL will default read PT2 data from file \"PT2.php\" and Train Data from \"TrainData.php\" both from current directory.
+Log data are written to \"RBCIL_ErrLog.txt\" and \"RBCIL.log\" both in directory \"Log\" in current directory. Current directory can be changed by option -D
+
+Usage:
 -b, --background  start as daemon
+-f <file>         configuration of RBCIL
+-td <file>        read Train Data from <file>
+-pt2 <file>       read PT2 data from <file>
 -c                select CBUMaster as Abus gateway
--f <conf_file>    configuration of RBCIL
 -g                select GenieMaster as Abus gateway 
 -n                do not connect to Abus gateway
--D <Data_file>    PT1 and Train data
+-D <directory>    use <directory> as working directory for all files. Must be given before -f -td and -pt2 in order to take effect
+
 -d                enable debug info, level all
 -dg               enable debug info, general
 -dr               enable debug info, RBC
 -dt               enable debug info, TMS
+
 -sr               enable Staff Responsible for all trains
 -sh               enable Shunt Mode for all trains
 -fs               enable Full Supervision Mode for all trains
@@ -3160,51 +3173,89 @@ global $debug, $background, $RBCIL_CONFIG, $DATA_FILE, $VERSION, $argv, $ABUS, $
       if ($p) {
         $RBCIL_CONFIG = $p;
         if (!is_readable($RBCIL_CONFIG)) {
-          fwrite(STDERR,"Error: option -f: Cannot read $RBCIL_CONFIG \n");
-          exit(1); // If a config file is specified at the cmd line, it has to exist
+          fwrite(STDERR,"Error: option -f: Cannot read RBC/IL configuration file: $RBCIL_CONFIG \n");
+          exit(1); //
         }
       } else {
         fwrite(STDERR,"Error: option -f: File name is missing \n");
+        exit(1);
+      }
+    break;
+    case "-pt2":
+      list(,$p) = each($argv);
+      if ($p) {
+        $PT2_FILE = $p;
+        if (!is_readable($PT2_FILE)) {
+          fwrite(STDERR,"Error: option -pt2: Cannot read PT2 file: $PT2_FILE \n");
+          exit(1);
+        }
+      } else {
+        fwrite(STDERR,"Error: option -pt2: File name is missing \n");
+        exit(1);
+      }
+      break;
+    case "-td":
+      list(,$p) = each($argv);
+      if ($p) {
+        $TRAIN_DATA_FILE = $p;
+        if (!is_readable($TRAIN_DATA_FILE)) {
+          fwrite(STDERR,"Error: option -td: Cannot read Train Data file: $TRAIN_DATA_FILE\n");
+          exit(1);
+        }
+      } else {
+        fwrite(STDERR,"Error: option -td: File name is missing \n");
         exit(1);
       }
       break;
     case "-D":
       list(,$p) = each($argv);
       if ($p) {
-        $DATA_FILE = $p;
-        if (!is_readable($DATA_FILE)) {
-          fwrite(STDERR,"Error: option -f: Cannot read $DATA_FILE \n");
-          exit(1); // If a data file is specified at the cmd line, it has to exist
+        $DIRECTORY = $p;
+        if (!is_dir($DIRECTORY)) {
+          print "Error: option -D: Cannot access directory: $DIRECTORY\n";
+          exit(1);
         }
       } else {
-        fwrite(STDERR,"Error: option -D: File name is missing \n");
+        print "Error: option -D: Directory name is missing\n";
         exit(1);
       }
       break;
+    case "-L":
+      list(,$p) = each($argv);
+      if ($p) {
+        $LOG_DIRECTORY = $p;
+        if (!is_dir($LOG_DIRECTORY)) {
+          print "Error: option -L: Cannot access log directory: $DIRECTORY\n";
+          exit(1);
+        }
+      } else {
+        print "Error: option -L: Directory name is missing\n";
+        exit(1);
+      }
       break;
     case "-b":
     case "--background" :
       $background = TRUE;
-    break;
+      break;
     case "-d":
       $debug = 0x07;
       fwrite(STDERR,"Debug, all\n");
-    break;
+      break;
     case "-dg":
     case "--debug";
       $debug = $debug | 0x01;
       fwrite(STDERR,"Debug general mode\n");
-    break;
+      break;
     case "-dr":
     case "--debugRBC";
       $debug = $debug | 0x02;
       fwrite(STDERR,"Debug RBC mode\n");
-    break;
+      break;
     case "-dt":
     case "--debugTMS";
       $debug = $debug | 0x04;
       fwrite(STDERR,"Debug TMS mode\n");
-    break;
+      break;
     default :
       fwrite(STDERR,"Unknown option: $opt\n");
       exit(1);
@@ -3213,7 +3264,7 @@ global $debug, $background, $RBCIL_CONFIG, $DATA_FILE, $VERSION, $argv, $ABUS, $
 }
 
 function prepareMainProgram() {
-global $logFh, $errFh, $debug, $ERRLOG, $MSGLOG, $RBCIL_CONFIG, $DATAFh, $DATA_FILE, $ABUS;
+global $logFh, $errFh, $debug, $ERRLOG, $MSGLOG, $DIRECTORY, $TRAIN_DATA_FILE, $RBCIL_CONFIG, $PT2_FILE, $ABUS;
   if ($debug) {
     error_reporting(E_ALL);
   } else {
@@ -3222,48 +3273,41 @@ global $logFh, $errFh, $debug, $ERRLOG, $MSGLOG, $RBCIL_CONFIG, $DATAFh, $DATA_F
   if (!$ABUS) {
     die("Error: no Abus gateway selected\n");
   }
-  if (!($errFh = fopen($ERRLOG,"a"))) {
-    fwrite(STDERR,"Warning: Cannot open Error log file: $ERRLOG\n");
+  if (!($errFh = fopen("$DIRECTORY/$ERRLOG","a"))) {
+    fwrite(STDERR,"Warning: Cannot open Error log file: $DIRECTORY/$ERRLOG\n");
     $errFh = fopen("/dev/null","w");
   }
-  if (!($logFh = fopen($MSGLOG,"a"))) {
-    fwrite(STDERR,"Warning: Cannot open Log file: $MSGLOG\n");
+  if (!($logFh = fopen("$DIRECTORY/$MSGLOG","a"))) {
+    fwrite(STDERR,"Warning: Cannot open Log file: $DIRECTORY/$MSGLOG\n");
     $logFh = fopen("/dev/null","w");
   }
-/*  if (!is_writable($ERRLOG)) {
-    fwrite(STDERR,"Warning: Cannot open Error log file: $ERRLOG\n");
+  if (!is_readable("$DIRECTORY/$PT2_FILE")) {
+    fwrite(STDERR,"Error: Cannot read PT2 data file: $DIRECTORY/$PT2_FILE\n");
+    exit(1);
   }
-  if (!is_writable($MSGLOG)) {
-    fwrite(STDERR,"Warning: Cannot open Log file: $MSGLOG\n");
+  if (!is_readable("$DIRECTORY/$TRAIN_DATA_FILE")) {
+    fwrite(STDERR,"Error: Cannot read Train Data file: $DIRECTORY/$TRAIN_DATA_FILE\n");
+    exit(1);
   }
-*/
-  if (!is_readable($DATA_FILE)) {
-    fwrite(STDERR,"Error: Cannot read data file: $DATA_FILE\n");
-    exit(1); // PT1 and Train data is mandatory
-  }
-  if (is_readable($RBCIL_CONFIG)) {
-    require($RBCIL_CONFIG);
+  if (is_readable("$DIRECTORY/$RBCIL_CONFIG")) {
+    require("$DIRECTORY/$RBCIL_CONFIG");
   } else {
-    fwrite(STDERR,"Warning: Cannot read RBCIL config file: $RBCIL_CONFIG\n");
+    fwrite(STDERR,"Warning: Cannot read RBCIL config file: $DIRECTORY/$RBCIL_CONFIG\n");
     Fwrite(STDERR,"Using default parameters...\n");
   } // config file is optional
 }
 
 function initMainProgram() {
-global $logFh, $errFh, $debug, $ERRLOG, $MSGLOG, $RBCIL_CONFIG, $DATAFh, $DATA_FILE, $ABUS, $background;
+global $logFh, $errFh, $debug, $DIRECTORY, $ERRLOG, $MSGLOG, $ABUS, $background;
 
-//$gr = fopen("/sys/class/gpio/gpio17/value","w"); // green indicator at RasPI
-  if (!($errFh = fopen($ERRLOG,"a"))) {
-    fwrite(STDERR,"Warning: Cannot open Error log file: $ERRLOG\n");
+// logFh and errFh are closed before fork to background, so needs to be reopened here:
+  if (!($errFh = fopen("$DIRECTORY/$ERRLOG","a"))) {
+    fwrite(STDERR,"Warning: Cannot open Error log file: $DIRECTORY/$ERRLOG\n");
     $errFh = fopen("/dev/null","w");
   }
-  if (!($logFh = fopen($MSGLOG,"a"))) {
-    fwrite(STDERR,"Warning: Cannot open Log file: $MSGLOG\n");
+  if (!($logFh = fopen("$DIRECTORY/$MSGLOG","a"))) {
+    fwrite(STDERR,"Warning: Cannot open Log file: $DIRECTORY/$MSGLOG\n");
     $logFh = fopen("/dev/null","w");
-  }
-  if (!(@$DATAFh = fopen($DATA_FILE,"r"))) { // file exsist FIXME
-    fwrite(STDERR,"Error: Cannot open PT1 and Train data file: $DATA_FILE\n");
-    exit(1); // PT1 data is mandatory
   }
   if ($background) {
     msgLog("Starting as daemon");

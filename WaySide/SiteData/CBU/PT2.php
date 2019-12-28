@@ -1,5 +1,14 @@
 <?php
-$PT1_VERSION = "FIXME";
+// ------------------------------------------------- Sources
+$PT2_SIGNALLING_LAYOUT_FILE = "/home/jabe/Desktop/Projekter/Git/WinterTrain/WaySide/SiteData/CBU/signallingLayout.sch";
+$PT2_SIGNALLING_LAYOUT_FILE_DATE = "2019-12-28 14:02:08";
+$PT2_SCREEN_LAYOUT_FILE = "/home/jabe/Desktop/Projekter/Git/WinterTrain/WaySide/SiteData/CBU/screenLayout.sch";
+$PT2_SCREEN_LAYOUT_FILE_DATE = "2019-12-28 12:39:52";
+$PT2_GENERATION_TIME = "2019-12-28 14:02:52";
+$PT1_PROJECT_NAME = "VinterHytten 2019";
+$PT1_DATE = "2019-12-27";
+$PT1_AUTHOR = "Mikkel, Jan";
+$HMI_PROJECT_NAME = "VinterHytten 2019";
 
 // -------------------------------------------------- PT1
 $PT1 = array (
@@ -24,12 +33,12 @@ $PT1 = array (
     'U' => 
     array (
       'name' => 'BG28',
-      'dist' => 0,
+      'dist' => 1,
     ),
     'D' => 
     array (
       'name' => 'BG27',
-      'dist' => 0,
+      'dist' => 50,
     ),
     'holdPoint' => 'P3',
   ),
@@ -979,12 +988,12 @@ $PT1 = array (
     'U' => 
     array (
       'name' => 'BG35',
-      'dist' => 0,
+      'dist' => 270,
     ),
     'D' => 
     array (
       'name' => 'S7',
-      'dist' => 0,
+      'dist' => 60,
     ),
     'ID' => '75:00:14:FB:94',
   ),
@@ -999,7 +1008,7 @@ $PT1 = array (
     'D' => 
     array (
       'name' => 'BG34',
-      'dist' => 0,
+      'dist' => 270,
     ),
     'ID' => '1F:00:69:F3:BB',
   ),
@@ -1063,12 +1072,12 @@ $PT1 = array (
     'U' => 
     array (
       'name' => 'S14',
-      'dist' => 0,
+      'dist' => 255,
     ),
     'D' => 
     array (
       'name' => 'BG30',
-      'dist' => 0,
+      'dist' => 40,
     ),
     'ID' => '73:00:56:D6:F2',
   ),
@@ -1078,12 +1087,12 @@ $PT1 = array (
     'U' => 
     array (
       'name' => 'BG31',
-      'dist' => 0,
+      'dist' => 40,
     ),
     'D' => 
     array (
       'name' => 'BG28',
-      'dist' => 0,
+      'dist' => 160,
     ),
     'ID' => '73:00:56:D9:B2',
   ),
@@ -1093,12 +1102,12 @@ $PT1 = array (
     'U' => 
     array (
       'name' => 'BG30',
-      'dist' => 0,
+      'dist' => 100,
     ),
     'D' => 
     array (
       'name' => 'PHT2',
-      'dist' => 0,
+      'dist' => 1,
     ),
     'ID' => '1F:00:69:C9:3C',
   ),
@@ -1108,12 +1117,12 @@ $PT1 = array (
     'U' => 
     array (
       'name' => 'PHT2',
-      'dist' => 0,
+      'dist' => 40,
     ),
     'D' => 
     array (
       'name' => 'S9',
-      'dist' => 0,
+      'dist' => 11,
     ),
     'ID' => '1E:00:8E:70:11',
   ),
@@ -2076,8 +2085,8 @@ $HMI = array (
   array (
     0 => 
     array (
-      'x' => 1.875,
-      'y' => 9.75,
+      'x' => 2,
+      'y' => 10,
       'text' => 'Christianshavn',
     ),
     1 => 
@@ -2099,5 +2108,6 @@ $HMI = array (
       'text' => 'Langtbortistan',
     ),
   ),
+  'projectName' => 'VinterHytten 2019',
 );
 ?>

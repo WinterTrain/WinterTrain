@@ -3,7 +3,7 @@
 // WinterTrain, PT2 generator
 
 
-// -------------------------------------- File names
+// -------------------------------------- File names and defaults
 $SCREEN_LAYOUT_FILE = "screenLayout.sch";
 $SIGNALLING_LAYOUT_FILE = "signallingLayout.sch";
 $PT2_FILE = "PT2.php";
@@ -11,12 +11,16 @@ $DIRECTORY = ".";
 
 $GNETLIST_CMD = "/usr/bin/gnetlist";
 
+$PT1_PROJECT_NAME = "(n/a)";
+$PT1_DATE = "(n/a)";
+$PT1_AUTHOR ="(n/a)";
+
 //--------------------------------------- Text
 
-// --------------------------------------- symbol layout constants
+// --------------------------------------- Symbol layout constants
 
-$CORNER_X_WIDTH = 500;
-$CORNER_Y_HIGHT = 6800;
+$FRAME_X_WIDTH = 500;
+$FRAME_Y_HIGHT = 6800;
 $UNIT_SIZE = 800;
 $SU_SIZE = 1200;
 $SD1X_SIZE = 700;
@@ -29,10 +33,11 @@ $TR_OR = ["HMI_tr1" => "s", "HMI_tr2" => "s", "HMI_tr3" => "s", "HMI_tr_u" => "u
 
 //--------------------------------------- System variable
 $debug = FALSE;
+$symbolDebug = FALSE;
 $PT1 = [];
 $PT1_VERSION = "";
 $HMI = [];
-$elementCount = ["BL" => 0, "SU" => 0, "SD" => 0, "PF" => 0, "PT" => 0, "PHTU" => 0, "PHTD" => 0, "BSB" => 0, "BSE" => 0];
+$elementCount = ["BL" => 0, "SU" => 0, "SD" => 0, "PF" => 0, "PT" => 0, "PHTU" => 0, "PHTD" => 0, "BSB" => 0, "BSE" => 0, "FRAME" => 0];
 
 // --------------------------------------- Main
 
@@ -50,23 +55,44 @@ switch ($command) {
 }
 
 function readScreenLayout() {
-global $PT1, $HMI, $scFh, $xOffset, $yOffset, $UNIT_SIZE, $CORNER_X_WIDTH, $CORNER_Y_HIGHT, $SU_SIZE, $SD1X_SIZE, $SDY_SIZE, $P_OR, $TR_OR;
+global $PT1, $HMI, $scFh, $xOffset, $yOffset, $UNIT_SIZE, $FRAME_X_WIDTH, $FRAME_Y_HIGHT, $SU_SIZE, $SD1X_SIZE, $SDY_SIZE, $P_OR, $TR_OR,
+  $DIRECTORY, $SCREEN_LAYOUT_FILE, $symbolDebug;
 
+// Find position of frame
+  $scFh = fopen("$DIRECTORY/$SCREEN_LAYOUT_FILE", "r");
+  $frame = false;
+  while ($line = fgets($scFh) ) {
+    $param = explode(" ", trim($line));
+    if ($param[0] == "C" and $param[6] == "HMI_Frame-0.sym") {
+      $xOffset = $param[1] + $FRAME_X_WIDTH;
+      $yOffset = $param[2] + $FRAME_Y_HIGHT;
+      $frame = true;
+      if ($symbolDebug) {
+        print "Frame symbol x: {$param[1]} y: {$param[2]}\n";
+      }
+    }
+  }
+  if (!$frame) {
+    print "Error: Mandatory HMI frame missing in screen layoyt: $DIRECTORY/$SCREEN_LAYOUT_FILE.\n";
+    exit(1);
+  }
+  $scFh = fopen("$DIRECTORY/$SCREEN_LAYOUT_FILE", "r");
   while ($line = fgets($scFh) ) {
     $param = explode(" ", trim($line));
     switch ($param[0]) {
     case "C": // start of component
       $refdes = ""; $device = ""; $length = 1; $x = false; $y = false; $balises = ""; $text = "";
       switch ($param[6]) {
-        case "HMI_corner-0.sym":
-        $xOffset = $param[1] + $CORNER_X_WIDTH;
-        $yOffset = $param[2] + $CORNER_Y_HIGHT;
+        case "HMI_Frame-0.sym":
         break;
+        case "HMI_eSTOP-0.sym":
+          if ($symbolDebug) {
+            print "eStop symbol x: {$param[1]} y: {$param[2]}\n";
+          }
         case "HMI_BSB-0.sym":
         case "HMI_BSE-0.sym":
         case "HMI_tr1-0.sym":
         case "HMI_ARS-0.sym":
-        case "HMI_eSTOP-0.sym":
         case "HMI_LABEL-0.sym":
           $x = ($param[1] - $xOffset) / $UNIT_SIZE;
           $y = - ($param[2] - $yOffset + $UNIT_SIZE) / $UNIT_SIZE;
@@ -123,7 +149,8 @@ global $PT1, $HMI, $scFh, $xOffset, $yOffset, $UNIT_SIZE, $CORNER_X_WIDTH, $CORN
     break;
     case "}":
       switch ($device) {
-        case "HMI_corner": // Do nothing
+        case "HMI_Frame": //
+          $HMI["projectName"] = $projectName;
         break;
         case "":
         break;
@@ -190,7 +217,7 @@ global $PT1, $HMI, $scFh, $xOffset, $yOffset, $UNIT_SIZE, $CORNER_X_WIDTH, $CORN
       }
     break;
     default: 
-      $param2 = explode("=",$param[0]);
+      $param2 = explode("=",trim($line));
       switch ($param2[0]) {
       case "refdes":
         $refdes = $param2[1];
@@ -203,6 +230,9 @@ global $PT1, $HMI, $scFh, $xOffset, $yOffset, $UNIT_SIZE, $CORNER_X_WIDTH, $CORN
       break;
       case "balises":
         $balises = $param2[1];
+      break;
+      case "ProjectName":
+        $projectName = $param2[1];
       break;
       }
     break;
@@ -219,8 +249,9 @@ global $DIRECTORY, $GNETLIST_CMD, $SIGNALLING_LAYOUT_FILE, $PT1;
 }
 
 function verifySignallingLayout() {
-global $PT1, $elementCount;
+global $PT1, $elementCount, $projectName, $projectDate, $projectAuthor;
 
+  $frame = false;
   foreach($PT1 as $name => $element) {
     switch($element["element"]) {
     case "BL":
@@ -257,23 +288,31 @@ global $PT1, $elementCount;
     case "BSB":
     case "BSE":
     break;
+    case "FRAME":
+      $projectName = $element["projectName"];
+      $projectDate = $element["date"];
+      $projectAuthor = $element["author"];
+      unset($PT1["FRAME"]); // In order not to confuse RBCIL
+      $frame = true;
+    break;
     default:
       print ("Error: Element type {$element["element"]} (instance: $name) not implemented.\n");
     }
     $elementCount[$element["element"]] += 1;
   }
+  if (!$frame) {
+    print "Warning: Frame symbol missing in signalling layout. Project name ect. set to default\n";
+  }
 }
 
 function compilePT2() {
-global $PT1, $HMI, $SCREEN_LAYOUT_FILE, $SIGNALLING_LAYOUT_FILE, $PT2_FILE, $DIRECTORY, $xOffset, $yOffset, $CORNER_X_WIDTH, $CORNER_Y_HIGHT, $scFh, $siFh, $PT1_VERSION, $elementCount;
+global $PT1, $HMI, $SCREEN_LAYOUT_FILE, $SIGNALLING_LAYOUT_FILE, $PT2_FILE, $DIRECTORY, $xOffset, $yOffset, $FRAME_X_WIDTH, $FRAME_Y_HIGHT, $PT1_VERSION, $elementCount, $projectName, $projectDate, $projectAuthor;
 
 print "Compiling\n  Signalling Layout: \"$DIRECTORY/$SIGNALLING_LAYOUT_FILE\" and
   Screen Layout: \"$DIRECTORY/$SCREEN_LAYOUT_FILE\" into
   Output file: \"$DIRECTORY/$PT2_FILE\"
 ";
 
-  $scFh = fopen("$DIRECTORY/$SCREEN_LAYOUT_FILE", "r");
-  $siFh = fopen("$DIRECTORY/$SIGNALLING_LAYOUT_FILE", "r");
   $pt2Fh = fopen("$DIRECTORY/$PT2_FILE", "w");
 
   readSignallingLayout();
@@ -285,29 +324,31 @@ print "Compiling\n  Signalling Layout: \"$DIRECTORY/$SIGNALLING_LAYOUT_FILE\" an
     print "$e: $c, ";
   }
   print "\n";
-  // FIXME generation date etc.
   
-$buffer = "<?php
-\$PT1_VERSION = \"FIXME\";
+fwrite($pt2Fh, "<?php
+// ------------------------------------------------- Sources
+\$PT2_SIGNALLING_LAYOUT_FILE = \"".(realpath("$DIRECTORY/$SIGNALLING_LAYOUT_FILE"))."\";
+\$PT2_SIGNALLING_LAYOUT_FILE_DATE = \"".(date("Y-m-d H:i:s", filemtime("$DIRECTORY/$SIGNALLING_LAYOUT_FILE")))."\";
+\$PT2_SCREEN_LAYOUT_FILE = \"".(realpath("$DIRECTORY/$SCREEN_LAYOUT_FILE"))."\";
+\$PT2_SCREEN_LAYOUT_FILE_DATE = \"".(date("Y-m-d H:i:s", filemtime("$DIRECTORY/$SCREEN_LAYOUT_FILE")))."\";
+\$PT2_GENERATION_TIME = \"".(date("Y-m-d H:i:s"))."\";
+\$PT1_PROJECT_NAME = \"$projectName\";
+\$PT1_DATE = \"$projectDate\";
+\$PT1_AUTHOR = \"$projectAuthor\";
+\$HMI_PROJECT_NAME = \"{$HMI["projectName"]}\";
 
 // -------------------------------------------------- PT1
-\$PT1 = ";
-$buffer .=   var_export($PT1,true);
-$buffer .= ";
+\$PT1 = ".(var_export($PT1,true)).";
 
 // -------------------------------------------------- HMI
-\$HMI = ";
-$buffer .=   var_export($HMI,true);
-$buffer .= ";
-?>";
-
-fwrite($pt2Fh, $buffer);
+\$HMI = ".(var_export($HMI,true)).";
+?>");
 
 }
 
 
 function CmdLineParam() {
-global $debug, $SCREEN_LAYOUT_FILE, $SIGNALLING_LAYOUT_FILE, $PT2_FILE, $DIRECTORY, $element1, $element2, $argv, $PT1, $command;
+global $debug, $SCREEN_LAYOUT_FILE, $SIGNALLING_LAYOUT_FILE, $PT2_FILE, $DIRECTORY, $element1, $element2, $argv, $PT1, $command, $symbolDebug;
   if (in_array("-h",$argv) or count($argv) == 1) {
     print "Usage: [option] COMMAND [PARAM]
 Generate PT2 data for the WinterTrain
@@ -320,6 +361,7 @@ C                 Compile and verify PT2 data from input file \"signallingLayout
 -si <file>        read signalling layout from <file>
 -p2 <file>        write PT2 data to <file>
 -d                enable debug info
+-s                enable symbol debug info
 ";
     exit();
   }
@@ -397,6 +439,10 @@ C                 Compile and verify PT2 data from input file \"signallingLayout
       case "--debug";
         $debug = TRUE;
         print "Debugging mode\n";
+        break;
+      case "-s":
+        $symbolDebug = TRUE;
+        print "Symbol debugging mode\n";
         break;
       default :
         print "Unknown option: $opt\n";

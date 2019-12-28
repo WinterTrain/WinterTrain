@@ -1,9 +1,4 @@
 v 20130925 2
-C 50400 48800 0 0 0 HMI_corner-0.sym
-{
-T 51100 50000 15 10 0 1 0 0 1
-device=HMI_corner
-}
 C 51700 50000 1 0 0 HMI_BSB-0.sym
 {
 T 51700 50900 5 10 0 1 0 0 1
@@ -30,11 +25,11 @@ refdes=tr1
 T 52485 49800 5 10 1 0 0 0 1
 balises=BG1
 }
-C 52400 47000 1 0 0 HMI_LABEL-0.sym
+C 52500 46800 1 0 0 HMI_LABEL-0.sym
 {
-T 52400 47900 5 10 0 1 0 0 1
+T 52500 47700 5 10 0 1 0 0 1
 device=HMI_LABEL
-T 52600 47300 5 10 1 1 0 0 1
+T 52700 47100 5 10 1 1 0 0 1
 text=Christianshavn
 }
 C 64500 46800 1 0 0 HMI_SD2-0.sym
@@ -498,4 +493,11 @@ T 75800 50200 5 10 1 1 0 0 1
 refdes=tr19
 T 75685 49800 5 10 1 0 0 0 1
 balises=BG36
+}
+C 50400 48800 0 0 0 HMI_Frame-0.sym
+{
+T 51100 55800 15 10 0 1 0 0 1
+device=HMI_Frame
+T 51100 56200 15 14 1 0 0 0 1
+ProjectName=VinterHytten 2019
 }
