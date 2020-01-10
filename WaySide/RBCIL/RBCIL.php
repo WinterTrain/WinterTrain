@@ -246,11 +246,8 @@ $tmsStatus = TMS_NO_TMS;
 
 //---------------------------------------------------------------------------------------------------------- System 
 cmdLineParam();
-if ($ABUS == "cbu") {
-//  include '/home/jabe/scripts/AbusMasterLib.php'; // must be included at global level
-}
 prepareMainProgram();
-processPT1(); // read PT2 data
+processPT1();
 processTrainData();
 versionInfo();
 initRBCIL();
@@ -267,8 +264,7 @@ do {
     checkECtimeout();
     checkTrainTimeout();
     processLX();
-//    pollEC(); // takes a while
-  $pollEC = true;
+    $pollEC = true;
     pollRadioLink();
     RBC();
     updateHMI();
@@ -648,7 +644,7 @@ global $radioLinkAddr, $radioLink, $radio;
       fwrite($radioLink, ($distance & 0xFF).",".(($distance & 0xFF00) >> 8).",0s\n");
     break;
     case "ABUS":
-      print "position restore via Abus not implemented\n";
+      print "Warning: Position restore via EC Link not implemented\n";
     break;
   }
 }
@@ -660,7 +656,7 @@ global $radioLinkAddr, $radioLink, $radio;
       fwrite($radioLink,"32,$trainID,$cmd,".($mode | ($dir << 3) | ($drive << 5)).",0s\n");
     break;
     case "ABUS":
-      print "RTO via Abus not implemented\n";
+      print "Warning: RTO via EC Link not implemented\n";
     break;
   }
 }
@@ -763,7 +759,7 @@ global $PT1, $EC;
 
 function pollEC() { // currently not used
 global $PT1, $EC;
-  foreach ($EC as $addr => $ec) { // FIXME to be split timewise
+  foreach ($EC as $addr => $ec) {
     requestElementStatusEC($addr);
   }
 }
@@ -1383,14 +1379,12 @@ function recUpdateTrainPosition(&$train, $dir, $x, $eltName, $trackState) {
     //keep looking up unless it was facing point
     switch ($elt["element"]) {
       case "PF": // --------------------FIXME position gets ambiguous if point is thrown behind the train before train reads a new balise
-      // FIXME reimplement the JP invalidation function: discharge position if train is no longer occupying a facing point (seen from the reported balise. As long as the train is occupying the facint point, the position is uniquely given by the lie of the point.
+      // Discharge position if train is no longer occupying a facing point (seen from the reported balise. As long as the train is occupying the facint point, the position is uniquely given by the lie of the point.
        //stop and invalidate position
         $train["positionUnambiguous"] = False;
         RBC_IL_DebugPrint("Invalidating postion in $eltName due to b=".$b." <= train[upFront]=".$train["upFront"]);
         return;
-/* JB
-        recUpdateTrainPosition($train, $dir, $b, $elt[($elt["expectedLie"] == E_RIGHT ? "R" : "L")]["name"], $trackState);
-        return;*/
+
       case "PT":
         recUpdateTrainPosition($train, $dir, $b, $elt["T"]["name"], $trackState);
         return;
@@ -1407,8 +1401,6 @@ function recUpdateTrainPosition(&$train, $dir, $x, $eltName, $trackState) {
         $train["positionUnambiguous"] = False;
         RBC_IL_DebugPrint("Invalidating postion in $eltName due to a=".$a." >= train[downFront]=".$train["downFront"]);
         return;
-//print "Exp Lie: {$elt["expectedLie"]}\n";
-//        recUpdateTrainPosition($train, $dir, $a, $elt[($elt["expectedLie"] == E_RIGHT ? "R" : "L")]["name"], $trackState);
         return;
       case "PF":
         recUpdateTrainPosition($train, $dir, $a, $elt["T"]["name"], $trackState);
@@ -1684,7 +1676,7 @@ global $PT1;
   return ($PT1[$eltName]["trackState"] === T_CLEAR);
 }
 
-function lock($eltName) {
+function lock($eltName) { // FIXME add direction to locking state
 global $PT1;
   RBC_IL_DebugPrint("Locking $eltName");
 //  $PT1[$eltName]["trackState"] = T_LOCKED;
@@ -2351,7 +2343,7 @@ global $PT1, $clients, $clientsData, $inCharge, $trainData, $EC, $now, $balises,
   break;
   case "txRto":
     if ($inCharge) {
-      sendRTO($trainData[$param[1]]["ID"], 0, $param[2], $param[3], $param[4]);
+      sendRTO($trainData[$param[1]]["ID"], 0, $param[2], $param[3], $param[4]); // FIXME to be repeated like commands from DMI are
     }
   break;
   case "ars": // Toggle ARS for signal
@@ -2884,17 +2876,19 @@ function HMIindication($to, $msg) {// Send indication to specific client
 // ------------------------------------------------------------- MCe
 
 function MCeStartup($client) {
-global $EC;
+global $EC, $TMS_STATUS_TXT, $tmsStatus;
   MCeIndication($client,"serverFrames\n");
   foreach ($EC as  $addr => $ec) {
     MCeIndication($client,"ECframe $addr\n");
   }
+  MCeIndication($client,"set ::tmsStatus {{$TMS_STATUS_TXT[$tmsStatus]}}\n");
 }
 
 function updateMCe() {
-global $EC, $startTime;
+global $EC, $startTime, $TMS_STATUS_TXT, $tmsStatus;
   MCeIndicationAll("set ::serverUptime {".trim(`/usr/bin/uptime`)."}\n");
   MCeIndicationAll("set ::RBCuptime {".(time() - $startTime)."}\n");
+  MCeIndicationAll("set ::tmsStatus {{$TMS_STATUS_TXT[$tmsStatus]}}\n");
   foreach($EC as $addr => $ec) {
     MCeIndicationAll("set ::EConline($addr) ".($ec["EConline"] ? "Online" : "Offline")."\n");
     MCeIndicationAll("set ::ECuptime($addr) {$ec["uptime"]}\n");
@@ -2944,6 +2938,11 @@ global $EC, $clients, $clientsData, $inChargeMCe, $run, $lockedRoutes, $trainDat
     case "exitRBC":
       if ($from == $inChargeMCe) {
         $run = false;
+      }
+    break;
+    case "exitTMS":
+      if ($from == $inChargeMCe) {
+        notifyTMS("exitTMS");
       }
     break;
     case "loadTT":
@@ -3185,7 +3184,7 @@ Usage:
       list(,$p) = each($argv);
       if ($p) {
         $PT2_FILE = $p;
-        if (!is_readable($PT2_FILE)) {
+        if (!is_readable($PT2_FILE)) { // -------------------------------------------------- FIXME add $DIRECTORY to all file name checks
           fwrite(STDERR,"Error: option -pt2: Cannot read PT2 file: $PT2_FILE \n");
           exit(1);
         }
@@ -3300,7 +3299,7 @@ global $logFh, $errFh, $debug, $ERRLOG, $MSGLOG, $DIRECTORY, $TRAIN_DATA_FILE, $
 function initMainProgram() {
 global $logFh, $errFh, $debug, $DIRECTORY, $ERRLOG, $MSGLOG, $ABUS, $background;
 
-// logFh and errFh are closed before fork to background, so needs to be reopened here:
+// logFh and errFh are closed before fork to background, so need to be reopened here:
   if (!($errFh = fopen("$DIRECTORY/$ERRLOG","a"))) {
     fwrite(STDERR,"Warning: Cannot open Error log file: $DIRECTORY/$ERRLOG\n");
     $errFh = fopen("/dev/null","w");

@@ -421,7 +421,7 @@ global xOffset yOffset scale cHeight cWidth showGrid nXGrid nYGrid
 
 proc pointState {name state routeState trackState lockState {trainID ""}} {
 global fColor tColor toColor tcColor clColor blColor panelEnabled
-  if {$panelEnabled && $name == "P1"} {
+  if {$panelEnabled && $name == "P4"} {
     writeTty  [format "IP%02d%02d%02d" $state $routeState $trackState]
   }
   switch $lockState {
@@ -567,7 +567,7 @@ global fColor tColor toColor tcColor mColor lColor
 }
 proc signalState {name state routeState trackState arsState {trainID ""}} {
 global nColor fColor oColor cColor toColor tcColor tColor oppColor dColor arsColor panelEnabled
-  if {$panelEnabled && $name == "S3"} {
+  if {$panelEnabled && $name == "S23"} {
     writeTty  [format "IS%02d%02d%02d" $state $routeState $trackState]
   }
   switch $state {
@@ -625,7 +625,7 @@ global nColor fColor oColor cColor toColor tcColor tColor oppColor dColor arsCol
 
 proc bufferStopState {name state routeState trackState {trainID ""}} {
 global fColor tColor tcColor toColor dColor panelEnabled
-  if {$panelEnabled && $name == "B1"} {
+  if {$panelEnabled && $name == "BS3"} {
     writeTty [format "IB%02d%02d%02d" $state $routeState $trackState]
   }
   switch $state {
@@ -1074,7 +1074,7 @@ global nTrainFrame rtoDisplay
   .f.buttonARS state disabled
   .f.buttonStop state disabled
   .f.buttonARSALL state disabled
-  .f.buttonERBC state disabled
+#  .f.buttonERBC state disabled
   .f.buttonT state disabled
   for {set x 0} {$x < $nTrainFrame} {incr x} {
     .f.fTrain.t$x.sr_allowed state disabled
@@ -1114,7 +1114,7 @@ global aColor nTrainFrame rtoDisplay
   .f.buttonStop state !disabled
   .f.buttonARSALL state !disabled
 
-  .f.buttonERBC state !disabled
+#  .f.buttonERBC state !disabled
   .f.buttonT state !disabled
   for {set x 0} {$x < $nTrainFrame} {incr x} {
     .f.fTrain.t$x.sr_allowed state !disabled
@@ -1371,7 +1371,7 @@ grid [ttk::button .f.buttonShowGrid -text "Show Grid" -command showGrid] -column
 grid [ttk::button .f.buttonShowLabel -text "Show Label" -command showLabel] -column 11 -row 8 -sticky we
 grid [ttk::button .f.buttonReloadTT -text "Load Timetable" -command loadTT] -column 12 -row 8 -sticky we
 grid [ttk::button .f.buttonEHMI -text "Exit HMI" -command exit] -column 13 -row 8 -sticky we
-grid [ttk::button .f.buttonERBC -text "Exit RBC" -command exitRBC] -column 14 -row 8 -sticky e
+# grid [ttk::button .f.buttonERBC -text "Exit RBC" -command exitRBC] -column 14 -row 8 -sticky e
 grid [ttk::button .f.buttonT -text "TEST" -command test] -column 15 -row 8 -sticky we
 
 # Train data

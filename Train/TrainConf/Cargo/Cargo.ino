@@ -52,6 +52,9 @@
 #define OBU_PIN_FLIGHT 6        // Front light
 #define OBU_PIN_RLIGHT A2       // Rear light
 
+#define TAG_READER_7941E        // Balise reader type 7941E
+//#define TAG_READER_RDM6300      // Balise reader type RDM6300
+
 // DMI HW assignment
 #define DMI_PIN_BLUE 4
 #define DMI_PIN_RED 5           // Movement Auth indicator

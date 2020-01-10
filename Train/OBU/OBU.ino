@@ -80,6 +80,14 @@ const byte GROUP = 101;
 #define RTO_PACK 32
 #define POSREST_PACK 33
 
+// TAG reader, type 7941E
+#define TR_START 1
+#define TR_LENGTH 2
+#define TR_TYPE 3
+#define TR_TAGNO 4
+#define TR_CHECK_SUM 5
+#define TR_END 6
+
 // -------------------------------------------- Type definition
 // Data type for "stop if in shunting" balises
 struct SAbaliseType {
@@ -745,10 +753,61 @@ boolean readBalise() {
   static boolean newBalise, diff, csError;
   static byte i = 255, s;
   static int data[6] = {0, 0, 0, 0, 0, 0}; // Includes space for checksum
-  byte d, cs;
+  static byte d, cs;
   static char txt[3] = "  ";
+  static byte trState = TR_START;
 
   newBalise = false;
+
+#ifdef TAG_READER_7941E
+  if (Serial.available()) {
+    d = Serial.read();
+    switch (trState) {
+      case TR_START:
+        if (d == 2) {
+          cs = 0; diff = false; i = 0;
+          trState = TR_LENGTH;
+        }
+        break;
+      case TR_LENGTH:
+        if (d == 10) { // TAG number of the used TAGs are always 5 byte => packet length of 10 bytes
+          cs = cs ^ d;
+          trState = TR_TYPE;
+        } else {
+          trState = TR_START;
+        }
+        break;
+      case TR_TYPE:
+        cs = cs ^ d; // ignore card/TAG type
+        trState = TR_TAGNO;
+        break;
+      case TR_TAGNO:
+        cs = cs ^ d;
+        data[i] = d;
+        diff = diff or (baliseBuf[i] != d);
+        i += 1;
+        if (i == 5) trState = TR_CHECK_SUM;
+        break;
+      case TR_CHECK_SUM:
+        csError = (cs ^ d);
+        trState = TR_END;
+        break;
+      case TR_END:
+        if (d == 3) { // packet end reached
+          newBalise = not csError and (data[0] != 0) and (diff or (nomDriveDir != oldNomDriveDir)) ;
+          if (newBalise) {
+            for (s = 0; s < 5; s++) {
+              baliseBuf[s] = data[s];
+            }
+          }
+        } // else packet terminated incorectly; discard packet.
+        trState = TR_START; // wait for new packet
+        break;
+    }
+  }
+#endif
+
+#ifdef TAG_READER_RDM6300
   if (Serial.available()) {
     d = Serial.read();
     switch (d) {
@@ -783,6 +842,7 @@ boolean readBalise() {
         } // else error, too long payload
     }
   }
+#endif
   oldNomDriveDir = nomDriveDir;
   return newBalise;
 }

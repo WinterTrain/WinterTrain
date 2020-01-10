@@ -53,6 +53,9 @@
 #define OBU_PIN_FLIGHT  A3      // Front light, JeeNode port 4
 #define OBU_PIN_RLIGHT  7       // Rear light, JeeNode port 4
 
+#define TAG_READER_7941E      // Balise reader type 7941E
+//#define TAG_READER_RDM6300      // Balise reader type RDM6300
+
 // DMI HW assignment
 #define DMI_PIN_BLUE 4 
 #define DMI_PIN_RED 5           // Movement Auth indicator

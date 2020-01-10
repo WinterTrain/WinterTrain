@@ -10,8 +10,10 @@ $RBCIL_SERVER_PORT = 9903;
 
 // File names
 $TMS_CONFIG = "TMSconf.php";
-$SITE_DATA_FILE = "../SiteData/CBU/CBU.php";         // Site specific data
-$TT_FILE = "../SiteData/CBU/TimeTables.php";    // Time Tables
+$PT2_FILE = "PT2.php";    // Site specific data
+$TRAIN_DATA_FILE = "TrainData.php";
+$TT_FILE = "TimeTables.php";    // Time Tables
+$DIRECTORY = ".";
 $ERRLOG = "Log/TMS_ErrLog.txt";
 $MSGLOG = "Log/TMS.log";
 
@@ -95,9 +97,9 @@ msgLog("Exitting...");
 // --------------------------------------------------------------------------------------------------------- Time Tables
 
 function readTimeTables() {
-global $tts, $PT1, $trainData, $TT_FILE, $SITE_DATA_FILE, $tmsStatus, $now;
-  msgLog("Loading time table \"$TT_FILE\"");
-  require($TT_FILE); // FIXME handle syntax errors
+global $tts, $PT1, $trainData, $TT_FILE, $SITE_DATA_FILE, $tmsStatus, $now, $DIRECTORY;
+  msgLog("Loading time table \"$DIRECTORY/$TT_FILE\"");
+  require("$DIRECTORY/$TT_FILE"); // FIXME handle syntax errors
   $tts = $timeTables;
   if (checkTimeTable($tts)) {
     $tts = array();
@@ -408,7 +410,7 @@ function findRoute($tt, $nextSignal) {
 }
 
 function processNotificationRBCIL($data) {
-global $tts, $trainData;
+global $tts, $trainData, $run;
   $param = explode(" ",$data);
   switch ($param[0]) {
     case "setTRN": // trainIndex (trn)
@@ -438,6 +440,9 @@ global $tts, $trainData;
     break;
     case "loadTT":
       readTimeTables();
+    break;
+    case "exitTMS":
+      $run = false;
     break;
     default:
       errLog("Ups, unimplemented notification {$param[0]}");
@@ -519,14 +524,16 @@ global $VERSION, $PT1_VERSION;
 }
 
 function CmdLineParam() {
-global $debug, $background, $TMS_CONFIG, $VERSION, $argv, $RBCIL_SERVER_ADDR, $TT_FILE, $SITE_DATA_FILE;
+global $debug, $background, $TMS_CONFIG, $VERSION, $argv, $RBCIL_SERVER_ADDR, $TT_FILE, $PT2_FILE, $DIRECTORY, $TRAIN_DATA_FILE;
   if (in_array("-h",$argv)) {
     fwrite(STDERR,"TMS Engine, version $VERSION
 Usage:
 -b, --background      Start as daemon
 -f <file name>        Configuration file for TMS engine
--D <file name>        PT1 and Train data file
--T <file name>        Time tables file
+-pt2 <file name>      PT2 data file
+-tt <file name>       Time tables file
+-D <directory>        use <directory> as working directory for all files. Must be given before -f -tt and -pt2 in order to take effect
+
 -IP <IP-address>      IP-address of RBCIL to contact
 -d                    Enable debug info, level all
 ");
@@ -539,8 +546,8 @@ Usage:
       list(,$p) = each($argv);
       if ($p) {
         $TMS_CONFIG = $p;
-        if (!is_readable($TMS_CONFIG)) {
-          fwrite(STDERR,"Error: option -f: Cannot read $TMS_CONFIG \n");
+        if (!is_readable("$DIRECTORY/$TMS_CONFIG")) {
+          fwrite(STDERR,"Error: option -f: Cannot read $DIRECTORY/$TMS_CONFIG \n");
           exit(1); // If a config file is specified at the cmd line, it has to exist
         }
       } else {
@@ -548,29 +555,55 @@ Usage:
         exit(1);
       }
       break;
-    case "-D":
+    case "-pt2":
       list(,$p) = each($argv);
       if ($p) {
-        $SITE_DATA_FILE = $p;
-        if (!is_readable($SITE_DATA_FILE)) {
-          fwrite(STDERR,"Error: option -D: Cannot read $SITE_DATA_FILE \n");
+        $PT2_FILE = $p;
+        if (!is_readable("$DIRECTORY/$PT2_FILE")) {
+          fwrite(STDERR,"Error: option -pt2: Cannot read $DIRECTORY/$PT2_FILE \n");
           exit(1); // If a data file is specified at the cmd line, it has to exist
         }
       } else {
-        fwrite(STDERR,"Error: option -D: File name is missing \n");
+        fwrite(STDERR,"Error: option -pt2: File name is missing \n");
         exit(1);
       }
     break;
-    case "-T":
+    case "-td":
+      list(,$p) = each($argv);
+      if ($p) {
+        $TRAIN_DATA_FILE = $p;
+        if (!is_readable("$DIRECTORY/$TRAIN_DATA_FILE")) {
+          fwrite(STDERR,"Error: option -td: Cannot read Train Data file: $DIRECTORY/$TRAIN_DATA_FILE\n");
+          exit(1);
+        }
+      } else {
+        fwrite(STDERR,"Error: option -td: File name is missing \n");
+        exit(1);
+      }
+    break;
+    case "-tt":
       list(,$p) = each($argv);
       if ($p) {
         $TT_FILE = $p;
-        if (!is_readable($TT_FILE)) {
-          fwrite(STDERR,"Error: option -T: Cannot read $TT_FILE \n");
+        if (!is_readable("$DIRECTORY/$TT_FILE")) {
+          fwrite(STDERR,"Error: option -tt: Cannot read $DIRECTORY/$TT_FILE \n");
           exit(1); // If a time table file is specified at the cmd line, it has to exist
         }
       } else {
-        fwrite(STDERR,"Error: option -T: File name is missing \n");
+        fwrite(STDERR,"Error: option -tt: File name is missing \n");
+        exit(1);
+      }
+    break;
+    case "-D":
+      list(,$p) = each($argv);
+      if ($p) {
+        $DIRECTORY = $p;
+        if (!is_dir($DIRECTORY)) {
+          print "Error: option -D: Cannot access directory: $DIRECTORY\n";
+          exit(1);
+        }
+      } else {
+        print "Error: option -D: Directory name is missing\n";
         exit(1);
       }
     break;
@@ -600,50 +633,49 @@ Usage:
 
 
 function prepareMainProgram() {
-global $logFh, $errFh, $debug, $TMS_CONFIG, $MSGLOG, $ERRLOG;
+global $logFh, $errFh, $debug, $TMS_CONFIG, $MSGLOG, $ERRLOG, $DIRECTORY;
   if ($debug) {
     error_reporting(E_ALL);
   } else {
     error_reporting(0);
   }
-  if (!($errFh = fopen($ERRLOG,"a"))) {
-    fwrite(STDERR,"Warning: Cannot open Error log file: $ERRLOG\n");
+  if (!($errFh = fopen("$DIRECTORY/$ERRLOG","a"))) {
+    fwrite(STDERR,"Warning: Cannot open Error log file: $DIRECTORY/$ERRLOG\n");
     $errFh = fopen("/dev/null","w");
   }
-  if (!($logFh = fopen($MSGLOG,"a"))) {
-    fwrite(STDERR,"Warning: Cannot open Log file: $MSGLOG\n");
+  if (!($logFh = fopen("$DIRECTORY/$MSGLOG","a"))) {
+    fwrite(STDERR,"Warning: Cannot open Log file: $DIRECTORY/$MSGLOG\n");
     $logFh = fopen("/dev/null","w");
   }
-/*  if (!is_readable($SITE_DATA_FILE)) {
-    fwrite(STDERR,"Error: Cannot read data file: $SITE_DATA_FILE\n");
-    exit(1); // PT1 and Train data is mandatory
-  }
-*/
-  if (is_readable($TMS_CONFIG)) {
-    require($TMS_CONFIG);
+  if (is_readable("$DIRECTORY/$TMS_CONFIG")) {
+    require("$DIRECTORY/$TMS_CONFIG");
   } else {
-    fwrite(STDERR,"Warning: Cannot read TMS config file: $TMS_CONFIG\n");
+    fwrite(STDERR,"Warning: Cannot read TMS config file: $DIRECTORY/$TMS_CONFIG\n");
     Fwrite(STDERR,"Using default parameters...\n");
   } // config file is optional
 }
 
 function initMainProgram() {
-global $logFh, $errFh, $debug, $background, $ERRLOG, $MSGLOG, $SITE_DATA_FILE, $PT1, $trainData;
+global $logFh, $errFh, $debug, $background, $ERRLOG, $MSGLOG, $PT2_FILE, $PT1, $trainData, $DIRECTORY, $TRAIN_DATA_FILE;
 
-  if (!($errFh = fopen($ERRLOG,"a"))) {
-    fwrite(STDERR,"Warning: Cannot open Error log file: $ERRLOG\n");
+  if (!($errFh = fopen("$DIRECTORY/$ERRLOG","a"))) {
+    fwrite(STDERR,"Warning: Cannot open Error log file: $DIRECTORY/$ERRLOG\n");
     $errFh = fopen("/dev/null","w");
   }
-  if (!($logFh = fopen($MSGLOG,"a"))) {
-    fwrite(STDERR,"Warning: Cannot open Log file: $MSGLOG\n");
+  if (!($logFh = fopen("$DIRECTORY/$MSGLOG","a"))) {
+    fwrite(STDERR,"Warning: Cannot open Log file: $DIRECTORY/$MSGLOG\n");
     $logFh = fopen("/dev/null","w");
   }
-  if (!is_readable($SITE_DATA_FILE)) {
-    fwrite(STDERR,"Error: Cannot open PT1 and Train data file: $SITE_DATA_FILE\n");
+  if (!is_readable("$DIRECTORY/$PT2_FILE")) {
+    fwrite(STDERR,"Error: Cannot open PT2 data file: $DIRECTORY/$PT2_FILE\n");
     exit(1); // PT1 data is mandatory
   }
-
-  include($SITE_DATA_FILE);
+  if (!is_readable("$DIRECTORY/$TRAIN_DATA_FILE")) {
+    fwrite(STDERR,"Error: Cannot open Train data file: $DIRECTORY/$TRAIN_DATA_FILE\n");
+    exit(1); // PT1 data is mandatory
+  }
+  include("$DIRECTORY/$PT2_FILE");
+  include("$DIRECTORY/$TRAIN_DATA_FILE");
   if ($background) {
     msgLog("Starting as daemon");
   } else {

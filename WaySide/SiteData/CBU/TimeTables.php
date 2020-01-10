@@ -8,15 +8,15 @@ $timeTables = [
   "description" => "InterCity",
   "group" => "",
   "routeTable" => [
-    ["time" => "**:*0:00", "start" => "S32", "dest" => "S14", "condition" => "", "delay" => ""],
-    ["time" => "", "start" => "S14", "dest" => "S18", "condition" => "", "delay" => ""],
-    ["time" => "", "start" => "S18", "dest" => "S22", "condition" => "", "delay" => ""],
-    ["time" => "**:*3:30", "start" => "S15", "dest" => "S11", "condition" => "", "delay" => ""],
-    ["time" => "", "start" => "S11", "dest" => "S9", "condition" => "", "delay" => ""],
-    ["time" => "", "start" => "S9", "dest" => "S7", "condition" => "", "delay" => ""],
-    ["time" => "", "start" => "S7", "dest" => "S3", "condition" => "", "delay" => 40],
-    ["time" => "", "start" => "S3", "dest" => "S1", "condition" => "", "delay" => ""],
-    ["time" => "", "start" => "S1", "dest" => "BS1", "condition" => "", "delay" => ""],
+    ["time" => "**:*0:00", "start" => "S20", "dest" => "S24", "condition" => "", "delay" => ""],
+    ["time" => "", "start" => "S24", "dest" => "S32", "condition" => "", "delay" => ""],
+    ["time" => "", "start" => "S32", "dest" => "S36", "condition" => "", "delay" => ""],
+    ["time" => "**:*3:30", "start" => "S5", "dest" => "S7", "condition" => "", "delay" => ""],
+    ["time" => "", "start" => "S7", "dest" => "S9", "condition" => "", "delay" => ""],
+    ["time" => "", "start" => "S9", "dest" => "S13", "condition" => "", "delay" => ""],
+    ["time" => "", "start" => "S13", "dest" => "S15", "condition" => "", "delay" => 40],
+    ["time" => "", "start" => "S15", "dest" => "S17", "condition" => "", "delay" => ""],
+    ["time" => "", "start" => "S17", "dest" => "BS1", "condition" => "", "delay" => ""],
     ["time" => "", "start" => "BS1", "condition" => "N", "nextTrn" => "12", "delay" => 20],
   ],
   "remarks" => "",
@@ -28,19 +28,20 @@ $timeTables = [
   "description" => "InterCity",
   "group" => "",
   "routeTable" => [
-    ["time" => "**:*1:00", "start" => "S2", "dest" => "S6", "condition" => "", "delay" => ""],
-    ["time" => "", "start" => "S6", "dest" => "S12", "condition" => "", "delay" => ""],
-    ["time" => "", "start" => "S12", "dest" => "S16", "condition" => "", "delay" => 30],
-    ["time" => "", "start" => "S16", "dest" => "S20", "condition" => "", "delay" => ""],
-    ["time" => "", "start" => "S20", "dest" => "S22", "condition" => "", "delay" => ""],
-    ["time" => "**:*6*00", "start" => "S15", "dest" => "S13", "condition" => "", "delay" => ""],
-    ["time" => "", "start" => "S13", "dest" => "S33", "condition" => "", "delay" => ""],
-    ["time" => "", "start" => "S33", "dest" => "BS5", "condition" => "", "delay" => ""],
-    ["time" => "", "start" => "BS5", "condition" => "N", "nextTrn" => "11", "delay" => 20],
+    ["time" => "**:*1:00", "start" => "S4", "dest" => "S6", "condition" => "", "delay" => ""],
+    ["time" => "", "start" => "S6", "dest" => "S8", "condition" => "", "delay" => ""],
+    ["time" => "", "start" => "S8", "dest" => "S12", "condition" => "", "delay" => ""],
+    ["time" => "", "start" => "S12", "dest" => "S14", "condition" => "", "delay" => 30],
+    ["time" => "", "start" => "S14", "dest" => "S30", "condition" => "", "delay" => ""],
+    ["time" => "", "start" => "S30", "dest" => "S36", "condition" => "", "delay" => ""],
+    ["time" => "**:*6*00", "start" => "S5", "dest" => "S21", "condition" => "", "delay" => ""],
+    ["time" => "", "start" => "S21", "dest" => "S23", "condition" => "", "delay" => ""],
+    ["time" => "", "start" => "S23", "dest" => "BS3", "condition" => "", "delay" => ""],
+    ["time" => "", "start" => "BS3", "condition" => "N", "nextTrn" => "11", "delay" => 20],
   ],
   "remarks" => "",
 ],
-
+/*
 "21" => [
   "start" => "Langbortistan",
   "destination" => "Alperne",
@@ -76,6 +77,8 @@ $timeTables = [
   ],
   "remarks" => "",
 ],
+
+
 
 "1002" => [
   "start" => "Christianshavn",
@@ -166,7 +169,7 @@ $timeTables = [
     ["time" => "", "start" => "S19", "dest" => "S15", "condition" => "", "delay" => 30, "station" => "Depot"],
     ["time" => "", "start" => "S15", "dest" => "S13", "condition" => "", "delay" => ""],
     ["time" => "", "start" => "S13", "dest" => "S33", "condition" => "", "delay" => ""],
-/*    ["time" => "", "start" => "S33", "dest" => "BS5", "condition" => "", "delay" => ""],*/
+//    ["time" => "", "start" => "S33", "dest" => "BS5", "condition" => "", "delay" => ""],//
     ["time" => "", "start" => "S33", "condition" => "E", "delay" => 10,  "nextTrn" => "3002", "station" => "Station C" ],
   ],
   "remarks" => "",
@@ -284,7 +287,7 @@ $timeTables = [
   ],
   "remarks" => "",
 ],
-
+*/
 
 ];
 

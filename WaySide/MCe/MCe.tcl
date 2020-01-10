@@ -56,13 +56,18 @@ global entryFontSize
   grid [ttk::label .f.fStatus.rbc.name -text "RBC"] -column 0 -row 0 -padx 5 -pady 5 -sticky we
   grid [ttk::label .f.fStatus.rbc.uptimeX -text "Uptime:"] -column 0 -row 1 -padx 5 -pady 5 -sticky we
   grid [ttk::label .f.fStatus.rbc.uptime -textvariable RBCuptime] -column 1 -row 1 -padx 5 -pady 5 -sticky we
+
+  grid [ttk::frame .f.fStatus.tms -padding "3 3 12 12" -relief solid -borderwidth 2] -column 1 -row 4 -sticky nwes
+  grid [ttk::label .f.fStatus.tms.name -text "TMS"] -column 0 -row 0 -padx 5 -pady 5 -sticky we
+  grid [ttk::label .f.fStatus.tms.uptimeX -text "Status:"] -column 0 -row 1 -padx 5 -pady 5 -sticky we
+  grid [ttk::label .f.fStatus.tms.uptime -textvariable tmsStatus] -column 1 -row 1 -padx 5 -pady 5 -sticky we
 }
 
 proc ECframe {addr} {
 global nECframe entryFontSize
 
   incr nECframe
-  grid [ttk::frame .f.fStatus.t$addr -padding "3 3 12 12" -relief solid -borderwidth 2] -column 1 -row [expr $nECframe + 3] -sticky nwes
+  grid [ttk::frame .f.fStatus.t$addr -padding "3 3 12 12" -relief solid -borderwidth 2] -column 1 -row [expr $nECframe + 4] -sticky nwes
   grid [ttk::label .f.fStatus.t$addr.name -text "EC ($addr)" ] -column 0 -row 0 -padx 5 -pady 5 -sticky we
   grid [ttk::label .f.fStatus.t$addr.uptimeX -text "Uptime:" ] -column 0 -row 1 -padx 5 -pady 5 -sticky we
   grid [ttk::label .f.fStatus.t$addr.uptime -textvariable ECuptime($addr)] -column 1 -row 1 -padx 5 -pady 5 -sticky we
@@ -137,6 +142,9 @@ proc exitRBC {} {
   sendCommand "exitRBC"
 }
 
+proc exitTMS {} {
+  sendCommand "exitTMS"
+}
 
 proc disableButtons {} {
 global nTrainFrame
@@ -145,6 +153,7 @@ global nTrainFrame
   .f.buttonGetECstatus state disabled
   .f.buttonLX state disabled
   .f.buttonERBC state disabled
+  .f.buttonETMS state disabled
   .f.buttonT1 state disabled
   .f.buttonT2 state disabled
   .f.buttonT3 state disabled
@@ -158,6 +167,7 @@ global aColor nTrainFrame
   .f.buttonGetECstatus state !disabled
   .f.buttonLX state !disabled
   .f.buttonERBC state !disabled
+  .f.buttonETMS state !disabled
   .f.buttonT1 state !disabled
   .f.buttonT2 state !disabled
   .f.buttonT3 state !disabled
@@ -263,6 +273,7 @@ foreach arg $argv {
 Usage:
 --test: Do not enter event loop 
 --IP <address>: Set server address
+--l             Set server address to localhost (127.0.0.1) 
 --d: Debug
 "
       }
@@ -271,6 +282,9 @@ Usage:
       }
     --IP {
       set reqIP yes
+      }
+    --l {
+      set IPaddress "127.0.0.1"
       }
     --d {
       set debug yes
@@ -315,8 +329,9 @@ grid [ttk::button .f.buttonGetECstatus -text "Get EC status" -command getECstatu
 grid [ttk::button .f.buttonPoint -text "Spsk" -command buttonPoint] -column 3 -row 1 -sticky we
 grid [ttk::button .f.buttonLX -text "Ovk" -command buttonLX] -column 4 -row 1 -sticky we
 grid [ttk::button .f.buttonOpr -text "Request operation" -command rqopr] -column 5 -row 1 -sticky e
-grid [ttk::button .f.buttonEHMI -text "Exit MCe" -command exit] -column 8 -row 1 -sticky e
-grid [ttk::button .f.buttonERBC -text "Exit RBC" -command exitRBC] -column 9 -row 1 -sticky e
+grid [ttk::button .f.buttonEHMI -text "Exit MCe" -command exit] -column 6 -row 1 -sticky e
+grid [ttk::button .f.buttonERBC -text "Exit RBC" -command exitRBC] -column 8 -row 1 -sticky e
+grid [ttk::button .f.buttonETMS -text "Exit TMS" -command exitTMS] -column 9 -row 1 -sticky e
 grid [ttk::button .f.buttonT1 -text "TrainData" -command test1] -column 2 -row 2 -sticky e
 grid [ttk::button .f.buttonT2 -text "LockedRoutes" -command test2] -column 3 -row 2 -sticky e
 grid [ttk::button .f.buttonT3 -text "TEST3" -command test3] -column 4 -row 2 -sticky e

@@ -1,10 +1,10 @@
 <?php
 // ------------------------------------------------- Sources
 $PT2_SIGNALLING_LAYOUT_FILE = "/home/jabe/Desktop/Projekter/Git/WinterTrain/WaySide/SiteData/CBU/signallingLayout.sch";
-$PT2_SIGNALLING_LAYOUT_FILE_DATE = "2019-12-28 14:02:08";
+$PT2_SIGNALLING_LAYOUT_FILE_DATE = "2020-01-09 22:15:46";
 $PT2_SCREEN_LAYOUT_FILE = "/home/jabe/Desktop/Projekter/Git/WinterTrain/WaySide/SiteData/CBU/screenLayout.sch";
 $PT2_SCREEN_LAYOUT_FILE_DATE = "2019-12-28 12:39:52";
-$PT2_GENERATION_TIME = "2019-12-28 14:02:52";
+$PT2_GENERATION_TIME = "2020-01-09 22:15:49";
 $PT1_PROJECT_NAME = "VinterHytten 2019";
 $PT1_DATE = "2019-12-27";
 $PT1_AUTHOR = "Mikkel, Jan";
@@ -12,18 +12,48 @@ $HMI_PROJECT_NAME = "VinterHytten 2019";
 
 // -------------------------------------------------- PT1
 $PT1 = array (
+  'BG320' => 
+  array (
+    'element' => 'BL',
+    'U' => 
+    array (
+      'name' => 'S22',
+      'dist' => 1,
+    ),
+    'D' => 
+    array (
+      'name' => 'BS4',
+      'dist' => 1,
+    ),
+    'ID' => 'FF:FF:FF:FF:FF',
+  ),
+  'BG316' => 
+  array (
+    'element' => 'BL',
+    'U' => 
+    array (
+      'name' => 'S20',
+      'dist' => 1,
+    ),
+    'D' => 
+    array (
+      'name' => 'BS3',
+      'dist' => 1,
+    ),
+    'ID' => 'FF:FF:FF:FF:FE',
+  ),
   'BG332' => 
   array (
     'element' => 'BL',
     'U' => 
     array (
       'name' => 'BG33',
-      'dist' => 0,
+      'dist' => 20,
     ),
     'D' => 
     array (
       'name' => 'BG32',
-      'dist' => 0,
+      'dist' => 170,
     ),
     'ID' => '1F:00:62:A3:D5',
   ),
@@ -122,8 +152,8 @@ $PT1 = array (
     'element' => 'BSB',
     'U' => 
     array (
-      'name' => 'S22',
-      'dist' => 96,
+      'name' => 'BG320',
+      'dist' => 129,
     ),
     'HMI' => 
     array (
@@ -137,8 +167,8 @@ $PT1 = array (
     'element' => 'BSB',
     'U' => 
     array (
-      'name' => 'S20',
-      'dist' => 93,
+      'name' => 'BG316',
+      'dist' => 126,
     ),
     'HMI' => 
     array (
@@ -153,11 +183,11 @@ $PT1 = array (
     'U' => 
     array (
       'name' => 'BG16',
-      'dist' => 10,
+      'dist' => 1,
     ),
     'D' => 
     array (
-      'name' => 'BS3',
+      'name' => 'BG316',
       'dist' => 1,
     ),
     'type' => 'MS2',
@@ -180,11 +210,11 @@ $PT1 = array (
     'U' => 
     array (
       'name' => 'BG20',
-      'dist' => 10,
+      'dist' => 1,
     ),
     'D' => 
     array (
-      'name' => 'BS4',
+      'name' => 'BG320',
       'dist' => 1,
     ),
     'type' => 'MS2',
@@ -212,7 +242,7 @@ $PT1 = array (
     'D' => 
     array (
       'name' => 'S22',
-      'dist' => 7,
+      'dist' => 1,
     ),
     'ID' => '73:00:56:93:AA',
   ),
@@ -227,7 +257,7 @@ $PT1 = array (
     'D' => 
     array (
       'name' => 'S20',
-      'dist' => 7,
+      'dist' => 1,
     ),
     'ID' => '1F:00:4D:6A:29',
   ),
@@ -328,7 +358,7 @@ $PT1 = array (
     'U' => 
     array (
       'name' => 'S24',
-      'dist' => 0,
+      'dist' => 170,
     ),
     'D' => 
     array (
@@ -343,7 +373,7 @@ $PT1 = array (
     'U' => 
     array (
       'name' => 'BG29',
-      'dist' => 0,
+      'dist' => 8,
     ),
     'D' => 
     array (
@@ -370,12 +400,12 @@ $PT1 = array (
     'U' => 
     array (
       'name' => 'S21',
-      'dist' => 0,
+      'dist' => 1,
     ),
     'D' => 
     array (
       'name' => 'S24',
-      'dist' => 0,
+      'dist' => 1,
     ),
     'ID' => '1E:00:57:5B:28',
   ),
@@ -390,7 +420,7 @@ $PT1 = array (
     'D' => 
     array (
       'name' => 'BG29',
-      'dist' => 10,
+      'dist' => 8,
     ),
     'type' => 'MS2',
     'EC' => 
@@ -412,12 +442,12 @@ $PT1 = array (
     'U' => 
     array (
       'name' => 'BG332',
-      'dist' => 0,
+      'dist' => 175,
     ),
     'D' => 
     array (
       'name' => 'S21',
-      'dist' => 0,
+      'dist' => 100,
     ),
     'ID' => '1F:00:4A:FE:5F',
   ),
@@ -432,7 +462,7 @@ $PT1 = array (
     'D' => 
     array (
       'name' => 'BG332',
-      'dist' => 0,
+      'dist' => 40,
     ),
     'ID' => '1E:00:AC:98:25',
   ),
