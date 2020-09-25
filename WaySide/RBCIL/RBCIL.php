@@ -1434,7 +1434,7 @@ function updateTrainPosition(&$train, $baliseName, $dist, $trackState) {
   recUpdateTrainPosition($train, "U", -$PT1[$baliseName]["D"]["dist"], $baliseName, $trackState);
   recUpdateTrainPosition($train, "D", -$PT1[$baliseName]["D"]["dist"], $PT1[$baliseName]["D"]["name"], $trackState); // ???
   if ($trackState !== T_CLEAR) { // Determine train location for TMS
-    print "Up: {$train["upElt"]} Down: {$train["downElt"]}\n";
+    print "Train: {$train["ID"]} Up: {$train["upElt"]} Down: {$train["downElt"]}\n";
 
     searchNextSignal("U", $train["upElt"], $train["index"], true);
     searchNextSignal("D", $train["downElt"], $train["index"], true);

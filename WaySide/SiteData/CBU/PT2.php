@@ -1,10 +1,10 @@
 <?php
 // ------------------------------------------------- Sources
 $PT2_SIGNALLING_LAYOUT_FILE = "/home/jabe/Desktop/Projekter/Git/WinterTrain/WaySide/SiteData/CBU/signallingLayout.sch";
-$PT2_SIGNALLING_LAYOUT_FILE_DATE = "2020-01-09 22:15:46";
+$PT2_SIGNALLING_LAYOUT_FILE_DATE = "2020-01-11 11:54:40";
 $PT2_SCREEN_LAYOUT_FILE = "/home/jabe/Desktop/Projekter/Git/WinterTrain/WaySide/SiteData/CBU/screenLayout.sch";
 $PT2_SCREEN_LAYOUT_FILE_DATE = "2019-12-28 12:39:52";
-$PT2_GENERATION_TIME = "2020-01-09 22:15:49";
+$PT2_GENERATION_TIME = "2020-01-11 11:55:09";
 $PT1_PROJECT_NAME = "VinterHytten 2019";
 $PT1_DATE = "2019-12-27";
 $PT1_AUTHOR = "Mikkel, Jan";
@@ -12,6 +12,21 @@ $HMI_PROJECT_NAME = "VinterHytten 2019";
 
 // -------------------------------------------------- PT1
 $PT1 = array (
+  'PHT3' => 
+  array (
+    'element' => 'PHTD',
+    'U' => 
+    array (
+      'name' => 'BG51',
+      'dist' => 1,
+    ),
+    'D' => 
+    array (
+      'name' => 'BG50',
+      'dist' => 1,
+    ),
+    'holdPoint' => 'P7',
+  ),
   'BG320' => 
   array (
     'element' => 'BL',
@@ -23,7 +38,7 @@ $PT1 = array (
     'D' => 
     array (
       'name' => 'BS4',
-      'dist' => 1,
+      'dist' => 99,
     ),
     'ID' => 'FF:FF:FF:FF:FF',
   ),
@@ -38,7 +53,7 @@ $PT1 = array (
     'D' => 
     array (
       'name' => 'BS3',
-      'dist' => 1,
+      'dist' => 66,
     ),
     'ID' => 'FF:FF:FF:FF:FE',
   ),
@@ -153,7 +168,7 @@ $PT1 = array (
     'U' => 
     array (
       'name' => 'BG320',
-      'dist' => 129,
+      'dist' => 60,
     ),
     'HMI' => 
     array (
@@ -168,7 +183,7 @@ $PT1 = array (
     'U' => 
     array (
       'name' => 'BG316',
-      'dist' => 126,
+      'dist' => 60,
     ),
     'HMI' => 
     array (
@@ -593,8 +608,8 @@ $PT1 = array (
     ),
     'D' => 
     array (
-      'name' => 'BG50',
-      'dist' => 41,
+      'name' => 'PHT3',
+      'dist' => 39,
     ),
     'ID' => '73:00:70:98:69',
   ),
@@ -603,7 +618,7 @@ $PT1 = array (
     'element' => 'BL',
     'U' => 
     array (
-      'name' => 'BG51',
+      'name' => 'PHT3',
       'dist' => 41,
     ),
     'D' => 

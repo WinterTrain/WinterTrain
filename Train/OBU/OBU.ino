@@ -8,16 +8,8 @@
 // ------------------------------------------- Configuration
 #define MAJOR_VERSION 6
 #define MINOR_VERSION 0
-// Proporties
-#define DETECT_NOM_DIR DOWN // UP, DOWN or AUTO_DETECT
-#define BRAKING_DISTANCE 18
-#define SH_BREAKE_DIST 0
-#define MAX_DRIVE 100
-#define VMAX_SH 60
-#define SHORT_MA 30
-#define STOP_MA 3 // Distance below this will show red on DMI
-#define V_OFFSET 30
-#define MIN_DIST 2 // Distance below this will be ignored
+// Proporties, see TrainConf.h
+
 const unsigned long C_SPEED = 2500000; // Conversion factor for speed
 const byte drive[6] = {0, 0, 20, 40, 60, 100}; // driveSel: 1-5
 
@@ -29,6 +21,7 @@ const unsigned long POS_REP = 100000; // ~1.6 sec
 const unsigned long DISTANCE = 64000; // 1 sec
 const unsigned long MODE_TIMEOUT = 640000; // 10 sec
 const unsigned long DYN = 3200; // 0.05 sec
+const int POL_SAMPLE_TIME = 3200;
 
 // Enummerations and codes
 // Nominel direction
@@ -158,6 +151,9 @@ boolean txDMIW = false, txPosRep = false, runInd, blnk, DMIlost;
 boolean overrideSR = false; // Allow mode SR even if no authorization from RBC
 boolean overrideSH = false; // Allow mode SH even if no authorization from RBC
 
+byte x = 0;
+boolean polUp, polDown, prevPolUp, prevPolDown;
+
 posRepType posRep;
 baliseType knownBalises[MAX_BALISES];
 
@@ -180,7 +176,7 @@ void setup() {
   pinMode(OBU_PIN_TRACK_UP, INPUT);
   pinMode(OBU_PIN_TRACK_DOWN, INPUT);
   analogWrite(OBU_PIN_MOTOR, 0);
-  delay(50000); // to ensure stabel track voltage when determing nominel direction
+//  delay(50000); // to ensure stabel track voltage when determing nominel direction
 #ifdef OBU_PIN_BLUE
   digitalWrite(OBU_PIN_BLUE, HIGH);
 #endif
@@ -190,11 +186,26 @@ void setup() {
 #ifdef OVERRIDE_SH
   overrideSH = !digitalRead(OBU_PIN_OVERRIDE);
 #endif
-  nomDir = (DETECT_NOM_DIR == AUTO_DETECT ? (digitalRead(OBU_PIN_TRACK_UP) ? UP : DOWN) : DETECT_NOM_DIR);
-  // FIXME nomDir to be determined by stable power polarity
-  //  txDMI[0] = 22;
-  //  txDMI[1] = MAJOR_VERSION;
-  //  txDMI[2] = MINOR_VERSION;
+  if (DETECT_NOM_DIR == AUTO_DETECT) {
+    x = 0;
+    prevPolUp = digitalRead(OBU_PIN_TRACK_UP);
+    prevPolDown = digitalRead(OBU_PIN_TRACK_DOWN);
+    do {
+      delay(POL_SAMPLE_TIME);
+      polUp = digitalRead(OBU_PIN_TRACK_UP);
+      polDown = digitalRead(OBU_PIN_TRACK_DOWN);
+      if (polUp == prevPolUp and polDown == prevPolDown and polUp == !polDown) {
+        x += 1;
+      } else {
+        x = 0;
+        prevPolUp = polUp;
+        prevPolDown = polDown;
+      }
+    } while (x < 10);
+    nomDir = (polUp ? UP : DOWN);
+  } else {
+    nomDir = DETECT_NOM_DIR;
+  }
   knownBalises[0].balise[0] = 1;
   knownBalises[0].balise[1] = 0;
   knownBalises[0].balise[2] = 0;

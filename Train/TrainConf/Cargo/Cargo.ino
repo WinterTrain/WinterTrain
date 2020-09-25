@@ -8,6 +8,18 @@
 // Capacity
 #define MAX_BALISES 8
 
+// Configuration
+#define DETECT_NOM_DIR AUTO_DETECT // UP, DOWN or AUTO_DETECT
+#define BRAKING_DISTANCE 18
+#define SH_BREAKE_DIST 0
+#define MAX_DRIVE 100
+#define VMAX_SH 60
+#define SHORT_MA 30
+#define STOP_MA 3 // Distance (wheel turn) below this will show red on DMI
+#define V_OFFSET 30
+#define MIN_DIST 2 // Distance (wheel turn) below this will be ignored
+
+
 // Specific engineering ------------------------ Stop if in shunting
 // Balises commanding "stop if in shunting"
 // Distance measured in tacometer pulses 
