@@ -11,6 +11,17 @@
 // Capacity
 #define MAX_BALISES 8
 
+// Configuration
+#define DETECT_NOM_DIR DOWN // UP, DOWN or AUTO_DETECT
+#define BRAKING_DISTANCE 18
+#define SH_BREAKE_DIST 0
+#define MAX_DRIVE 100
+#define VMAX_SH 60
+#define SHORT_MA 30
+#define STOP_MA 3 // Distance (wheel turn) below this will show red on DMI
+#define V_OFFSET 30
+#define MIN_DIST 2 // Distance (wheel turn) below this will be ignored
+
 #define N_SABALISES 18 // balise list for "stop if in shunting"
 // Distances engineered in "wheel turns". OBU will start braking at that distance, allow for 80 cm braking distance
 #define SA_BALISES { \

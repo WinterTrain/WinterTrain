@@ -1,5 +1,5 @@
 // Train specific configuration
-// --------------------------------------------------- Cargo train (new)
+// --------------------------------------------------- CargoPrototype train
 
 // RF12
 #define OBU_ID 20 // RF12 node ID of train
@@ -56,21 +56,16 @@
 // OBU HW assignment
 #define OBU_PIN_MOTOR 5         // PWM signal to moter control. JeeNode port 2
                                 // Note: PWM frequency is set for pin 5 in setup()
-#define OBU_PIN_DIR_CONTROL 7   // Direction control.
-#define OBU_DIR_CONTROL_FORWARD // Define if direction control HIGH means forward
+#define OBU_PIN_REVERSE_DIR A1  // Direction control. JeeNode port 2
 #define OBU_PIN_TRACK_UP A0     // JeeNode port 1
 #define OBU_PIN_TRACK_DOWN 4    // JeeNode port 1
-#define OBU_PIN_RED A1          // For indication (outout)
-//#define OBU_PIN_BLUE 3        // For indication (outout)
-#define OBU_PIN_OVERRIDE 3      // For mode override (input)
-#define OBU_PIN_WHEEL A2        // Wheel sensor  JeeNode port 4
-#define OBU_PIN_FLIGHT A3       // Front light
-#define OBU_PIN_RLIGHT 6        // Rear light
+#define OBU_PIN_BLUE A3
+#define OBU_PIN_WHEEL 7         // Wheel sensor  JeeNode port 4
+#define OBU_PIN_FLIGHT 6        // Front light
+#define OBU_PIN_RLIGHT A2       // Rear light
 
 #define TAG_READER_7941E        // Balise reader type 7941E
 //#define TAG_READER_RDM6300      // Balise reader type RDM6300
-
-#define OVERRIDE_SR yes
 
 // DMI HW assignment
 #define DMI_PIN_BLUE 4
