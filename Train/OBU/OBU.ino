@@ -152,7 +152,7 @@ boolean overrideSR = false; // Allow mode SR even if no authorization from RBC
 boolean overrideSH = false; // Allow mode SH even if no authorization from RBC
 
 byte x = 0;
-boolean polUp, polDown, prevPolUp, prevPolDown;
+boolean polUp, polDown, prevPolUp, prevPolDown, beat;
 
 posRepType posRep;
 baliseType knownBalises[MAX_BALISES];
@@ -164,19 +164,21 @@ void setup() {
   wdt_enable(WDTO_4S);
   Serial.begin(9600); // for TAG reader
   pinMode(OBU_PIN_MOTOR, OUTPUT);
-  pinMode(OBU_PIN_REVERSE_DIR, OUTPUT);
+  pinMode(OBU_PIN_DIR_CONTROL, OUTPUT);
+  pinMode(OBU_PIN_RED, OUTPUT);
 #ifdef OBU_PIN_BLUE
   pinMode(OBU_PIN_BLUE, OUTPUT);
   digitalWrite(OBU_PIN_BLUE, LOW);
 #endif
 #ifdef OBU_PIN_OVERRIDE
-  pinMode(OBU_PIN_OVERRIDE, INPUT_PULLUP);
+  pinMode(OBU_PIN_OVERRIDE, INPUT);
 #endif
   pinMode(OBU_PIN_WHEEL, INPUT_PULLUP);
   pinMode(OBU_PIN_TRACK_UP, INPUT);
   pinMode(OBU_PIN_TRACK_DOWN, INPUT);
   analogWrite(OBU_PIN_MOTOR, 0);
-//  delay(50000); // to ensure stabel track voltage when determing nominel direction
+  //  delay(50000); // to ensure stabel track voltage when determing nominel direction
+  digitalWrite(OBU_PIN_RED, HIGH);
 #ifdef OBU_PIN_BLUE
   digitalWrite(OBU_PIN_BLUE, HIGH);
 #endif
@@ -260,6 +262,10 @@ void loop() {
   headLight();
   indication();
   wdt_reset();
+#ifdef BEAT
+  digitalWrite(OBU_PIN_RED, beat);
+  beat = !beat;
+#endif
 }
 
 void odometry() { // position and speed
@@ -507,7 +513,7 @@ byte dirMode() { // compute direction Order
       }
       break;
     case ATO:
-      dirOrder = MAdir();
+      dirOrder = MAdir(); // retningsskift kun ved stilstand -------------------------------------------------- FIXME 
       break;
     default:
       dirOrder = NEUTRAL;
@@ -530,7 +536,11 @@ void headLight() {
 void traction() {
   switch (dirOrder) { // Executing dirOrder and driveOrder
     case REVERSE:
-      digitalWrite(OBU_PIN_REVERSE_DIR, HIGH);
+#ifdef OBU_DIR_CONTROL_FORWARD
+      digitalWrite(OBU_PIN_DIR_CONTROL, LOW);
+#else
+      digitalWrite(OBU_PIN_DIR_CONTROL, HIGH);
+#endif
       driveDir = REVERSE;
       vReq = driveOrder;
       nomDirOrder = nomDriveDir = (nomDir == UP ? DOWN : UP);
@@ -540,8 +550,11 @@ void traction() {
       nomDirOrder = STAND_STILL;
       break;
     case FORWARD:
-      digitalWrite(OBU_PIN_REVERSE_DIR, LOW);
-      driveDir = FORWARD;
+#ifdef OBU_DIR_CONTROL_FORWARD
+      digitalWrite(OBU_PIN_DIR_CONTROL, HIGH);
+#else
+      digitalWrite(OBU_PIN_DIR_CONTROL, LOW);
+#endif      driveDir = FORWARD;
       vReq = driveOrder;
       nomDirOrder = nomDriveDir = (nomDir == UP ? UP : DOWN);
       break;
