@@ -554,7 +554,8 @@ void traction() {
       digitalWrite(OBU_PIN_DIR_CONTROL, HIGH);
 #else
       digitalWrite(OBU_PIN_DIR_CONTROL, LOW);
-#endif      driveDir = FORWARD;
+#endif      
+driveDir = FORWARD;
       vReq = driveOrder;
       nomDirOrder = nomDriveDir = (nomDir == UP ? UP : DOWN);
       break;
