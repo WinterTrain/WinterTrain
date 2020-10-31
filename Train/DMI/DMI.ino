@@ -8,7 +8,7 @@ const byte ID_MASK = 0x1F;
 const byte GROUP = 101;
 
 // RF12 Package type
-const byte DMI = 21; // Specific for this DMI
+const byte POLL_DMI = 21; // Packet type
 
 const int OBU_TIMEOUT = 1000; // Timeout for lost connection to OBU
 const unsigned long DYN = 20;
@@ -99,7 +99,7 @@ void sendCmd() {
 
 void rf12Transceive() {
   if (rf12_recvDone() and rf12_crc == 0 and
-      (rf12_hdr & ID_MASK) == OBU_ID and rf12_data[0] == DMI) {
+      (rf12_hdr & ID_MASK) == OBU_ID and rf12_data[0] == POLL_DMI) {
     vReq = rf12_data[2];
     digitalWrite(DMI_PIN_RED2, rf12_data[1] & 0x10);
     digitalWrite(DMI_PIN_RED, rf12_data[1] & 0x04);

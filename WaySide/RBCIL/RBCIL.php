@@ -30,6 +30,7 @@ define("N_I2CSET",2);
 $DIRECTORY = ".";
 $RBCIL_CONFIG = "RBCILconf.php";
 $PT2_FILE = "PT2.php";
+$BL_FILE = "baliseDump.php";
 $TRAIN_DATA_FILE = "TrainData.php";
 $ERRLOG = "Log/RBCIL_ErrLog.txt";
 $MSGLOG = "Log/RBCIL.log";
@@ -240,9 +241,19 @@ $testStep = 0;
 $testBg = "BG06";
 $testDist = "30";
 
-// TMS interface
+$baliseCountTotal = 0;
+$baliseCountUnassigned = 0;
+
+// ----------------------------------------------------------------------------------------- TMS interface
 $tmsHB = 0;
 $tmsStatus = TMS_NO_TMS;
+
+// ------------------------------------------------------------------------------------------ HHT variables
+
+$foundCount = 0; $foundSum = 0;
+$hhtBaliseID = "--:--:--:--:--";
+$hhtBaliseName = "";;
+$hhtBaliseStatus = "";
 
 //---------------------------------------------------------------------------------------------------------- System 
 cmdLineParam();
@@ -299,10 +310,10 @@ global $trainData, $TRAIN_DATA_FILE;
   print "Count of trains: $totalTrain\n";
 }
 
-//-------------------------------------------------------------------------------------------------------  Analyse PT1/PT2 and Train Data
+//-----------------------------------------------------------------------------  PT1/PT2 and Train Data management and analysis
 function processPT1() {
 global $DIRECTORY, $PT2_FILE, $TRAIN_DATA_FILE, $PT2_GENERATION_TIME, $PT1, $HMI, $HMIoffset, $errorFound, $totalElement,
-  $points, $signals, $levelCrossings, $balises, $balisesID, $bufferstops, $triggers, $tracks;
+  $points, $signals, $levelCrossings, $balises, $balisesID, $bufferstops, $triggers, $tracks, $baliseCountTotal, $baliseCountUnassigned;
 
   function inspect($this, $prevName, $up) { // check each edge in the graph
   global $PT1, $nInspection, $totalElement, $errorFound;
@@ -453,7 +464,7 @@ global $DIRECTORY, $PT2_FILE, $TRAIN_DATA_FILE, $PT2_GENERATION_TIME, $PT1, $HMI
     }
   }
 
-  require($PT2_FILE);
+  require("$DIRECTORY/$PT2_FILE");
 
   if (array_key_exists("", $PT1)) { unset($PT1[""]); } // delete any remaining template entry
   $totalElement = count($PT1);
@@ -467,6 +478,9 @@ global $DIRECTORY, $PT2_FILE, $TRAIN_DATA_FILE, $PT2_GENERATION_TIME, $PT1, $HMI
       case "BL":
         $balises[] = $name;
         $balisesID[$element["ID"]] = $name;
+        $element["dynName"] = false;
+        if ($element["ID"] == "FF:FF:FF:FF:FF") $baliseCountUnassigned++;
+        $baliseCountTotal++;
       break;
       case "TK":
         $tracks[] = $name;
@@ -547,6 +561,7 @@ global $DIRECTORY, $PT2_FILE, $TRAIN_DATA_FILE, $PT2_GENERATION_TIME, $PT1, $HMI
   unset($element); // otherwise next foreach is not working, see PHP manual
   
   print "Count of elements: $totalElement\n";
+  
 // Find a beginning Bufferstop as starting point for checking the graph
   $start = "";
   foreach ($bufferstops as $name) {
@@ -593,6 +608,125 @@ global $DIRECTORY, $PT2_FILE, $TRAIN_DATA_FILE, $PT2_GENERATION_TIME, $PT1, $HMI
     fatalError("HMI data not OK. Source: $DIRECTORY/$PT2_FILE");
   }
 }
+
+// -------------------------------------------------------------------------------------------------------------- HHT
+
+function hhtRequest($res) { // 
+global $balisesID, $foundCount, $foundSum, $PT1, $hhtBaliseID, $hhtBaliseName;
+// Check sender ID: $res[1] & $RF12_ID_MASK
+  switch ($res[3]) { // Request code
+    case 1: // Balise lookup
+      $balise = sprintf("%'02X:%'02X:%'02X:%'02X:%'02X",$res[4],$res[5],$res[6],$res[7],$res[8]);
+      $hhtBaliseID = $balise;
+      if (isset($balisesID[$balise])) {
+        sendHHTresponse(1, $balise, $balisesID[$balise]);
+        $hhtBaliseName = $balisesID[$balise];
+      } else {
+        sendHHTresponse(2, $balise, "(unknown)");
+        $hhtBaliseName = "(Unknown)";
+      }
+      updateMCe();
+    break;
+    case 2: // Distance lookup
+      $curBalise = sprintf("%'02X:%'02X:%'02X:%'02X:%'02X",$res[4],$res[5],$res[6],$res[7],$res[8]);
+      $prevBalise = sprintf("%'02X:%'02X:%'02X:%'02X:%'02X",$res[9],$res[10],$res[11],$res[12],$res[13]);
+      $foundCount = 0;
+      $foundSum = 0;
+      distance($PT1[$balisesID[$curBalise]]["U"]["dist"], $PT1[$balisesID[$curBalise]]["U"]["name"],$balisesID[$prevBalise],"U",
+      $balisesID[$curBalise]);
+      if ($foundCount == 1) {
+        sendHHTresponse(4, $curBalise, "", $foundSum);
+      } else {
+        distance($PT1[$balisesID[$curBalise]]["D"]["dist"], $PT1[$balisesID[$curBalise]]["D"]["name"],$balisesID[$prevBalise],"D", 
+            $balisesID[$curBalise]);
+        if ($foundCount == 1) {
+          sendHHTresponse(3, $curBalise, "", $foundSum);
+        }
+      }
+      if ($foundCount > 1) {
+        sendHHTresponse(5, $curBalise, "", 0);
+      }
+    break;
+  }
+}
+
+
+function distance($sum, $element1, $element2, $direction, $previousElement) {
+global $PT1, $foundCount, $foundSum;
+
+//print "A: $sum, $element1, $element2, $direction\n";
+  if ($element1 == $element2) {
+    switch ($PT1[$element1]["element"]) {
+      case "BL":
+      case "SU":
+      case "SD":
+      case "PHTU":
+      case "PHTD":
+        $sum += $PT1[$element1][($direction == "U" ? "D" : "U")]["dist"];
+      break;
+      case "PF":
+        $sum += $PT1[$element1][($direction == "U" ? "T" : ($previousElement == $PT1[$element1]["R"]["name"] ? "R" : "L"))]["dist"];
+      break;
+      case "PT":
+        $sum += $PT1[$element1][($direction == "D" ? "T" : ($previousElement == $PT1[$element1]["R"]["name"] ? "R" : "L"))]["dist"];
+      break;
+    }
+    $foundSum = $sum;
+    $foundCount++;
+    return;
+
+  } else {
+    switch ($PT1[$element1]["element"]) {
+      case "BSB":
+      case "BSE":
+        return;
+      break;
+      case "PF":
+        if ($direction == "U") {
+          distance($PT1[$element1]["T"]["dist"] + $PT1[$element1]["R"]["dist"]
+            + $sum, $PT1[$element1]["R"]["name"], $element2, $direction, $element1);
+          distance($PT1[$element1]["T"]["dist"] + $PT1[$element1]["L"]["dist"] 
+            + $sum, $PT1[$element1]["L"]["name"], $element2, $direction, $element1);
+            return;
+        } else {
+          distance($PT1[$element1]["T"]["dist"] 
+            + $PT1[$element1][($previousElement == $PT1[$element1]["R"]["name"] ? "R": "L")]["dist"] + $sum, 
+              $PT1[$element1]["T"]["name"], $element2, $direction, $element1);
+          return ;
+        }
+      break;
+      case "PT":
+        if ($direction == "D") {
+          distance($PT1[$element1]["T"]["dist"] + $PT1[$element1]["R"]["dist"]
+            + $sum, $PT1[$element1]["R"]["name"], $element2, $direction, $element1);
+          distance($PT1[$element1]["T"]["dist"] + $PT1[$element1]["L"]["dist"] 
+            + $sum, $PT1[$element1]["L"]["name"], $element2, $direction, $element1);
+          return; 
+        } else {
+          distance($PT1[$element1]["T"]["dist"] 
+            + $PT1[$element1][($previousElement == $PT1[$element1]["R"]["name"] ? "R": "L")]["dist"] + $sum, 
+              $PT1[$element1]["T"]["name"], $element2, $direction, $element1);
+          return;
+        }
+      break;
+      case "BL":
+      case "SU":
+      case "SD":
+      case "LX":
+      case "PHTU":
+      case "PHTD":
+        distance($PT1[$element1]["D"]["dist"] + $PT1[$element1]["U"]["dist"] + $sum, 
+          $PT1[$element1][$direction]["name"], $element2, $direction, $element1);
+        return;
+      break;
+      default:
+        print "Ups 1: {$PT1[$element1]["element"]}\n";
+        exit(1);
+      break;
+    }
+  }
+}
+
 
 // --------------------------------------------------------------------------------------------------------------------------- RadioLink
 function pollRadioLink() {
@@ -661,6 +795,30 @@ global $radioLinkAddr, $radioLink, $radio;
   }
 }
 
+function sendHHTresponse($responseCode, $balise, $elementName, $distance = 0) { 
+global $radioLinkAddr, $radioLink, $radio;
+  switch ($radio) { 
+    case "USB":
+      fwrite($radioLink,"51,$responseCode,");
+      $baliseArray = explode(":", $balise);
+      for ($b = 0; $b < 5; $b++) fwrite($radioLink, hexdec($baliseArray[$b]).",");
+      switch ($responseCode) {
+        case 1: // Balise known
+          $elementName .= "          "; // Ensure minimum 10 char
+          for ($b = 0; $b < 10; $b++) fwrite($radioLink, ord($elementName[$b]).",");
+        break;
+        case 3: // Distance
+        case 4:
+          fwrite($radioLink, intdiv($distance, 256).",".($distance % 256).",");
+        break;  
+      }
+      fwrite($radioLink, "0s\n");
+    break;
+    case "ABUS":
+      print "Warning: HHT response via EC Link not implemented\n";
+    break;
+  }
+}
 function checkTrainTimeout() {
 global $trainData, $now;
   foreach ($trainData as $index => &$train) {
@@ -671,17 +829,24 @@ global $trainData, $now;
   }
 }
 
-function receivedFromRadioLink($data) {  // position report received via USB
+function receivedFromRadioLink($data) {  // Radio packet received via USB radio
+//print "$data\n";
   $RF12_ID_MASK = 0x1f;
-  $POSREP = 10;
   $res = explode(" ",$data);
-  if ($res[0] == "OK" and $res[2] == $POSREP) {
-    $packet[3] = 1; // report valid
-    $packet[4] = $res[1] & $RF12_ID_MASK;
-    for ($b = 3; $b < 13; $b++) {
-      $packet[$b + 2] = $res[$b];
+  if ($res[0] == "OK") {
+    switch ($res[2]) {
+    case 10: // Packet type Position report
+      $packet[3] = 1; // report valid
+      $packet[4] = $res[1] & $RF12_ID_MASK;
+      for ($b = 3; $b < 13; $b++) {
+        $packet[$b + 2] = $res[$b];
+      }
+      positionReport($packet); // Data encoded as Abus packet
+      break;
+    case 50: // Packet type HHT request
+      hhtRequest($res); // Note: encoding as Abus packet not implemented
+    break;
     }
-    positionReport($packet);
   }
 }
 
@@ -1552,7 +1717,7 @@ function getNextEltName($eltName, $dir) { //
 
 //TODO: improve to reject case when unkow balise was read, not just if no balise read
 function isKnownBalise($bgName) {
-  return (($bgName != "00:00:00:00:00") and ($bgName !== "") ); //and (isset($PT1[$bgName]["ID"])));
+  return (($bgName != "00:00:00:00:00") and ($bgName !== "") ); //and (isset($PT1[$bgName]["ID"]))); // FIXME
 }
 
 function getMA($trainID, $signal) { // FIXME check for correct point state
@@ -2877,18 +3042,22 @@ function HMIindication($to, $msg) {// Send indication to specific client
 
 function MCeStartup($client) {
 global $EC, $TMS_STATUS_TXT, $tmsStatus;
-  MCeIndication($client,"serverFrames\n");
   foreach ($EC as  $addr => $ec) {
     MCeIndication($client,"ECframe $addr\n");
   }
   MCeIndication($client,"set ::tmsStatus {{$TMS_STATUS_TXT[$tmsStatus]}}\n");
+  updateMCe();
 }
 
 function updateMCe() {
-global $EC, $startTime, $TMS_STATUS_TXT, $tmsStatus;
+global $EC, $startTime, $TMS_STATUS_TXT, $tmsStatus, $hhtBaliseID, $hhtBaliseName, $hhtBaliseStatus, $baliseCountTotal, $baliseCountUnassigned;
   MCeIndicationAll("set ::serverUptime {".trim(`/usr/bin/uptime`)."}\n");
   MCeIndicationAll("set ::RBCuptime {".(time() - $startTime)."}\n");
   MCeIndicationAll("set ::tmsStatus {{$TMS_STATUS_TXT[$tmsStatus]}}\n");
+  MCeIndicationAll("set ::baliseID {{$hhtBaliseID}}\n");
+  MCeIndicationAll("set ::baliseName {{$hhtBaliseName}}\n");
+  MCeIndicationAll("set ::baliseStatus {{$hhtBaliseStatus}}\n");
+  MCeIndicationAll("set ::baliseCount {{$baliseCountTotal}/{$baliseCountUnassigned}}\n");
   foreach($EC as $addr => $ec) {
     MCeIndicationAll("set ::EConline($addr) ".($ec["EConline"] ? "Online" : "Offline")."\n");
     MCeIndicationAll("set ::ECuptime($addr) {$ec["uptime"]}\n");
@@ -2901,7 +3070,8 @@ global $EC, $startTime, $TMS_STATUS_TXT, $tmsStatus;
 }
 
 function processCommandMCe($command, $from) {
-global $EC, $clients, $clientsData, $inChargeMCe, $run, $lockedRoutes, $trainData;
+global $EC, $clients, $clientsData, $inChargeMCe, $run, $lockedRoutes, $trainData, $PT1, $balisesID, $hhtBaliseStatus, 
+    $DIRECTORY, $PT2_FILE, $BL_FILE, $baliseCountUnassigned;
 
 //  print "MCe command: $command\n";
   $param = explode(" ",$command);
@@ -2919,6 +3089,58 @@ global $EC, $clients, $clientsData, $inChargeMCe, $run, $lockedRoutes, $trainDat
     case "ECstatus":
       foreach($EC as $addr => $ec) {
         requestECstatus($addr);
+      }
+    break;
+    case "aBN": // assign balise name
+      if ($from == $inChargeMCe) {
+        $baliseID = $param[1];
+        $baliseName = (isset($param[2]) ? $param[2] : "<udef>");
+        if ($baliseID != "--:--:--:--:--") { // default in MCe after startup
+          if (isset($PT1[$baliseName]) and $PT1[$baliseName]["element"] == "BL" ) {
+            if (isset($balisesID[$PT1[$baliseName]["ID"]])) {
+              unset($balisesID[$PT1[$baliseName]["ID"]]);
+            }
+            if (isset($balisesID[$baliseID])) {
+              $PT1[$balisesID[$baliseID]]["ID"] = "FF:FF:FF:FF:FF";
+              $PT1[$balisesID[$baliseID]]["dynName"] = true;
+            }
+            $PT1[$baliseName]["ID"] = $baliseID;
+            $balisesID[$baliseID] = $baliseName;
+            $PT1[$baliseName]["dynName"] = true;
+            $hhtBaliseStatus = "OK";
+          } else {
+            $hhtBaliseStatus = "Unknown balise";
+          }
+          $baliseCountUnassigned = 0;
+          foreach ($PT1 as $name => $element) {
+            if ($element["element"] == "BL" and $element["ID"] == "FF:FF:FF:FF:FF") $baliseCountUnassigned++;
+          }
+          updateMCe();
+        } // else ignore
+      }
+    break;
+    case "dBL": // dump balise list
+      if ($blFh = fopen("$DIRECTORY/$BL_FILE","w")) {
+      fwrite($blFh, "<?php
+// Balise list generated by RBC
+\$BL_PT2_FILE = \"".(realpath("$DIRECTORY/$PT2_FILE"))."\";
+\$BL_GENERATION_TIME = \"".(date("Y-m-d H:i:s"))."\";
+
+// -------------------------------------------------- Full balise List
+\$baliseList = [
+");
+      foreach ($PT1 as $name => $element) {
+        if ($element["element"] == "BL") {
+          fwrite($blFh,"\"$name\" => [\"ID\" => \"{$element["ID"]}\",
+           \"dynName\" => ".($element["dynName"] ? "true" : "false")."],\n");
+        }
+      }
+
+      fwrite($blFh,"];
+?>");
+      fclose($blFh);
+      } else {
+          fwrite(STDERR,"Warning: Cannot open Balise Liste file: $DIRECTORY/$BL_FILE\n");
       }
     break;
     case "Rq": // request operation
@@ -3316,7 +3538,7 @@ global $logFh, $errFh, $debug, $DIRECTORY, $ERRLOG, $MSGLOG, $ABUS, $background;
 }
 
 function forkToBackground() {
-global $background, $errFh, $logFh;
+global $background, $errFh, $logFh, $blFh;
 
   fclose($errFh);
   fclose($logFh);

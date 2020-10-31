@@ -32,6 +32,7 @@ set scale 45
 set xOffset 5
 set yOffset 10
 set nTrainFrame 0
+set setBaliseName "" 
 set liveT 42
 set live 0
 set liveC 0
@@ -44,24 +45,7 @@ set nECframe 0
 
 #----------------------------------------------------------------------------- Display elements
 
-proc serverFrames {} {
-global entryFontSize
 
-  grid [ttk::frame .f.fStatus.server -padding "3 3 12 12" -relief solid -borderwidth 2] -column 1 -row 2 -sticky nwes
-  grid [ttk::label .f.fStatus.server.name -text "Server"] -column 0 -row 0 -padx 5 -pady 5 -sticky we
-  grid [ttk::label .f.fStatus.server.uptimeX -text "Uptime:"] -column 0 -row 1 -padx 5 -pady 5 -sticky we
-  grid [ttk::label .f.fStatus.server.uptime -textvariable serverUptime] -column 1 -row 1 -padx 5 -pady 5 -sticky we
-
-  grid [ttk::frame .f.fStatus.rbc -padding "3 3 12 12" -relief solid -borderwidth 2] -column 1 -row 3 -sticky nwes
-  grid [ttk::label .f.fStatus.rbc.name -text "RBC"] -column 0 -row 0 -padx 5 -pady 5 -sticky we
-  grid [ttk::label .f.fStatus.rbc.uptimeX -text "Uptime:"] -column 0 -row 1 -padx 5 -pady 5 -sticky we
-  grid [ttk::label .f.fStatus.rbc.uptime -textvariable RBCuptime] -column 1 -row 1 -padx 5 -pady 5 -sticky we
-
-  grid [ttk::frame .f.fStatus.tms -padding "3 3 12 12" -relief solid -borderwidth 2] -column 1 -row 4 -sticky nwes
-  grid [ttk::label .f.fStatus.tms.name -text "TMS"] -column 0 -row 0 -padx 5 -pady 5 -sticky we
-  grid [ttk::label .f.fStatus.tms.uptimeX -text "Status:"] -column 0 -row 1 -padx 5 -pady 5 -sticky we
-  grid [ttk::label .f.fStatus.tms.uptime -textvariable tmsStatus] -column 1 -row 1 -padx 5 -pady 5 -sticky we
-}
 
 proc ECframe {addr} {
 global nECframe entryFontSize
@@ -85,6 +69,9 @@ global nECframe entryFontSize
   grid [ttk::label .f.fStatus.t$addr.nLdeviceX -text "L: " ] -column 7 -row 3 -padx 5 -pady 5 -sticky we
   grid [ttk::label .f.fStatus.t$addr.nLdevice -textvariable N_LDEVICE($addr)] -column 8 -row 3 -padx 5 -pady 5 -sticky we
 }
+
+
+
 
 proc destroyTrainFrame {} {
 global nTrainFrame
@@ -130,6 +117,16 @@ proc getECstatus {} {
   sendCommand "ECstatus"
 }
 
+proc assignBaliseName {} { # Assign balise name
+global setBaliseName baliseID
+  sendCommand "aBN $baliseID $setBaliseName"
+  set setBaliseName ""
+}
+
+proc dumpAll {} {
+  sendCommand "dBL"
+}
+
 proc rqopr {} {
   sendCommand "Rq"
 }
@@ -158,6 +155,10 @@ global nTrainFrame
   .f.buttonT2 state disabled
   .f.buttonT3 state disabled
   .f.buttonT4 state disabled
+  .f.fStatus.balise.baliseNameInp state disabled
+  .f.fStatus.balise.setName state disabled
+  .f.fStatus.balise.dumpAll state disabled
+  
 }
 
 proc enableButtons {} {
@@ -172,7 +173,11 @@ global aColor nTrainFrame
   .f.buttonT2 state !disabled
   .f.buttonT3 state !disabled
   .f.buttonT4 state !disabled
+  .f.fStatus.balise.baliseNameInp state !disabled
+  .f.fStatus.balise.setName state !disabled
+  .f.fStatus.balise.dumpAll state !disabled
 }
+
 
 proc test1 { } {
   sendCommand "test1"
@@ -341,6 +346,33 @@ grid [ttk::button .f.buttonT4 -text "TEST4" -command test4] -column 5 -row 2 -st
 #grid [tk::scrollbar .f.sbv -orient vertical -command ".f.canvas yview"] -column 9 -row 3 -sticky ns
 
 grid [ttk::frame .f.fStatus -padding "3 3 3 3" -relief solid -borderwidth 2] -column 1 -row 4 -columnspan 8 -sticky nwes
+# -------------------------------------------------- Balise and Server frames
+  grid [ttk::frame .f.fStatus.server -padding "3 3 12 12" -relief solid -borderwidth 2] -column 1 -row 2 -sticky nwes
+  grid [ttk::label .f.fStatus.server.name -text "Server"] -column 0 -row 0 -padx 5 -pady 5 -sticky we
+  grid [ttk::label .f.fStatus.server.uptimeX -text "Uptime:"] -column 0 -row 1 -padx 5 -pady 5 -sticky we
+  grid [ttk::label .f.fStatus.server.uptime -textvariable serverUptime] -column 1 -row 1 -padx 5 -pady 5 -sticky we
+
+  grid [ttk::frame .f.fStatus.rbc -padding "3 3 12 12" -relief solid -borderwidth 2] -column 1 -row 3 -sticky nwes
+  grid [ttk::label .f.fStatus.rbc.name -text "RBC"] -column 0 -row 0 -padx 5 -pady 5 -sticky we
+  grid [ttk::label .f.fStatus.rbc.uptimeX -text "Uptime:"] -column 0 -row 1 -padx 5 -pady 5 -sticky we
+  grid [ttk::label .f.fStatus.rbc.uptime -textvariable RBCuptime] -column 1 -row 1 -padx 5 -pady 5 -sticky we
+
+  grid [ttk::frame .f.fStatus.tms -padding "3 3 12 12" -relief solid -borderwidth 2] -column 1 -row 4 -sticky nwes
+  grid [ttk::label .f.fStatus.tms.name -text "TMS"] -column 0 -row 0 -padx 5 -pady 5 -sticky we
+  grid [ttk::label .f.fStatus.tms.uptimeX -text "Status:"] -column 0 -row 1 -padx 5 -pady 5 -sticky we
+  grid [ttk::label .f.fStatus.tms.uptime -textvariable tmsStatus] -column 1 -row 1 -padx 5 -pady 5 -sticky we
+
+  grid [ttk::frame .f.fStatus.balise -padding "3 3 12 12" -relief solid -borderwidth 2] -column 2 -row 2 -rowspan 2 -sticky nwes
+  grid [ttk::label .f.fStatus.balise.name -text "HHT Balise Reader"] -column 0 -row 0 -padx 5 -pady 5 -sticky we
+  grid [ttk::label .f.fStatus.balise.baliseID -textvariable baliseID] -column 0 -row 1 -padx 5 -pady 5 -sticky we
+  grid [ttk::label .f.fStatus.balise.baliseName -textvariable baliseName] -column 1 -row 1 -padx 5 -pady 5 -sticky we
+  grid [ttk::entry .f.fStatus.balise.baliseNameInp -textvariable setBaliseName -width 10] -column 2 -row 1 -padx 5 -pady 5 -sticky we
+  grid [ttk::button .f.fStatus.balise.setName -text "Assign ID to balise" -command "assignBaliseName"] -column 3 -row 1 -padx 5 -pady 5 -sticky we
+  grid [ttk::label .f.fStatus.balise.status -textvariable baliseStatus] -column 0 -row 2 -padx 5 -pady 5 -sticky we
+  grid [ttk::button .f.fStatus.balise.dumpAll -text "Dump Balise List" -command "dumpAll"] -column 0 -row 3 -padx 5 -pady 5 -sticky we
+  grid [ttk::label .f.fStatus.balise.countX -text "Balise count (total/unassigned):"] -column 1 -columnspan 2 -row 3 -padx 5 -pady 5 -sticky we
+  grid [ttk::label .f.fStatus.balise.count -textvariable baliseCount] -column 3 -row 3 -padx 5 -pady 5 -sticky we
+ 
 
 disconnected
 openSocket

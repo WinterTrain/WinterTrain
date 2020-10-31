@@ -6,6 +6,7 @@
 // -------------------------------------- File names and defaults
 $SCREEN_LAYOUT_FILE = "screenLayout.sch";
 $SIGNALLING_LAYOUT_FILE = "signallingLayout.sch";
+$BALISE_DUMP_FILE = "baliseDump.php";
 $PT2_FILE = "PT2.php";
 $DIRECTORY = ".";
 
@@ -14,6 +15,11 @@ $GNETLIST_CMD = "/usr/bin/gnetlist";
 $PT1_PROJECT_NAME = "(n/a)";
 $PT1_DATE = "(n/a)";
 $PT1_AUTHOR ="(n/a)";
+
+// -------------------------------------- SignallingLayout rewrite
+
+// parameters are assumed common across all element types
+$DEFAULT_PARAM = ["ID" => "FF:FF:FF:FF:FF", "EC_addr" => "0", "EC_type" => "0", "EC_major" => "0", "EC_minor" => "0", "supervisionState" => "S", "HoldPoint" => "?", "type" => "MB"];
 
 //--------------------------------------- Text
 
@@ -49,14 +55,104 @@ if ($debug) {
   error_reporting(0);
 }
 switch ($command) {
+  case "":
+    print "No command given, try -h\n";
+  break;
   case "C":
     compilePT2();
   break;
+  case "D":
+  case "B":
+    print "Resetting ".($command == "B" ? "parameter ID" : "all parameters")." to default in:
+  $DIRECTORY/$SIGNALLING_LAYOUT_FILE
+";
+    modifySL();
+  break;
+  case "O":
+  case "U":
+    print "Updating ".($command == "O" ? "all" : "changed")." balises in:
+  $DIRECTORY/$SIGNALLING_LAYOUT_FILE
+reading new IDs from:
+  $DIRECTORY/$BALISE_DUMP_FILE
+";
+    require($BALISE_DUMP_FILE);
+    modifySL();
+  break;
+  default:
+    print "Error: Command $command not implemented (yet)\n";
 }
+
+function modifySL() {
+global $DIRECTORY, $SIGNALLING_LAYOUT_FILE, $command, $DEFAULT_PARAM, $baliseList, $refdes, $BALISE_DUMP_FILE;
+
+
+  $refdes = "";
+  if (rename("$DIRECTORY/$SIGNALLING_LAYOUT_FILE", "$DIRECTORY/{$SIGNALLING_LAYOUT_FILE}_OLD")) {
+    $slFh = fopen("$DIRECTORY/{$SIGNALLING_LAYOUT_FILE}_OLD", "r");
+    if ($newSlFh = fopen("$DIRECTORY/$SIGNALLING_LAYOUT_FILE", "w")) {
+      while ($line = fgets($slFh) ) {
+        $line = trim($line);
+//        print "Source: >$line<\n";
+        if (strpos($line, "C ") === 0) { // start of element found
+          $refdes = "";
+        }
+        if (strpos($line, "=") !== false) {
+          list($param,$value) = explode("=", trim($line));
+          switch ($param) {
+            case "refdes":
+              $refdes = $value;
+//              debugPrint ("refdes: $value");
+            break;
+            default:
+              switch ($command) {
+                case "B": // Set balise ID to default
+                if ($param == "ID") {
+                  $line = "ID=FF:FF:FF:FF:FF";
+                  debugPrint ("Changed element $refdes: $line");
+                }
+                break;
+                case "D": // Set all element parameters to default
+                  if (isset($DEFAULT_PARAM[$param])) {
+                    $line = "$param={$DEFAULT_PARAM[$param]}";              
+                    debugPrint ("Changed element $refdes: $line");
+                  }
+                break;
+                case "O": // Overwrite balise ID from balise dump
+                case "U": 
+                  if ($param == "ID")  {
+                    if ($refdes != "") {
+                      if (isset($baliseList[$refdes]) and ($command == "O" or $baliseList[$refdes]["dynName"])) {
+                        $line = "ID={$baliseList[$refdes]["ID"]}";
+                        debugPrint ("Changed element $refdes: $line");
+                      }
+                    } else {
+                      print "Error: Attribute \"ID\" is specified before attribute \"refdes\". Please correct BG symbol.\n";
+                      exit(1);
+                    }
+                  }
+                break;
+              }
+            break;
+          }
+        }
+        fwrite($newSlFh, "$line\n");
+      }
+    } else {
+      print "Error: Cannot create $DIRECTORY/$SIGNALLING_LAYOUT_FILE\n";
+      exit(1);
+    }
+  } else {
+    print "Error: Cannot rename $DIRECTORY/$SIGNALLING_LAYOUT_FILE to $DIRECTORY/{$SIGNALLING_LAYOUT_FILE}_OLD\n";
+  exit(1);
+  }
+}
+
 
 function readScreenLayout() {
 global $PT1, $HMI, $scFh, $xOffset, $yOffset, $UNIT_SIZE, $FRAME_X_WIDTH, $FRAME_Y_HIGHT, $SU_SIZE, $SD1X_SIZE, $SDY_SIZE, $P_OR, $TR_OR,
   $DIRECTORY, $SCREEN_LAYOUT_FILE, $symbolDebug;
+
+$HMI["label"] = array();
 
 // Find position of frame
   $scFh = fopen("$DIRECTORY/$SCREEN_LAYOUT_FILE", "r");
@@ -143,7 +239,7 @@ global $PT1, $HMI, $scFh, $xOffset, $yOffset, $UNIT_SIZE, $FRAME_X_WIDTH, $FRAME
           $length = 1;
         break;
         default:
-          Print "Warning: Unknown symbol \"{$param[6]}\"\n";
+          print "Warning: Unknown symbol \"{$param[6]}\"\n";
         break;
       }
     break;
@@ -186,20 +282,24 @@ global $PT1, $HMI, $scFh, $xOffset, $yOffset, $UNIT_SIZE, $FRAME_X_WIDTH, $FRAME
         case "HMI_tr3":
         case "HMI_tr_u":
         case "HMI_tr_d":
-          $HMI["baliseTrack"][$refdes]["balises"] = explode(",", $balises);
-          $HMI["baliseTrack"][$refdes]["or"] = $TR_OR[$device];
-          $HMI["baliseTrack"][$refdes]["x"] = $x;
-          $HMI["baliseTrack"][$refdes]["y"] = $y;
-          $HMI["baliseTrack"][$refdes]["l"] = $length;
-          if ($balises == "") {
-            print "Warning: No balises assigned to $refdes at ($x, $y)\n";
-          } else {
-            $balise = explode(",",$balises);
-            foreach ($balise as $name) {
-              if (!isset($PT1[$name])) {
-                Print "Warning: Unknown balise $name assigned to element $refdes at ($x, $y)\n";
+          if (!isset($HMI["baliseTrack"][$refdes])) {
+            $HMI["baliseTrack"][$refdes]["balises"] = explode(",", $balises);
+            $HMI["baliseTrack"][$refdes]["or"] = $TR_OR[$device];
+            $HMI["baliseTrack"][$refdes]["x"] = $x;
+            $HMI["baliseTrack"][$refdes]["y"] = $y;
+            $HMI["baliseTrack"][$refdes]["l"] = $length;
+            if ($balises == "") {
+              print "Warning: No balises assigned to $refdes at ($x, $y)\n";
+            } else {
+              $balise = explode(",",$balises);
+              foreach ($balise as $name) {
+                if (!isset($PT1[$name])) {
+                  print "Warning: Unknown balise $name assigned to element $refdes at ($x, $y)\n";
+                }
               }
             }
+          } else {
+            print "Warning: Dublicated balisetrack element $refdes at ($x, $y) - ignored.\n";
           }
         break;
         case "HMI_LABEL": // Generate HMI/labels 
@@ -261,7 +361,7 @@ global $PT1, $elementCount, $projectName, $projectDate, $projectAuthor;
       if (preg_match("/^[0-9a-fA-F]{2}[:][0-9a-fA-F]{2}[:][0-9a-fA-F]{2}[:][0-9a-fA-F]{2}[:][0-9a-fA-F]{2}$/", $element["ID"]) == 0){
         print "Error: Invalid balise ID format: \"{$element["ID"]}\", element $name\n";
       }
-      if (isset($baliseID[$element["ID"]])) {
+      if (isset($baliseID[$element["ID"]]) and $element["ID"] != "FF:FF:FF:FF:FF" and $element["ID"] != "00:00:00:00:00") {
         print "Error: Dublicated balise ID {$element["ID"]} found in elements $name and {$baliseID[$element["ID"]]}\n";
       }
       $baliseID[$element["ID"]] = $name;
@@ -274,7 +374,7 @@ global $PT1, $elementCount, $projectName, $projectDate, $projectAuthor;
     break;
     case "PF":
     case "PT":
-      if (($element["supervisionState"] == "P" or $element["supervision State"] == "F") and 
+      if (($element["supervisionState"] == "P" or $element["supervisionState"] == "F") and 
         ($element["EC"]["addr"] == 0 or ! is_int($element["EC"]["addr"]))) {
         print "Warning: No EC address assigned to  point $name having supervision state {$element["supervisionState"]} \n";
       }
@@ -348,17 +448,29 @@ fwrite($pt2Fh, "<?php
 
 
 function CmdLineParam() {
-global $debug, $SCREEN_LAYOUT_FILE, $SIGNALLING_LAYOUT_FILE, $PT2_FILE, $DIRECTORY, $element1, $element2, $argv, $PT1, $command, $symbolDebug;
+global $debug, $SCREEN_LAYOUT_FILE, $SIGNALLING_LAYOUT_FILE, $PT2_FILE, $DIRECTORY,$BALISE_DUMP_FILE, $element1, $element2, $argv, $PT1, $command, $symbolDebug;
   if (in_array("-h",$argv) or count($argv) == 1) {
     print "Usage: [option] COMMAND [PARAM]
-Generate PT2 data for the WinterTrain
+Generate PT2 data for the WinterTrain. All files are located in working directory unless option -D is called..
 COMMAND
-C                 Compile and verify PT2 data from input file \"signallingLayout.sch\" and \"screenLayout.sch\" into output file \"PT2.php\"
-                  All files located in working directory. 
+C                 Compile and verify PT2 data from input file \"$SIGNALLING_LAYOUT_FILE\" and \"$SCREEN_LAYOUT_FILE\" into output file \"$PT2_FILE\"
+                   
+D                 Set all element parameters in \"$SIGNALLING_LAYOUT_FILE\" to Default values overwriting any engineered values. Element names are not affected. 
+
+N                 Set all element Names in \"$SIGNALLING_LAYOUT_FILE\" to default values overwriting any engineered values. Element parameters are not affected.
+
+U                 Update ID of all balises in \"$SIGNALLING_LAYOUT_FILE\" to ID values found in \"$BALISE_DUMP_FILE\" marked as changed.
+
+O                 Overwrite ID of all balises in \"$SIGNALLING_LAYOUT_FILE\" to ID values found in \"$BALISE_DUMP_FILE\" ignoring any change marking.
+
+B                 Overwrite ID of all Balises in \"$SIGNALLING_LAYOUT_FILE\" to default ID = \"FF:FF:FF:FF:FF\".
+
+Commands D, N, U and O will rename the input file \"$SIGNALLING_LAYOUT_FILE\" to \"{$SIGNALLING_LAYOUT_FILE}_OLD\" and create a new \"$SIGNALLING_LAYOUT_FILE\"
                   
--D <dir>          use <dir> as working directory for all files. Must be given before -sc -si and -p2 in order to take effect.
+-D <dir>          use <dir> as directory for all files. Must be given before -bl -sc -si and -p2 in order to take effect.
 -sc <file>        read screenLayout from <file>
 -si <file>        read signalling layout from <file>
+-bl <file>        read balise list (for command U and O) from <file>
 -p2 <file>        write PT2 data to <file>
 -d                enable debug info
 -s                enable symbol debug info
@@ -368,20 +480,13 @@ C                 Compile and verify PT2 data from input file \"signallingLayout
   next($argv);
   while (list(,$opt) = each($argv)) {
     switch ($opt) {
-      case "d":
-        $command = "d";
-        list(,$element1) = each($argv);
-        list(,$element2) = each($argv);
-        if (!$element1 or !$element2) {
-          print "Error: command d requires two element names.\n";
-        exit(1);
-        }
-      break;
       case "C":
-        $command = "C";
-      break;
-      case "e":
-        $command = "e";
+      case "D":
+      case "N":
+      case "U":
+      case "O":
+      case "B":
+        $command = $opt;
       break;
       case "-sc":
         list(,$p) = each($argv);
@@ -409,7 +514,20 @@ C                 Compile and verify PT2 data from input file \"signallingLayout
           exit(1);
         }
         break;
-      case "-p2":
+      case "bl":
+        list(,$p) = each($argv);
+        if ($p) {
+          $BALISE_DUMP_FILE = $p;
+          if (!is_readable("$DIRECTORY/$BALISE_DUMP_FILE")) {
+            print "Error: option -bl: Cannot read $DIRECTORY/$BALISE_DUMP_FILE \n";
+            exit(1);
+          }
+        } else {
+          print "Error: option -bl: File name is missing \n";
+          exit(1);
+        }
+        break;
+        case "-p2":
         list(,$p) = each($argv);
         if ($p) {
           $P2_FILE = $p;
@@ -448,6 +566,13 @@ C                 Compile and verify PT2 data from input file \"signallingLayout
         print "Unknown option: $opt\n";
       exit(1);
     }
+  }
+}
+
+function debugPrint($txt) {
+global $debug;
+  if ($debug & 0x01) {
+    print "$txt\n";
   }
 }
 

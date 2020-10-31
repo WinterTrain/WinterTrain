@@ -39,7 +39,7 @@ T -5 1695 8 10 0 1 0 0 1
 device=PointTrailing_branchRight
 T 910 795 8 10 1 1 0 0 1
 refdes=P?
-T 195 -105 8 10 0 0 0 0 1
+T 200 -100 8 10 0 0 0 0 1
 element=PT
 T 195 -307 8 10 0 0 0 0 1
 EC_addr=0

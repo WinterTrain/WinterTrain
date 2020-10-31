@@ -12,6 +12,11 @@ const byte BROADCAST = 0; // RF12 header for broadcast
 const byte ID_MASK = 0x1F;
 const byte GROUP = 101;
 
+// RF12 Package type
+#define POLL_DMI 21
+#define HHT_REQUEST 50
+#define HHT_RESPONSE 51
+
 
 // TAG reader, type 7941E
 #define TR_START 1
@@ -26,14 +31,16 @@ const byte GROUP = 101;
 #define S_SELECT  1     // Function selector
 #define S_HHT     2     // HHT mode
 #define S_BALRD   3     // Balise reader
-#define S_DMI     4     // DMI
+#define S_DIST    4     // Distance lookup
+#define S_DMI     5     // DMI
 
 // fMode ---------------- Terminal mode selector
 #define F_DMI_T1  0
 #define F_DMI_T2  1
 #define F_DMI_T3  2
 #define F_BALRD   3
-#define F_HHT     4
+#define F_DIST    4
+#define F_HHT     5
 
 // modeSel -------------- DMI mode selector
 #define M_OFF 0
@@ -68,10 +75,11 @@ LiquidCrystal_I2C lcd(0x27, 20, 4); // set the LCD address to 0x27 for a 16 char
 // Timing
 unsigned long lastMillis, deltaMillis, thisMillis;
 long tagIndication, timerOBUtimeout;
-byte RBCmsg[10], baliseBuf[5], txQ[2];
+byte RBCmsg[12], baliseBuf[5], curBaliseBuf[5], prevBaliseBuf[5], txQ[2];
+char elementName[11] = "          ", prevElementName[11] = "          ";;
 
-byte state, fMode = F_BALRD, modeSel = M_OFF, dirSel = D_NEUTRAL, driveSel = V_STOP, dirSelSeq, train;
-boolean txRBC, txOBU, tagRead;
+byte state = S_SELECT, fMode = F_BALRD, modeSel = M_OFF, dirSel = D_NEUTRAL, driveSel = V_STOP, dirSelSeq, train;
+boolean txRBC, txOBU, tagRead, curBaliseKnown, prevBaliseKnown;
 
 byte obuID, dmiID, vReq;
 
@@ -100,16 +108,10 @@ void setup() {
   lcd.init();
   lcd.clear();
   lcd.backlight();
-  lcd.print(F("HHT vers. 01P02"));
-  delay(2000);
-  digitalWrite(HHT_PIN_RED2, LOW);
-  digitalWrite(HHT_PIN_BLUE, LOW);
-  digitalWrite(HHT_PIN_RED, LOW);
-  digitalWrite(HHT_PIN_YELLOW, LOW);
-  digitalWrite(HHT_PIN_GREEN, LOW);
+  lcd.print(F("HHT vers. 01P"));
+  delay(1500);
   lastMillis = millis();
-  state = S_SELECT;
-  startSelect();
+  printSelect();
 }
 
 void loop() {
@@ -129,7 +131,7 @@ void loop() {
 // -------------------------------------------- Menu processing
 void processKeys() {
   k1.update();  k2.update();  k3.update();  k4.update();
-  if (k1.pressed()) { // ---------------------------------------------- Mode selector
+  if (k1.pressed()) { // ---------------------------------------------- Key1 - Mode selector
     switch (state) {
       case S_SELECT: // ------------------------------------ Key Mode
         fMode = (fMode == F_HHT ? F_DMI_T1 : fMode + 1);
@@ -137,6 +139,7 @@ void processKeys() {
         break;
       case S_HHT:
       case S_BALRD:
+      case S_DIST:
         break;
       case S_DMI: // --------------------------------------- Key Mode
         modeSel = (modeSel == M_ATO ? M_OFF : modeSel + 1);
@@ -169,21 +172,45 @@ void processKeys() {
         break;
     }
   }
-  if (k2.pressed()) { // -------------------------------------------------- direction etc.
+  if (k2.pressed()) { // -------------------------------------------------- Key2 - direction etc.
     switch (state) {
-      case S_SELECT: // -------------------------------------- Key Vaelg
+      case S_SELECT: // -------------------------------------- Key Vaelg funktion
         lcd.clear();
         switch (fMode) {
-          case F_BALRD:             // Select Balise Reader
+          case F_BALRD:                                    // Select Balise Reader
             rf12_initialize(HHT_ID, RF12_868MHZ, GROUP);
             state = S_BALRD;
             lcd.print(F("Balise Laeser"));
+            lcd.setCursor(0, 1);
+            lcd.print(F("ID:"));
+            lcd.setCursor(0, 2);
+            lcd.print(F("Navn:"));
             clearKey1(); printLuk(); clearKey3(); printReset();
-            for (byte b = 0; b < 5; b++) baliseBuf[b] = 0; // clearprevious read
+            for (byte b = 0; b < 5; b++) {
+              baliseBuf[b] = 0; // clear balise reader
+              curBaliseBuf[b] = 0;
+              prevBaliseBuf[b] = 0;
+            }
             break;
-          case F_HHT:             // Select HHT
+          case F_DIST:                                     // Select Distance lookup
+            rf12_initialize(HHT_ID, RF12_868MHZ, GROUP);
+            state = S_DIST;
+            lcd.print(F("Afstandsopslag"));
+            lcd.setCursor(0, 2);
+            lcd.print(F("Afstand:"));
+            clearKey1(); printLuk(); clearKey3(); printReset();
+            for (byte b = 0; b < 5; b++) {
+              baliseBuf[b] = 0; // clear balise reader
+              curBaliseBuf[b] = 0;
+              prevBaliseBuf[b] = 0;
+            }
+            strcpy(elementName, "          ");
+            curBaliseKnown = false;
+            prevBaliseKnown = false;
+            break;
+          case F_HHT:                                      // Select HHT
             state = S_HHT;
-            lcd.print("HHT");
+            lcd.print(F("HHT"));
             clearKey1(); printLuk(); clearKey3(); clearKey4();
             break;
           case F_DMI_T1:          // Select DMI
@@ -207,15 +234,16 @@ void processKeys() {
         }
         break;
       case S_HHT: // -------------------------------------------- Key Luk
-      case S_BALRD: // ------------------------------------------ Key Luk
+      case S_BALRD:
+      case S_DIST:
         state = S_SELECT;
-        startSelect();
+        printSelect();
         break;
       case S_DMI:
         switch (modeSel) {
           case M_OFF: // ------------------------------------- Key Luk
             state = S_SELECT;
-            startSelect();
+            printSelect();
             modeSel = M_OFF;
             dirSel = D_NEUTRAL;
             driveSel = V_STOP;
@@ -260,15 +288,30 @@ void processKeys() {
         }
         break;
       case S_BALRD: // -------------------------------------- Key Reset
-        for (byte b = 0; b < 5; b++) baliseBuf[b] = 0; // clearprevious read balise
-        lcd.setCursor(3, 1);
-        lcd.print(F("              "));
+      case S_DIST:
+        curBaliseKnown = prevBaliseKnown = false;
+        for (byte b = 0; b < 5; b++) {
+          baliseBuf[b] = 0; // clear balise reader
+          curBaliseBuf[b] = 0;
+          prevBaliseBuf[b] = 0;
+        }
+        strcpy(elementName, "          ");
+        strcpy(prevElementName, "          ");
+        digitalWrite(HHT_PIN_RED, LOW); // Clear old indication
+        digitalWrite(HHT_PIN_GREEN, LOW);
+        if (state == S_BALRD) {
+          clearSpace(4, 1, 14);
+          clearSpace(6, 2, 10);
+        } else {
+          clearSpace(0, 1, 20);
+          clearSpace(9, 2, 11);
+        }
         break;
     }
   }
 }
 
-void startSelect() {
+void printSelect() {
   lcd.clear();
   lcd.print(F("Vaelg funktion"));
   printFMode();
@@ -276,28 +319,36 @@ void startSelect() {
   lcd.print(F("Mode Vaelg"));
   clearKey3();
   clearKey4();
+  digitalWrite(HHT_PIN_BLUE, LOW);
+  digitalWrite(HHT_PIN_RED, LOW);
+  digitalWrite(HHT_PIN_RED2, LOW);
+  digitalWrite(HHT_PIN_YELLOW, LOW);
+  digitalWrite(HHT_PIN_GREEN, LOW);
 }
 
 void printFMode() {
   lcd.setCursor(0, 2);
   switch (fMode) {
     case F_HHT:
-      lcd.print(F("HHT          "));
+      lcd.print(F("HHT           "));
       break;
     case F_BALRD:
-      lcd.print(F("Balise Laeser"));
+      lcd.print(F("Balise Laeser "));
+      break;
+    case F_DIST:
+      lcd.print(F("Afstandsopslag"));
       break;
     case F_DMI_T1:
     case F_DMI_T2:
     case F_DMI_T3:
-      lcd.print("DMI ");
+      lcd.print(F("DMI "));
       lcd.print(trainTxt[fMode]);
       break;
   }
 }
 
 void clearKey() {
-  lcd.print("  -  ");
+  lcd.print(F("  -  "));
 }
 
 void clearKey1() {
@@ -322,17 +373,17 @@ void clearKey4() {
 
 void printMode() {
   lcd.setCursor(0, 3);
-  lcd.print("Mode ");
+  lcd.print(F("Mode "));
 }
 
 void printLuk() {
   lcd.setCursor(5, 3);
-  lcd.print("Luk  ");
+  lcd.print(F("Luk  "));
 }
 
 void printReset() {
   lcd.setCursor(15, 3);
-  lcd.print("Reset");
+  lcd.print(F("Reset"));
 }
 
 
@@ -361,17 +412,24 @@ void printDriveSel() {
   lcd.print(driveSel - 1);
 }
 
+void clearSpace(byte x, byte y, byte count) {
+  lcd.setCursor(x, y);
+  for (byte b = 0; b < count; b++) lcd.print(" ");
+}
+
+
 // --------------------------------------- DMI functions
 
 
 // --------------------------------------------------------------------------------- Radio
 
 void rf12Transceive() {
+  boolean hit;
 
   if (rf12_recvDone() and rf12_crc == 0) {
     switch (state) {
       case S_DMI:
-        if  (modeSel != M_OFF and (rf12_hdr & ID_MASK) == obuID and rf12_data[0] == dmiID) {
+        if  (modeSel != M_OFF and (rf12_hdr & ID_MASK) == obuID and rf12_data[0] == POLL_DMI) {
           vReq = rf12_data[2];
           lcd.setCursor(15, 1);
           lcd.print(vReq, DEC);
@@ -387,6 +445,85 @@ void rf12Transceive() {
         }
         break;
       case S_BALRD:
+      case S_DIST:
+        if  ((rf12_hdr & ID_MASK) == RBC_ID) {
+          switch (rf12_data[0]) { // packet type
+            case HHT_RESPONSE:
+              switch (rf12_data[1]) {
+                case 1: // Balise known
+                case 2: // Balise Unknown
+                  hit = true;
+                  for (byte x = 0; x < 5; x++) {
+                    if (rf12_data[x + 2] != curBaliseBuf[x]) {
+                      hit = false;
+                      break;
+                    }
+                  }
+                  if (hit) { // RBC response is valid for current balise
+                    switch (rf12_data[1]) { // response code
+                      case 1: // Balise known
+                        digitalWrite(HHT_PIN_RED, LOW);
+                        digitalWrite(HHT_PIN_GREEN, HIGH);
+                        for (byte x = 0; x < 10; x++) {
+                          elementName[x] = (char)rf12_data[x + 7];
+                        }
+                        curBaliseKnown = true;
+                        if (state == S_DIST and curBaliseKnown and prevBaliseKnown) { // Request distance
+                          for (byte x = 0; x < 5; x++) {
+                            RBCmsg[x + 2] = curBaliseBuf[x];
+                            RBCmsg[x + 7] = prevBaliseBuf[x];
+                          }
+                          RBCmsg[0] = HHT_REQUEST; // Packet type: HHT request
+                          RBCmsg[1] = 2; // Function: Distance lookup
+                          txRBC = true;
+                        }
+                        break;
+                      case 2: // Balise unknown
+                        digitalWrite(HHT_PIN_RED, HIGH);
+                        digitalWrite(HHT_PIN_GREEN, LOW);
+                        strcpy(elementName, "(ukendt)  ");
+                        break;
+                    }
+                    if (state == S_BALRD) {
+                      lcd.setCursor(6, 2);
+                    } else {
+                      lcd.setCursor(10, 1);
+                    }
+                    lcd.print(elementName);
+                  } // else ignore packet
+                  break;
+                case 3: // Distance up
+                case 4: // Down
+                case 5: // Ambiguous
+                  hit = true;
+                  for (byte x = 0; x < 5; x++) {
+                    if (rf12_data[x + 2] != curBaliseBuf[x]) {
+                      hit = false;
+                      break;
+                    }
+                  }
+                  if (hit) {
+                    lcd.setCursor(9, 2);
+                    switch (rf12_data[1]) {
+                      case 3:
+                        lcd.print(word(rf12_data[7], rf12_data[8]), DEC);
+                        break;
+                      case 4:
+                        lcd.print("-");
+                        lcd.print(word(rf12_data[7], rf12_data[8]), DEC);
+                        break;
+                      case 5:
+                        lcd.print(F("Tvetydig"));
+                        break;
+                    }
+                  } else {
+                    clearSpace(9, 2, 10);
+                  }
+                  break;
+              }
+              break;
+          }
+        }
         break;
     }
   }
@@ -405,18 +542,40 @@ void rf12Transceive() {
 // ------------------------------------ Balise reader
 
 void checkBalise() {
-  if (state == S_BALRD) {
+  if (state == S_BALRD or state == S_DIST) {
     if (readBalise()) {
       digitalWrite(HHT_PIN_RED2, HIGH);
+      digitalWrite(HHT_PIN_RED, LOW); // Clear old indication
+      digitalWrite(HHT_PIN_GREEN, LOW);
       tagIndication = 100;
       tagRead = true;
-      lcd.setCursor(0, 1);
-      lcd.print("ID:                 ");
-      lcd.setCursor(4, 1);
       for (byte x = 0; x < 5; x++) {
-        lcd.print(baliseBuf[x], HEX);
-        lcd.print(" ");
+        prevBaliseBuf[x] = curBaliseBuf[x];
+        curBaliseBuf[x] = baliseBuf[x];
       }
+      strcpy(prevElementName, elementName);
+      prevBaliseKnown = curBaliseKnown;
+      curBaliseKnown = false;
+      switch (state) {
+        case S_BALRD:
+          lcd.setCursor(4, 1);
+          for (byte x = 0; x < 5; x++) {
+            lcd.print(curBaliseBuf[x], HEX);
+            lcd.print(" ");
+          }
+          clearSpace(6, 2, 10);
+          break;
+        case S_DIST:
+          clearSpace(0, 1, 20);
+          clearSpace(9, 2, 10);
+          lcd.setCursor(0, 1);
+          lcd.print(prevElementName);
+          break;
+      }
+      for (byte x = 0; x < 5; x++) RBCmsg[x + 2] = curBaliseBuf[x];
+      RBCmsg[0] = HHT_REQUEST; // Packet type: HHT request
+      RBCmsg[1] = 1; // Function: Balise lookup
+      txRBC = true;
     }
   }
 }
