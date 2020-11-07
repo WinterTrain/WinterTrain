@@ -39,8 +39,8 @@ $MSGLOG = "Log/RBCIL.log";
 $radioLinkAddr = 150;
 $SR_MAX_SPEED = 100;
 $SH_MAX_SPEED = 48;
-$ATO_MAX_SPEED = 45;
-$FS_MAX_SPEED = 50;
+$ATO_MAX_SPEED = 55;
+$FS_MAX_SPEED = 100;
 $restorePos = true;
 
 // ---------------------------------------- Timing
