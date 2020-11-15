@@ -165,7 +165,9 @@ void setup() {
   Serial.begin(9600); // for TAG reader
   pinMode(OBU_PIN_MOTOR, OUTPUT);
   pinMode(OBU_PIN_DIR_CONTROL, OUTPUT);
+#ifdef BEAT
   pinMode(OBU_PIN_RED, OUTPUT);
+#endif
 #ifdef OBU_PIN_BLUE
   pinMode(OBU_PIN_BLUE, OUTPUT);
   digitalWrite(OBU_PIN_BLUE, LOW);
@@ -178,7 +180,9 @@ void setup() {
   pinMode(OBU_PIN_TRACK_DOWN, INPUT);
   analogWrite(OBU_PIN_MOTOR, 0);
   //  delay(50000); // to ensure stabel track voltage when determing nominel direction
+#ifdef BEAT
   digitalWrite(OBU_PIN_RED, HIGH);
+#endif
 #ifdef OBU_PIN_BLUE
   digitalWrite(OBU_PIN_BLUE, HIGH);
 #endif
@@ -513,7 +517,7 @@ byte dirMode() { // compute direction Order
       }
       break;
     case ATO:
-      dirOrder = MAdir(); // retningsskift kun ved stilstand -------------------------------------------------- FIXME 
+      dirOrder = MAdir(); // retningsskift kun ved stilstand -------------------------------------------------- FIXME
       break;
     default:
       dirOrder = NEUTRAL;
@@ -554,8 +558,8 @@ void traction() {
       digitalWrite(OBU_PIN_DIR_CONTROL, HIGH);
 #else
       digitalWrite(OBU_PIN_DIR_CONTROL, LOW);
-#endif      
-driveDir = FORWARD;
+#endif
+      driveDir = FORWARD;
       vReq = driveOrder;
       nomDirOrder = nomDriveDir = (nomDir == UP ? UP : DOWN);
       break;

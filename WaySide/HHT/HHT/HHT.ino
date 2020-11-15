@@ -432,6 +432,8 @@ void rf12Transceive() {
         if  (modeSel != M_OFF and (rf12_hdr & ID_MASK) == obuID and rf12_data[0] == POLL_DMI) {
           vReq = rf12_data[2];
           lcd.setCursor(15, 1);
+          lcd.print("   ");
+          lcd.setCursor(15, 1);
           lcd.print(vReq, DEC);
           digitalWrite(HHT_PIN_RED2, rf12_data[1] & 0x10);
           digitalWrite(HHT_PIN_RED, rf12_data[1] & 0x04);

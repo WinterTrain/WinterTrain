@@ -109,13 +109,14 @@ byte devReg[N_PREG + N_LREG]; // mirror for shift registers for L and P devices
 byte nextElement = 0; // Index of next unused element descriptor; equals number of configured elements
 elementType element[N_ELEMENT];
 
-
 void setup() {
   Serial.begin(115200);
   pinMode(CLK, OUTPUT);
   pinMode(DATA, OUTPUT);
   pinMode(STROBE, OUTPUT);
+#ifdef BLINK
   pinMode(BLINK, OUTPUT);
+#endif
 #ifdef RADIO_LINK_ID
   rf12_initialize(RADIO_LINK_ID, RF12_868MHZ, GROUP);
 #endif
@@ -131,11 +132,13 @@ void loop() {
   Abus.poll();
   updateLPdevice();
   lc++;
+#ifdef BLINK
   if (lc == 5) {
     lc = 0;
     blink = !blink;
     digitalWrite(BLINK, blink);
   }
+#endif
   wdt_reset();
 }
 
@@ -416,7 +419,7 @@ boolean AbusRecThis() {
                 } else {
                   Abus.toM[3] = 1; // invalid device number 1
                 }
-                break;              case 41: // Light signal, 2 lantern, 2 aspect   ---------- single U-device
+              break;              case 41: // Light signal, 2 lantern, 2 aspect   ---------- single U-device
                 if (Abus.fromM[5] > 0 and Abus.fromM[5] <= N_UDEVICE) {
                   element[nextElement].type = Abus.fromM[4];
                   element[nextElement].deviceMajor = Abus.fromM[5];
@@ -496,7 +499,7 @@ boolean AbusRecThis() {
                 } else {
                   Abus.toM[3] = 1; // invalid device number 1
                 }
-                break;              
+                break;
               case 40: // Signal, 2 lantern, 2 aspects
               case 42: // Signal, 2 lantern, 3 aspects
                 if (Abus.fromM[5] > 0 and Abus.fromM[5] + 1 <= N_LDEVICE) {
@@ -744,8 +747,8 @@ void elementOrder(byte index, byte order) {
 
 void elementStatus() {
   Abus.toM[3] = nextElement;
-  for (byte i = 0; i < nextElement; i +=2) {
-    Abus.toM[i/2 + 4] = element[i].cStatus << 4 | element[i + 1].cStatus;
+  for (byte i = 0; i < nextElement; i += 2) {
+    Abus.toM[i / 2 + 4] = element[i].cStatus << 4 | element[i + 1].cStatus;
   }
 }
 
@@ -796,5 +799,3 @@ void timing() {
     lastMillis = thisMillis;
   }
 }
-
-

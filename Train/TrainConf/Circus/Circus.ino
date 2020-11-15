@@ -22,40 +22,36 @@
 #define V_OFFSET 30
 #define MIN_DIST 2 // Distance (wheel turn) below this will be ignored
 
-#define N_SABALISES 18 // balise list for "stop if in shunting"
+#define N_SABALISES 12 // balise list for "stop if in shunting"
 // Distances engineered in "wheel turns". OBU will start braking at that distance, allow for 80 cm braking distance
 #define SA_BALISES { \
-  /* Christianshavn, end station, braking point at 100 cm in rear of buffer stop */\
+  /* Christianshavn, end station, braking point at 80 cm in rear of buffer stop */\
   \  
-  {{0x1E, 0x00, 0xEC, 0xF9, 0xE1},  -10 },    /* BG16  47 cm */\
-  {{0x1F, 0x00, 0x61, 0xE5, 0x87},  -13 },    /* BG17  67 cm */\
-  {{0x1F, 0x00, 0x84, 0x7C, 0xA5},  -10 },    /* BG19  47 cm */\
-  {{0x1E, 0x00, 0x90, 0x0C, 0xA5},  -11 },    /* BG20  57 cm */\
-  {{0x1E, 0x00, 0x98, 0xB1, 0xC9},  -24 },    /* BG21 119 cm */\
-  {{0x76, 0x00, 0x0C, 0xE3, 0xA8},  -60 },    /* BG22 300 cm */\
+  {{0x1F, 0x00, 0x69, 0xC9, 0x3C},  -20 },    /* BG03  -97 cm*/\
+  {{0x1E, 0x00, 0x8E, 0x70, 0x11},  -15 },    /* BG04  -73 cm*/\
+  {{0x1F, 0x00, 0x69, 0xA9, 0x3C},  -24 },    /* BG05 -120 cm*/\
   \
-  /* Station C */\
-  {{0x1F, 0x00, 0x50, 0x3C, 0x80}, -13 },    /* BG45 66 cm */\
-  {{0x1E, 0x00, 0xEA, 0xE8, 0xE9}, -37 },    /* BG46 183 cm */\
-  {{0x73, 0x00, 0x56, 0x93, 0xAA},  -2 },    /* BG47 11 cm */\
-  {{0x76, 0x00, 0x0D, 0x0B, 0xF7},  -7 },    /* BG48 33 cm */\
-  {{0x1F, 0x00, 0x4D, 0x6A, 0x29},  -4 },    /* BG49 21 cm */\
-  {{0x1F, 0x00, 0x13, 0xC9, 0x5E},  -9 },    /* BG50 43 cm */\
+  /* Station Langtbortistan */\
+  {{0x1E, 0x00, 0xEA, 0xE8, 0xE9},  21 },    /* BG27 104 cm */\
+  {{0x1E, 0x00, 0xB0, 0x50, 0x33},  15 },    /* BG28  74 cm */\
+  {{0x1E, 0x00, 0x90, 0x0C, 0x8B},  14 },    /* BG29  69 cm */\
+  {{0x76, 0x00, 0x0C, 0xFC, 0xCB},  3  },    /* BG30  15 cm */\
+  {{0x73, 0x00, 0x56, 0xD9, 0xB2},  2  },    /* BG31  10 cm */\
   \
-  /* Station D, depot track */\
-  {{0x1E, 0x00, 0x90, 0x0C, 0x8B},  22 },    /* BG01 110 cm */\
-  {{0x73, 0x00, 0x70, 0x98, 0x69},  12 },    /* BG02  60 cm */\
-  {{0x76, 0x00, 0x0C, 0xFC, 0xCB},  35 },    /* BG03 175 cm */\
-  {{0x74, 0x00, 0x10, 0xF3, 0x3E},  35 },    /* BG04 175 cm */\
-  {{0x76, 0x00, 0x0C, 0xA4, 0x29},  31 },    /* BG05 154 cm */\
-  {{0x73, 0x00, 0x6E, 0xC8, 0x15},  31 },    /* BG06 154 cm */\
+  /* Station Christiania, Signal S9 */\
+  {{0x76, 0x00, 0x0C, 0xFA, 0x7D},   -1 },    /* BG20   -5 cm */\
+  {{0x74, 0x00, 0x15, 0x55, 0x26},  -24 },    /* BG22 -120 cm */\
+  \
+  /* Station Christiania, Signal S10 */\
+  {{0x73, 0x00, 0x70, 0x98, 0x69},  31 },    /* BG12 155 cm*/\
+  {{0x73, 0x00, 0x56, 0x9F, 0xA1},   6 },    /* BG13  30 cm */\
 };
 
 
 // OBU HW assignment
 #define OBU_PIN_MOTOR 5         //  PWM signal to moter control. JeeNode port 2
                                 // Note: PWM frequency is set for pin 5 in setup()
-#define OBU_PIN_REVERSE_DIR A1  // Direction control. JeeNode port 2
+#define OBU_PIN_DIR_CONTROL A1  // Direction control. JeeNode port 2
 #define OBU_PIN_TRACK_UP 4      // JeeNode port 1
 #define OBU_PIN_TRACK_DOWN A0   // JeeNode port 1
 //#define OBU_PIN_BLUE  A2      // Blue LED, JeeNode port 3

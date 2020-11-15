@@ -37,10 +37,10 @@ $MSGLOG = "Log/RBCIL.log";
 
 // ------------------------------------------------------------------------ To be moved to conf. file
 $radioLinkAddr = 150;
-$SR_MAX_SPEED = 100;
-$SH_MAX_SPEED = 48;
-$ATO_MAX_SPEED = 55;
-$FS_MAX_SPEED = 100;
+$SR_MAX_SPEED = 70;
+$SH_MAX_SPEED = 50;
+$ATO_MAX_SPEED = 50;
+$FS_MAX_SPEED = 60;
 $restorePos = true;
 
 // ---------------------------------------- Timing

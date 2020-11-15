@@ -25,4 +25,4 @@ const int OBU_TIMEOUT = 1000; // Timeout for lost connection to OBU
 
 const byte obuIDlist[] = {20, 22, 24};
 const byte dmiIDlist[] = {21, 23, 25};
-char trainTxt[3][8] = {"Cargo  ", "Circus ", "Shunt  "};
+char trainTxt[3][9] = {"Gods    ", "Cirkus  ", "Passager"};

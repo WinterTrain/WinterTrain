@@ -8,6 +8,10 @@ $ABUS = "cbu";
 $DATA_FILE = "";
 $addr = 0;
 
+$ABUS_GATEWAYaddress = "10.0.0.201";
+$ABUS_GATEWAYport = 9200;
+
+
 // --------------------------------------- Text
 $CONF_TXT = array(0 => "Configuration accepted", 1 => "Invalid major device number", 2 => "Invalid minor device number", 10 => "Element capacity exceeded", 11 => "Unknown configuration command", 12 => "Unknown element type"); 
 
@@ -20,8 +24,9 @@ cmdLineParam();
   } else {
     error_reporting(0);
   }
-include '/home/jabe/scripts/AbusMasterLib.php'; // must be included at global level
-
+  if ($ABUS == "cbu") {
+      include '/home/jabe/scripts/AbusMasterLib.php'; // must be included at global level
+  }
 switch ($command) {
   case "c":
     print "Clear EC ($addr)\n";
