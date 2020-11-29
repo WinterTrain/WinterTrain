@@ -1,5 +1,8 @@
 // Train specific configuration
-// --------------------------------------------------- Cargo train (new)
+// ------------------------------------------------- Cargo train (new)
+
+// define either OVERRIDE_SR, OVERRIDE_SH or none to allow OBU switch to override RBC mode authority
+#define OVERRIDE_SR
 
 // RF12
 #define OBU_ID 20 // RF12 node ID of train
@@ -18,7 +21,6 @@
 #define STOP_MA 3 // Distance (wheel turn) below this will show red on DMI
 #define V_OFFSET 30
 #define MIN_DIST 2 // Distance (wheel turn) below this will be ignored
-
 
 // Specific engineering ------------------------ Stop if in shunting
 // Balises commanding "stop if in shunting"
@@ -65,8 +67,6 @@
 
 #define TAG_READER_7941E        // Balise reader type 7941E
 //#define TAG_READER_RDM6300      // Balise reader type RDM6300
-
-#define OVERRIDE_SR yes
 
 // DMI HW assignment
 #define DMI_PIN_BLUE 4

@@ -37,10 +37,10 @@ $MSGLOG = "Log/RBCIL.log";
 
 // ------------------------------------------------------------------------ To be moved to conf. file
 $radioLinkAddr = 150;
-$SR_MAX_SPEED = 70;
-$SH_MAX_SPEED = 50;
-$ATO_MAX_SPEED = 50;
-$FS_MAX_SPEED = 60;
+$SR_MAX_SPEED_DEFAULT = 70;
+$SH_MAX_SPEED_DEFAULT = 50;
+$ATO_MAX_SPEED_DEFAULT = 50;
+$FS_MAX_SPEED_DEFAULT = 60;
 $restorePos = true;
 
 // ---------------------------------------- Timing
@@ -2149,7 +2149,11 @@ global $trainData, $trainIndex, $SRallowed, $SHallowed, $FSallowed, $ATOallowed;
     $train["front"] = D_UDEF;
     $train["pwr"] = 0;
     $train["MAreceived"] = 0;
-    $train["maxSpeed"] = 0;
+    $train["maxSpeed"] = 0; // Actual allowed speed
+    if (!isset($train["SRmaxSpeed"])) $train["SRmaxSpeed"] = $SR_MAX_SPEED_DEFAULT;
+    if (!isset($train["SHmaxSpeed"])) $train["SHmaxSpeed"] = $SH_MAX_SPEED_DEFAULT;
+    if (!isset($train["FSmaxSpeed"])) $train["FSmaxSpeed"] = $FS_MAX_SPEED_DEFAULT;
+    if (!isset($train["ATOmaxSpeed"])) $train["ATOmaxSpeed"] = $ATO_MAX_SPEED_DEFAULT;
     $train["prevBaliseName"] = "00:00:00:00:00";
     $train["prevDistance"] = 0;
     $train["dataValid"] = "VOID";
@@ -2194,22 +2198,22 @@ global $trainIndex, $trainData, $balisesID, $SR_MAX_SPEED, $SH_MAX_SPEED, $ATO_M
       switch ($train["reqMode"]) {
         case M_SR:
           $train["authMode"] = $train["SRallowed"] ? M_SR : M_N;
-          $train["maxSpeed"] = $SR_MAX_SPEED;
+          $train["maxSpeed"] = $train["SRmaxSpeed"];
         break;
         case M_SH:
           $train["authMode"] = $train["SHallowed"] ? M_SH : M_N;
-          $train["maxSpeed"] = $SH_MAX_SPEED;
+          $train["maxSpeed"] = $train["SHmaxSpeed"];
         break;
         case M_FS:
           $train["authMode"] = $train["FSallowed"] ? M_FS : M_N;
-          $train["maxSpeed"] = $FS_MAX_SPEED;
+          $train["maxSpeed"] = $train["FSmaxSpeed"];
           if (!$train["MAreceived"]) { // MA request
           // generate MA  
           }
         break;
         case M_ATO:
           $train["authMode"] = $train["ATOallowed"] ? M_ATO : M_N;
-          $train["maxSpeed"] = (isset($train["ATOmaxSpeed"]) ? $train["ATOmaxSpeed"] : $ATO_MAX_SPEED);
+          $train["maxSpeed"] = $train["ATOmaxSpeed"];
           if (!$train["MAreceived"]) { // MA request
           // generate MA  
           }
@@ -3140,7 +3144,7 @@ global $EC, $clients, $clientsData, $inChargeMCe, $run, $lockedRoutes, $trainDat
 ?>");
       fclose($blFh);
       } else {
-          fwrite(STDERR,"Warning: Cannot open Balise Liste file: $DIRECTORY/$BL_FILE\n");
+          fwrite(STDERR,"Warning: Cannot open Balise List file: $DIRECTORY/$BL_FILE\n");
       }
     break;
     case "Rq": // request operation

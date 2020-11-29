@@ -8,7 +8,7 @@ ksort($timeTables);
 print "<html>
 
 <body>
-<h1>WinterTrain 2019</h1>
+<h1>WinterTrain 2020</h1>
 Welcome to the WinterTrain at Christianshavns B&aringdudlejning og Café.
 
 <p><a href='http://w57.dk/doku.php?id=it:wintertrainv4:start'>Project Wiki</a>

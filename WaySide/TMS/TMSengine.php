@@ -356,7 +356,7 @@ global $trainData, $tts, $now;
           sendETD($trainIndex,0); // clear indication at HMI
         }
       break;
-      case RS_WAIT_TRAIN:        
+      case RS_WAIT_TRAIN:     // FIXME   
       break;
       case RS_COMPLETED:
         $route = $tts[$train["trn"]]["routeTable"][$train["routeIndex"]];
@@ -418,24 +418,24 @@ global $tts, $trainData, $run;
   switch ($param[0]) {
     case "setTRN": // trainIndex (trn)
       if (isset($param[1])) {
-      if (isset($param[2])) {
-        if (array_key_exists($param[2],$tts)) { // trn known in time table
+        if (isset($param[2])) {
+          if (array_key_exists($param[2],$tts)) { // trn known in time table
+            resetTrainState($trainData[$param[1]]);
+            $trainData[$param[1]]["trn"] = $param[2];
+            $trainData[$param[1]]["trnState"] = TRN_NORMAL; 
+            sendETD($param[1],0); // clear indication at HMI
+          } else {
+            resetTrainState($trainData[$param[1]]);
+            $trainData[$param[1]]["trn"] = $param[2];
+            $trainData[$param[1]]["trnState"] = TRN_FAILED; 
+            sendETD($param[1],0); // clear indication at HMI
+          }
+        } else { // clear TRN for train
           resetTrainState($trainData[$param[1]]);
-          $trainData[$param[1]]["trn"] = $param[2];
-          $trainData[$param[1]]["trnState"] = TRN_NORMAL; 
-          sendETD($param[1],0); // clear indication at HMI
-        } else {
-          resetTrainState($trainData[$param[1]]);
-          $trainData[$param[1]]["trn"] = $param[2];
-          $trainData[$param[1]]["trnState"] = TRN_FAILED; 
+          $trainData[$param[1]]["trnState"] = TRN_UNKNOWN; 
           sendETD($param[1],0); // clear indication at HMI
         }
-      } else { // clear TRN for train
-        resetTrainState($trainData[$param[1]]);
-        $trainData[$param[1]]["trnState"] = TRN_UNKNOWN; 
-        sendETD($param[1],0); // clear indication at HMI
-      }
-      sendTRNstate($param[1], $trainData[$param[1]]["trnState"]);
+        sendTRNstate($param[1], $trainData[$param[1]]["trnState"]);
       } else {
         print "Warning: RBCIL command setTRN without train index\n";
       }
@@ -455,7 +455,7 @@ global $tts, $trainData, $run;
       $run = false;
     break;
     default:
-      errLog("Ups, unimplemented notification {$param[0]}");
+      errLog("Ups, unimplemented notification frim RBCIL {$param[0]}");
   }
 }
 
