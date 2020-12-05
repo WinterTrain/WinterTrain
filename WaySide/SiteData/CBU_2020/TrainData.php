@@ -14,7 +14,7 @@ $trainData = [
   "lengthFront" => 41,
   "lengthBehind" => 46,
   "wheelFactor" => 5,
-  "ATOmaxSpeed" = 40;
+  "ATOmaxSpeed" => 40,
   ],
 2 => [
   "ID" => 24,

@@ -1,17 +1,236 @@
 <?php
 // ------------------------------------------------- Sources
 $PT2_SIGNALLING_LAYOUT_FILE = "/home/jabe/Desktop/Projekter/Git/WinterTrain/WaySide/SiteData/CBU_2020/signallingLayout.sch";
-$PT2_SIGNALLING_LAYOUT_FILE_DATE = "2020-11-19 15:41:47";
+$PT2_SIGNALLING_LAYOUT_FILE_DATE = "2020-12-04 15:24:35";
 $PT2_SCREEN_LAYOUT_FILE = "/home/jabe/Desktop/Projekter/Git/WinterTrain/WaySide/SiteData/CBU_2020/screenLayout.sch";
-$PT2_SCREEN_LAYOUT_FILE_DATE = "2020-11-15 14:40:47";
-$PT2_GENERATION_TIME = "2020-11-19 15:42:22";
+$PT2_SCREEN_LAYOUT_FILE_DATE = "2020-12-04 12:09:28";
+$PT2_GENERATION_TIME = "2020-12-04 15:24:39";
 $PT1_PROJECT_NAME = "WinterHut _2020";
-$PT1_DATE = "2020-11-07";
+$PT1_DATE = "2020-12-04";
 $PT1_AUTHOR = "JB";
 $HMI_PROJECT_NAME = "WinterHut_2020";
 
 // -------------------------------------------------- PT1
 $PT1 = array (
+  'BG202' => 
+  array (
+    'element' => 'BL',
+    'U' => 
+    array (
+      'name' => 'BG204',
+      'dist' => 1,
+    ),
+    'D' => 
+    array (
+      'name' => 'BS3',
+      'dist' => 1,
+    ),
+    'ID' => 'FF:FF:FF:FF:FF',
+  ),
+  'BG204' => 
+  array (
+    'element' => 'BL',
+    'U' => 
+    array (
+      'name' => 'S104',
+      'dist' => 1,
+    ),
+    'D' => 
+    array (
+      'name' => 'BG202',
+      'dist' => 1,
+    ),
+    'ID' => 'FF:FF:FF:FF:FF',
+  ),
+  'S101' => 
+  array (
+    'element' => 'SD',
+    'U' => 
+    array (
+      'name' => 'BG02',
+      'dist' => 1,
+    ),
+    'D' => 
+    array (
+      'name' => 'S104',
+      'dist' => 10,
+    ),
+    'type' => 'MB',
+    'EC' => 
+    array (
+      'addr' => 0,
+      'type' => 0,
+      'majorDevice' => 0,
+    ),
+    'HMI' => 
+    array (
+      'x' => 3,
+      'y' => 4,
+      'l' => 1,
+    ),
+  ),
+  'S104' => 
+  array (
+    'element' => 'SU',
+    'U' => 
+    array (
+      'name' => 'S101',
+      'dist' => 6,
+    ),
+    'D' => 
+    array (
+      'name' => 'BG204',
+      'dist' => 1,
+    ),
+    'type' => 'MB',
+    'EC' => 
+    array (
+      'addr' => 0,
+      'type' => 0,
+      'majorDevice' => 0,
+    ),
+    'HMI' => 
+    array (
+      'x' => 2,
+      'y' => 5,
+      'l' => 1,
+    ),
+  ),
+  'BG121' => 
+  array (
+    'element' => 'BL',
+    'U' => 
+    array (
+      'name' => 'BG21',
+      'dist' => 7,
+    ),
+    'D' => 
+    array (
+      'name' => 'S12',
+      'dist' => 7,
+    ),
+    'ID' => '75:00:14:FB:94',
+  ),
+  'BG129' => 
+  array (
+    'element' => 'BL',
+    'U' => 
+    array (
+      'name' => 'S17',
+      'dist' => 7,
+    ),
+    'D' => 
+    array (
+      'name' => 'BG29',
+      'dist' => 7,
+    ),
+    'ID' => '1E:00:AC:98:25',
+  ),
+  'BG128' => 
+  array (
+    'element' => 'BL',
+    'U' => 
+    array (
+      'name' => 'S15',
+      'dist' => 7,
+    ),
+    'D' => 
+    array (
+      'name' => 'BG28',
+      'dist' => 7,
+    ),
+    'ID' => '1F:00:50:6E:08',
+  ),
+  'BG117' => 
+  array (
+    'element' => 'BL',
+    'U' => 
+    array (
+      'name' => 'BG17',
+      'dist' => 7,
+    ),
+    'D' => 
+    array (
+      'name' => 'S10',
+      'dist' => 16,
+    ),
+    'ID' => '1F:00:69:F3:BB',
+  ),
+  'BG104' => 
+  array (
+    'element' => 'BL',
+    'U' => 
+    array (
+      'name' => 'BG04',
+      'dist' => 7,
+    ),
+    'D' => 
+    array (
+      'name' => 'S4',
+      'dist' => 7,
+    ),
+    'ID' => '1F:00:62:A3:D5',
+  ),
+  'BG03' => 
+  array (
+    'element' => 'BL',
+    'U' => 
+    array (
+      'name' => 'P1',
+      'dist' => 13,
+    ),
+    'D' => 
+    array (
+      'name' => 'BG103',
+      'dist' => 6,
+    ),
+    'ID' => '1F:00:69:C9:3C',
+  ),
+  'BG115' => 
+  array (
+    'element' => 'BL',
+    'U' => 
+    array (
+      'name' => 'S7',
+      'dist' => 15,
+    ),
+    'D' => 
+    array (
+      'name' => 'BG15',
+      'dist' => 5,
+    ),
+    'ID' => 'FF:FF:FF:FF:FF',
+  ),
+  'BG122' => 
+  array (
+    'element' => 'BL',
+    'U' => 
+    array (
+      'name' => 'BG22',
+      'dist' => 5,
+    ),
+    'D' => 
+    array (
+      'name' => 'S14',
+      'dist' => 5,
+    ),
+    'ID' => '1E:00:EC:F9:E1',
+  ),
+  'BG102' => 
+  array (
+    'element' => 'BL',
+    'U' => 
+    array (
+      'name' => 'S4',
+      'dist' => 107,
+    ),
+    'D' => 
+    array (
+      'name' => 'BG02',
+      'dist' => 85,
+    ),
+    'ID' => '76:00:0D:19:5B',
+  ),
   'BG33' => 
   array (
     'element' => 'BL',
@@ -67,7 +286,7 @@ $PT1 = array (
     ),
     'HMI' => 
     array (
-      'x' => 40.125,
+      'x' => 42,
       'y' => 3,
       'l' => 1,
     ),
@@ -107,8 +326,8 @@ $PT1 = array (
     'element' => 'BL',
     'U' => 
     array (
-      'name' => 'S15',
-      'dist' => 18,
+      'name' => 'BG128',
+      'dist' => 7,
     ),
     'D' => 
     array (
@@ -122,8 +341,8 @@ $PT1 = array (
     'element' => 'BL',
     'U' => 
     array (
-      'name' => 'S17',
-      'dist' => 18,
+      'name' => 'BG129',
+      'dist' => 7,
     ),
     'D' => 
     array (
@@ -217,8 +436,8 @@ $PT1 = array (
     ),
     'D' => 
     array (
-      'name' => 'S14',
-      'dist' => 19,
+      'name' => 'BG122',
+      'dist' => 9,
     ),
     'ID' => '74:00:15:65:29',
   ),
@@ -232,8 +451,8 @@ $PT1 = array (
     ),
     'D' => 
     array (
-      'name' => 'S12',
-      'dist' => 18,
+      'name' => 'BG121',
+      'dist' => 7,
     ),
     'ID' => '1F:00:50:3C:80',
   ),
@@ -272,8 +491,8 @@ $PT1 = array (
     'element' => 'BL',
     'U' => 
     array (
-      'name' => 'S7',
-      'dist' => 30,
+      'name' => 'BG115',
+      'dist' => 10,
     ),
     'D' => 
     array (
@@ -319,7 +538,7 @@ $PT1 = array (
     ),
     'HMI' => 
     array (
-      'x' => 21.125,
+      'x' => 23,
       'y' => 6,
       'l' => 1,
     ),
@@ -334,7 +553,7 @@ $PT1 = array (
     ),
     'D' => 
     array (
-      'name' => 'BG15',
+      'name' => 'BG115',
       'dist' => 10,
     ),
     'type' => 'MS3',
@@ -346,7 +565,7 @@ $PT1 = array (
     ),
     'HMI' => 
     array (
-      'x' => 21.125,
+      'x' => 23,
       'y' => 2,
       'l' => 1,
     ),
@@ -361,8 +580,8 @@ $PT1 = array (
     ),
     'D' => 
     array (
-      'name' => 'S10',
-      'dist' => 30,
+      'name' => 'BG117',
+      'dist' => 7,
     ),
     'ID' => '76:00:0C:B7:36',
   ),
@@ -401,7 +620,7 @@ $PT1 = array (
     'element' => 'SU',
     'U' => 
     array (
-      'name' => 'BG17',
+      'name' => 'BG117',
       'dist' => 10,
     ),
     'D' => 
@@ -418,7 +637,7 @@ $PT1 = array (
     ),
     'HMI' => 
     array (
-      'x' => 16.125,
+      'x' => 18,
       'y' => 5,
       'l' => 2,
     ),
@@ -445,7 +664,7 @@ $PT1 = array (
     ),
     'HMI' => 
     array (
-      'x' => 16.125,
+      'x' => 18,
       'y' => 3,
       'l' => 1,
     ),
@@ -532,7 +751,7 @@ $PT1 = array (
     ),
     'HMI' => 
     array (
-      'x' => 12.125,
+      'x' => 14,
       'y' => 4,
       'l' => 2,
     ),
@@ -559,7 +778,7 @@ $PT1 = array (
     ),
     'HMI' => 
     array (
-      'x' => 12.125,
+      'x' => 14,
       'y' => 2,
       'l' => 2,
     ),
@@ -631,7 +850,7 @@ $PT1 = array (
     ),
     'HMI' => 
     array (
-      'x' => 9.125,
+      'x' => 11,
       'y' => 3,
       'l' => 1,
     ),
@@ -671,15 +890,15 @@ $PT1 = array (
     'element' => 'BL',
     'U' => 
     array (
-      'name' => 'S4',
-      'dist' => 70,
+      'name' => 'BG102',
+      'dist' => 85,
     ),
     'D' => 
     array (
-      'name' => 'BS3',
+      'name' => 'S101',
       'dist' => 5,
     ),
-    'ID' => '1F:00:69:F3:BB',
+    'ID' => '1E:00:AC:75:9B',
   ),
   'BG04' => 
   array (
@@ -691,25 +910,25 @@ $PT1 = array (
     ),
     'D' => 
     array (
-      'name' => 'S4',
-      'dist' => 10,
+      'name' => 'BG104',
+      'dist' => 7,
     ),
     'ID' => '74:00:15:50:C0',
   ),
-  'BG03' => 
+  'BG103' => 
   array (
     'element' => 'BL',
     'U' => 
     array (
-      'name' => 'P1',
-      'dist' => 13,
+      'name' => 'BG03',
+      'dist' => 6,
     ),
     'D' => 
     array (
       'name' => 'S2',
-      'dist' => 10,
+      'dist' => 6,
     ),
-    'ID' => '1F:00:69:C9:3C',
+    'ID' => '1F:00:4D:6D:73',
   ),
   'S1' => 
   array (
@@ -733,7 +952,7 @@ $PT1 = array (
     ),
     'HMI' => 
     array (
-      'x' => 7.125,
+      'x' => 9,
       'y' => 2,
       'l' => 1,
     ),
@@ -743,12 +962,12 @@ $PT1 = array (
     'element' => 'SU',
     'U' => 
     array (
-      'name' => 'BG04',
-      'dist' => 17,
+      'name' => 'BG104',
+      'dist' => 7,
     ),
     'D' => 
     array (
-      'name' => 'BG02',
+      'name' => 'BG102',
       'dist' => 1,
     ),
     'type' => 'MS2',
@@ -760,7 +979,7 @@ $PT1 = array (
     ),
     'HMI' => 
     array (
-      'x' => 3.125,
+      'x' => 5,
       'y' => 5,
       'l' => 2,
     ),
@@ -770,8 +989,8 @@ $PT1 = array (
     'element' => 'SU',
     'U' => 
     array (
-      'name' => 'BG03',
-      'dist' => 14,
+      'name' => 'BG103',
+      'dist' => 6,
     ),
     'D' => 
     array (
@@ -787,7 +1006,7 @@ $PT1 = array (
     ),
     'HMI' => 
     array (
-      'x' => 3.125,
+      'x' => 5,
       'y' => 3,
       'l' => 2,
     ),
@@ -821,7 +1040,7 @@ $PT1 = array (
     'HMI' => 
     array (
       'or' => 'fl',
-      'x' => 35.125,
+      'x' => 37,
       'y' => 1,
       'l' => 2,
     ),
@@ -836,8 +1055,8 @@ $PT1 = array (
     ),
     'D' => 
     array (
-      'name' => 'BG29',
-      'dist' => 10,
+      'name' => 'BG129',
+      'dist' => 7,
     ),
     'type' => 'MS2',
     'EC' => 
@@ -848,7 +1067,7 @@ $PT1 = array (
     ),
     'HMI' => 
     array (
-      'x' => 37.125,
+      'x' => 39,
       'y' => 2,
       'l' => 2,
     ),
@@ -863,8 +1082,8 @@ $PT1 = array (
     ),
     'D' => 
     array (
-      'name' => 'BG28',
-      'dist' => 10,
+      'name' => 'BG128',
+      'dist' => 7,
     ),
     'type' => 'MS2',
     'EC' => 
@@ -875,7 +1094,7 @@ $PT1 = array (
     ),
     'HMI' => 
     array (
-      'x' => 37.125,
+      'x' => 39,
       'y' => 0,
       'l' => 2,
     ),
@@ -902,7 +1121,7 @@ $PT1 = array (
     ),
     'HMI' => 
     array (
-      'x' => 31.125,
+      'x' => 33,
       'y' => 2,
       'l' => 1,
     ),
@@ -929,7 +1148,7 @@ $PT1 = array (
     ),
     'HMI' => 
     array (
-      'x' => 34.125,
+      'x' => 36,
       'y' => 3,
       'l' => 1,
     ),
@@ -956,7 +1175,7 @@ $PT1 = array (
     ),
     'HMI' => 
     array (
-      'x' => 30.125,
+      'x' => 32,
       'y' => 3,
       'l' => 1,
     ),
@@ -966,7 +1185,7 @@ $PT1 = array (
     'element' => 'SU',
     'U' => 
     array (
-      'name' => 'BG22',
+      'name' => 'BG122',
       'dist' => 10,
     ),
     'D' => 
@@ -983,7 +1202,7 @@ $PT1 = array (
     ),
     'HMI' => 
     array (
-      'x' => 23.125,
+      'x' => 25,
       'y' => 7,
       'l' => 1,
     ),
@@ -993,12 +1212,12 @@ $PT1 = array (
     'element' => 'BSB',
     'U' => 
     array (
-      'name' => 'BG02',
-      'dist' => 50,
+      'name' => 'BG202',
+      'dist' => 20,
     ),
     'HMI' => 
     array (
-      'x' => 1.125,
+      'x' => 0,
       'y' => 5,
       'l' => 1,
     ),
@@ -1021,7 +1240,7 @@ $PT1 = array (
       'name' => 'BG04',
       'dist' => 30,
     ),
-    'supervisionState' => 'CR',
+    'supervisionState' => 'P',
     'EC' => 
     array (
       'addr' => 202,
@@ -1032,7 +1251,7 @@ $PT1 = array (
     'HMI' => 
     array (
       'or' => 'tl',
-      'x' => 5.125,
+      'x' => 7,
       'y' => 3,
       'l' => 2,
     ),
@@ -1042,8 +1261,8 @@ $PT1 = array (
     'element' => 'SU',
     'U' => 
     array (
-      'name' => 'BG21',
-      'dist' => 10,
+      'name' => 'BG121',
+      'dist' => 7,
     ),
     'D' => 
     array (
@@ -1059,7 +1278,7 @@ $PT1 = array (
     ),
     'HMI' => 
     array (
-      'x' => 23.125,
+      'x' => 25,
       'y' => 3,
       'l' => 2,
     ),
@@ -1086,7 +1305,7 @@ $PT1 = array (
     ),
     'HMI' => 
     array (
-      'x' => 27.125,
+      'x' => 29,
       'y' => 2,
       'l' => 1,
     ),
@@ -1120,7 +1339,7 @@ $PT1 = array (
     'HMI' => 
     array (
       'or' => 'tr',
-      'x' => 19.125,
+      'x' => 21,
       'y' => 5,
       'l' => 2,
     ),
@@ -1154,7 +1373,7 @@ $PT1 = array (
     'HMI' => 
     array (
       'or' => 'tl',
-      'x' => 25.125,
+      'x' => 27,
       'y' => 3,
       'l' => 2,
     ),
@@ -1188,7 +1407,7 @@ $PT1 = array (
     'HMI' => 
     array (
       'or' => 'fr',
-      'x' => 17.125,
+      'x' => 19,
       'y' => 3,
       'l' => 2,
     ),
@@ -1222,7 +1441,7 @@ $PT1 = array (
     'HMI' => 
     array (
       'or' => 'fr',
-      'x' => 10.125,
+      'x' => 12,
       'y' => 3,
       'l' => 2,
     ),
@@ -1237,7 +1456,7 @@ $PT1 = array (
     ),
     'HMI' => 
     array (
-      'x' => 40.125,
+      'x' => 42,
       'y' => 1,
       'l' => 1,
     ),
@@ -1252,7 +1471,7 @@ $PT1 = array (
     ),
     'HMI' => 
     array (
-      'x' => 1.125,
+      'x' => 3,
       'y' => 3,
       'l' => 1,
     ),
@@ -1280,49 +1499,61 @@ $HMI = array (
   array (
     0 => 
     array (
-      'x' => 34.125,
+      'x' => 36,
       'y' => 1,
       'text' => 'Langtbortistan',
     ),
     1 => 
     array (
-      'x' => 22.875,
+      'x' => 24.75,
       'y' => 1.25,
       'text' => 'Christiania',
     ),
     2 => 
     array (
-      'x' => 2.125,
+      'x' => 5,
       'y' => 1,
       'text' => 'Christianshavn',
     ),
     3 => 
     array (
-      'x' => 14.125,
+      'x' => 16,
       'y' => 1.25,
       'text' => 'Kystbanen',
     ),
     4 => 
     array (
-      'x' => 2.125,
+      'x' => 5,
       'y' => 2,
       'text' => '------------VÆG-------------',
     ),
     5 => 
     array (
-      'x' => 38.125,
-      'y' => 4,
+      'x' => 40,
+      'y' => 5,
       'text' => '------------VÆG-------------',
+    ),
+    6 => 
+    array (
+      'x' => 30,
+      'y' => 1.25,
+      'text' => 'Alperne',
+    ),
+    7 => 
+    array (
+      'x' => 1,
+      'y' => 7,
+      'text' => 'Stalden',
     ),
   ),
   'arsIndicator' => 
   array (
-    'x' => 1.125,
-    'y' => 8,
+    'x' => 11,
+    'y' => 7,
   ),
   'eStopIndicator' => 
   array (
-    'x' => 1.125,
+    'x' => 14,
     'y' => 7,
   ),
   'projectName' => 'WinterHut_2020',
@@ -1335,7 +1566,7 @@ $HMI = array (
         0 => 'BG22',
       ),
       'or' => 'u',
-      'x' => 24.125,
+      'x' => 26,
       'y' => 5,
       'l' => 1,
     ),
@@ -1346,7 +1577,7 @@ $HMI = array (
         0 => 'BG17',
       ),
       'or' => 'd',
-      'x' => 18.125,
+      'x' => 20,
       'y' => 5,
       'l' => 1,
     ),
@@ -1357,7 +1588,7 @@ $HMI = array (
         0 => 'BG01',
       ),
       'or' => 's',
-      'x' => 2.125,
+      'x' => 4,
       'y' => 3,
       'l' => 1,
     ),
@@ -1366,9 +1597,10 @@ $HMI = array (
       'balises' => 
       array (
         0 => 'BG02',
+        1 => 'BG102',
       ),
       'or' => 's',
-      'x' => 2.125,
+      'x' => 4,
       'y' => 5,
       'l' => 1,
     ),
@@ -1379,7 +1611,7 @@ $HMI = array (
         0 => 'BG06',
       ),
       'or' => 's',
-      'x' => 8.125,
+      'x' => 10,
       'y' => 3,
       'l' => 1,
     ),
@@ -1390,7 +1622,7 @@ $HMI = array (
         0 => 'BG13',
       ),
       'or' => 's',
-      'x' => 15.125,
+      'x' => 17,
       'y' => 5,
       'l' => 1,
     ),
@@ -1401,7 +1633,7 @@ $HMI = array (
         0 => 'BG15',
       ),
       'or' => 's',
-      'x' => 19.125,
+      'x' => 21,
       'y' => 3,
       'l' => 2,
     ),
@@ -1412,7 +1644,7 @@ $HMI = array (
         0 => 'BG19',
       ),
       'or' => 's',
-      'x' => 22.125,
+      'x' => 24,
       'y' => 3,
       'l' => 1,
     ),
@@ -1423,7 +1655,7 @@ $HMI = array (
         0 => 'BG20',
       ),
       'or' => 's',
-      'x' => 22.125,
+      'x' => 24,
       'y' => 7,
       'l' => 1,
     ),
@@ -1434,7 +1666,7 @@ $HMI = array (
         0 => 'BG24',
       ),
       'or' => 's',
-      'x' => 28.125,
+      'x' => 30,
       'y' => 3,
       'l' => 1,
     ),
@@ -1445,7 +1677,7 @@ $HMI = array (
         0 => 'BG26',
       ),
       'or' => 's',
-      'x' => 32.125,
+      'x' => 34,
       'y' => 3,
       'l' => 1,
     ),
@@ -1457,7 +1689,7 @@ $HMI = array (
         1 => 'BG32',
       ),
       'or' => 's',
-      'x' => 39.125,
+      'x' => 41,
       'y' => 1,
       'l' => 1,
     ),
@@ -1469,7 +1701,7 @@ $HMI = array (
         1 => 'BG33',
       ),
       'or' => 's',
-      'x' => 39.125,
+      'x' => 41,
       'y' => 3,
       'l' => 1,
     ),
@@ -1480,7 +1712,7 @@ $HMI = array (
         0 => 'BG10',
       ),
       'or' => 's',
-      'x' => 14.125,
+      'x' => 16,
       'y' => 3,
       'l' => 1,
     ),
@@ -1491,7 +1723,7 @@ $HMI = array (
         0 => 'BG11',
       ),
       'or' => 's',
-      'x' => 15.125,
+      'x' => 17,
       'y' => 3,
       'l' => 1,
     ),
@@ -1502,7 +1734,7 @@ $HMI = array (
         0 => 'BG12',
       ),
       'or' => 's',
-      'x' => 14.125,
+      'x' => 16,
       'y' => 5,
       'l' => 1,
     ),
@@ -1513,7 +1745,7 @@ $HMI = array (
         0 => 'BG126',
       ),
       'or' => 's',
-      'x' => 33.125,
+      'x' => 35,
       'y' => 3,
       'l' => 1,
     ),
@@ -1524,8 +1756,20 @@ $HMI = array (
         0 => 'BG25',
       ),
       'or' => 's',
-      'x' => 29.125,
+      'x' => 31,
       'y' => 3,
+      'l' => 1,
+    ),
+    'tr102' => 
+    array (
+      'balises' => 
+      array (
+        0 => 'BG202',
+        1 => 'BG204',
+      ),
+      'or' => 's',
+      'x' => 1,
+      'y' => 5,
       'l' => 1,
     ),
   ),

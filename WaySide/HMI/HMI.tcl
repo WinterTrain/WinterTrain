@@ -148,6 +148,7 @@ proc signal {name x y layout {length 2}} {
       dLine $x $y 0.4 1.2 1 1.2 $name
       dArcL $x $y 1.2 1.2 0.2 "$name aspect"
       dArcR $x $y 1.6 1.2 0.2 "$name aspect"
+      dMarkLine $x $y 0.6 0.1 0.6 0.9 "$name block"
       dRectangle $x $y 1.2 1 1.6 1.4 "$name aspect"
       dButton $x $y 1.4 1.2 0.4 $name selectSignal
     }
@@ -160,6 +161,7 @@ proc signal {name x y layout {length 2}} {
       dLine $x $y [expr $length - 1 ] 0.8 [expr $length - 0.4 ] 0.8 $name
       dArcR $x $y [expr $length - 1.2 ] 0.8 0.2 "$name aspect"
       dArcL $x $y [expr $length - 1.6 ] 0.8 0.2 "$name aspect"
+      dMarkLine $x $y [expr $length - 0.6 ] 1.1 [expr $length - 0.6 ] 1.9 "$name block"
       dRectangle $x $y [expr $length - 1.6 ] 0.6 [expr $length - 1.2 ] 1 "$name aspect"
       dButton $x $y [expr $length - 1.4 ] 0.8 0.4 $name selectSignal
     }
@@ -565,10 +567,18 @@ global fColor tColor toColor tcColor mColor lColor
     }
   }
 }
-proc signalState {name state routeState trackState arsState {trainID ""}} {
-global nColor fColor oColor cColor toColor tcColor tColor oppColor dColor arsColor panelEnabled
+proc signalState {name state routeState trackState arsState blockState {trainID ""}} {
+global nColor fColor oColor cColor toColor tcColor tColor oppColor dColor arsColor blColor clColor panelEnabled
   if {$panelEnabled && $name == "S23"} {
     writeTty  [format "IS%02d%02d%02d" $state $routeState $trackState]
+  }
+  switch $blockState {
+    10 { ;# B_UNBLOCKED / normal
+    .f.canvas itemconfigure "$name&&block" -state hidden
+    }
+    21 { ;# B_BLOCKED_ROUT
+    .f.canvas itemconfigure "$name&&block" -state normal -fill $blColor
+    }
   }
   switch $state {
     13 { # E_STOP_FACING

@@ -76,7 +76,8 @@ define("B_BLOCKED_RIGHT",11);     // Blocked via command
 define("B_BLOCKED_LEFT",12);
 define("B_CLAMPED_RIGHT",13);     // Physically clamped, marked as clamped in PT1
 define("B_CLAMPED_LEFT",14);
-define("B_BLOCKED_STOP",20);
+//define("B_BLOCKED_STOP",20);      // Signal blocked in STOP
+define("B_BLOCKED_ROUTE",21);      // Signal blocked against route locking
 // Interlocking Element commands
 define("C_TOGGLE",10);            // Point throw commands
 define("C_LEFT",20);
@@ -1341,7 +1342,9 @@ global $PT1;
     RBC_IL_DebugPrint("$s1 and $s2 are not in the same direction. Route does not exist");
     return false;
   }
-
+  if ($PT1[$s1]["blockingState"] != B_UNBLOCKED) {
+    return false;
+  }
   $isTerminal = function($elt, $dir) use ($s1, $s2) {
     global $PT1;
     if ($elt === $s2) {
@@ -1369,12 +1372,16 @@ global $PT1;
     }
   };
 
-  $canBeLocked = function($element, $direction, $previousElement) use ($s1){
+  $canBeLocked = function($element, $direction, $previousElement) use ($s1, $s2){
     global $PT1;
       if ($element == $s1) {return True;} //Train is allowed to already occupy it and it can be locked in previous route or clear
 //      print "canBeLocked: element: $element, prev: $previousElement, direction: $direction isLocked:".isLocked($element)." isClear:".isClear($element)."\n";
-      if (isLocked($element) or !isClear($element)) {return false;} 
+      if (isLocked($element) or !isClear($element)) {return false;}
       if ($direction == "U") {
+print "Element: {$PT1[$element]["element"]} BlockingState: {$PT1[$element]["blockingState"]}\n";
+        if ($element != $s2 and $PT1[$element]["element"] == "SU" and $PT1[$element]["blockingState"] != B_UNBLOCKED ) {
+          return false; // destination can be locked even if blocked
+        }
         if ($PT1[$element]["element"] == "PT") { 
           return (($PT1[$element]["R"]["name"] == $previousElement and ($PT1[$element]["blockingState"] == B_UNBLOCKED or 
                 $PT1[$element]["blockingState"] == B_BLOCKED_RIGHT or $PT1[$element]["blockingState"] == B_CLAMPED_RIGHT)) or
@@ -1389,7 +1396,10 @@ global $PT1;
           ($element == $PT1[$previousElement]["L"]["name"] and ($PT1[$previousElement]["blockingState"] == B_UNBLOCKED or 
              $PT1[$previousElement]["blockingState"] == B_BLOCKED_LEFT or
             $PT1[$previousElement]["blockingState"] == B_CLAMPED_LEFT)));
-      } else {
+      } else { // direction down
+        if ($element != $s2 and $PT1[$element]["element"] == "SD" and $PT1[$element]["blockingState"] != B_UNBLOCKED) {
+          return false;
+        }
         if ($PT1[$element]["element"] == "PF") { 
           return (($PT1[$element]["R"]["name"] == $previousElement and ($PT1[$element]["blockingState"] == B_UNBLOCKED or 
                 $PT1[$element]["blockingState"] == B_BLOCKED_RIGHT or $PT1[$element]["blockingState"] == B_CLAMPED_RIGHT)) or
@@ -2131,7 +2141,8 @@ global $trainData, $trainIndex;
 }
 
 function initRBCIL() {
-global $trainData, $trainIndex, $SRallowed, $SHallowed, $FSallowed, $ATOallowed;
+global $trainData, $trainIndex, $SRallowed, $SHallowed, $FSallowed, $ATOallowed, $SR_MAX_SPEED_DEFAULT, $SH_MAX_SPEED_DEFAULT,
+      $FS_MAX_SPEED_DEFAULT, $ATO_MAX_SPEED_DEFAULT;
 
   foreach ($trainData as $index => &$train) {
     $train["SRallowed"] = $SRallowed;
@@ -2410,6 +2421,21 @@ global $PT1, $clients, $clientsData, $inCharge, $trainData, $EC, $now, $balises,
       HMIindication($from, "displayResponse {Rejected}\n");
     }
   break;
+  case "sb": // signal toggle block
+    if ($from == $inCharge) {
+      switch ($PT1[$param[1]]["blockingState"]) {
+        case B_BLOCKED_ROUTE:
+          $PT1[$param[1]]["blockingState"] = B_UNBLOCKED;
+          HMIindication($from, "displayResponse {OK}\n");
+        break;
+        case B_UNBLOCKED:
+          $PT1[$param[1]]["blockingState"] = B_BLOCKED_ROUTE;
+          HMIindication($from, "displayResponse {OK}\n");
+        break;
+      }
+    } else {
+      HMIindication($from, "displayResponse {Rejected}\n");
+    }  break;
   case "pb": // point toggle block
     if ($from == $inCharge) {
       switch ($PT1[$param[1]]["blockingState"]) {
@@ -2545,7 +2571,7 @@ global $PT1, $clients, $clientsData, $inCharge, $trainData, $EC, $now, $balises,
     }
   break;
   default :
-    errLog("Unknown command from client: >$command<");
+    errLog("Unknown command from HMI client: >$command<");
 //    print "Warning: Unknown command from client: >$command<\n";
   break;
   }
@@ -2895,11 +2921,13 @@ global $PT1, $HMI, $HMIoffset, $trainData, $RBC_VERSION, $PT2_GENERATION_TIME, $
     break;
     case "SU":
       HMIindication($client,"signal $name ".$hmiX." ".$hmiY." f $hmiL\n");
-      HMIindication($client,"signalState $name ".$element["state"]." ".$element["routeState"]." ".$element["trackState"]." ".$element["arsState"]." \n");
+      HMIindication($client,"signalState $name ".$element["state"]." ".$element["routeState"]." ".$element["trackState"]." ".
+                    $element["arsState"]." ".$element["blockingState"]." \n");
     break;
     case "SD":
       HMIindication($client,"signal $name ".$hmiX." ".$hmiY." r $hmiL\n");
-      HMIindication($client,"signalState $name ".$element["state"]." ".$element["routeState"]." ".$element["trackState"]." ".$element["arsState"]." \n");
+      HMIindication($client,"signalState $name ".$element["state"]." ".$element["routeState"]." ".$element["trackState"]." ".
+                    $element["arsState"]." ".$element["blockingState"]." \n");
     break;
     case "BSB":
       HMIindication($client,"bufferStop $name ".$hmiX." ".$hmiY." b ".$hmi["l"]."\n");
@@ -2997,8 +3025,8 @@ global $HMI, $PT1, $emergencyStop, $arsEnabled, $tmsStatus, $TMS_STATUS_TXT, $MU
 //          //13 is used in HMI to highlight destination signals FIXME
 //          HMIindicationAll("signalState $name 13 ".$element["routeState"]." ".$element["trackState"]." ".$displayedTrainID."\n");
 //        } else {
-          HMIindicationAll("signalState $name ".$element["state"]." ".$element["routeState"]." ".$element["trackState"]." ".$element["arsState"]."  ".
-            $displayedTrainID."\n");
+          HMIindicationAll("signalState $name ".$element["state"]." ".$element["routeState"]." ".$element["trackState"]." ".
+                            $element["arsState"]."  ".$element["blockingState"]."  ".$displayedTrainID."\n");
 //        }
       break;
       case "PF":
@@ -3046,6 +3074,7 @@ function HMIindication($to, $msg) {// Send indication to specific client
 
 function MCeStartup($client) {
 global $EC, $TMS_STATUS_TXT, $tmsStatus;
+  MCeIndication($client,"destroyECframe\n");
   foreach ($EC as  $addr => $ec) {
     MCeIndication($client,"ECframe $addr\n");
   }

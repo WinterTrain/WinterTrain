@@ -173,7 +173,7 @@ void setup() {
   digitalWrite(OBU_PIN_BLUE, LOW);
 #endif
 #ifdef OBU_PIN_OVERRIDE
-  pinMode(OBU_PIN_OVERRIDE, INPUT);
+  pinMode(OBU_PIN_OVERRIDE, INPUT_PULLUP); // FIXME pull-up???
 #endif
   pinMode(OBU_PIN_WHEEL, INPUT_PULLUP);
   pinMode(OBU_PIN_TRACK_UP, INPUT);

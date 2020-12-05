@@ -51,34 +51,30 @@ proc ECframe {addr} {
 global nECframe entryFontSize
 
   incr nECframe
-  grid [ttk::frame .f.fStatus.t$addr -padding "3 3 12 12" -relief solid -borderwidth 2] -column 1 -row [expr $nECframe + 4] -sticky nwes
-  grid [ttk::label .f.fStatus.t$addr.name -text "EC ($addr)" ] -column 0 -row 0 -padx 5 -pady 5 -sticky we
-  grid [ttk::label .f.fStatus.t$addr.uptimeX -text "Uptime:" ] -column 0 -row 1 -padx 5 -pady 5 -sticky we
-  grid [ttk::label .f.fStatus.t$addr.uptime -textvariable ECuptime($addr)] -column 1 -row 1 -padx 5 -pady 5 -sticky we
-  grid [ttk::label .f.fStatus.t$addr.onlineX -text "Status:" ] -column 2 -row 1 -padx 5 -pady 5 -sticky we
-  grid [ttk::label .f.fStatus.t$addr.online -textvariable EConline($addr)] -column 3 -row 1 -padx 5 -pady 5 -sticky we
-  grid [ttk::label .f.fStatus.t$addr.elementX -text "Actual configuration: " ] -column 0 -row 2 -padx 5 -pady 5 -sticky we
-  grid [ttk::label .f.fStatus.t$addr.element -textvariable elementConf($addr)] -column 1 -row 2 -padx 5 -pady 5 -sticky we
-  grid [ttk::label .f.fStatus.t$addr.hwX -text "Capability: " ] -column 0 -row 3 -padx 5 -pady 5 -sticky we
-  grid [ttk::label .f.fStatus.t$addr.nElementX -text "E: " ] -column 1 -row 3 -padx 5 -pady 5 -sticky we
-  grid [ttk::label .f.fStatus.t$addr.nElement -textvariable N_ELEMENT($addr)] -column 2 -row 3 -padx 5 -pady 5 -sticky we
-  grid [ttk::label .f.fStatus.t$addr.nPdeviceX -text "P: " ] -column 3 -row 3 -padx 5 -pady 5 -sticky we
-  grid [ttk::label .f.fStatus.t$addr.nPdevice -textvariable N_PDEVICE($addr)] -column 4 -row 3 -padx 5 -pady 5 -sticky we
-  grid [ttk::label .f.fStatus.t$addr.nUdeviceX -text "U: " ] -column 5 -row 3 -padx 5 -pady 5 -sticky we
-  grid [ttk::label .f.fStatus.t$addr.nUdevice -textvariable N_UDEVICE($addr)] -column 6 -row 3 -padx 5 -pady 5 -sticky we
-  grid [ttk::label .f.fStatus.t$addr.nLdeviceX -text "L: " ] -column 7 -row 3 -padx 5 -pady 5 -sticky we
-  grid [ttk::label .f.fStatus.t$addr.nLdevice -textvariable N_LDEVICE($addr)] -column 8 -row 3 -padx 5 -pady 5 -sticky we
+  grid [ttk::frame .f.fStatus.fEC.t$addr -padding "3 3 12 12" -relief solid -borderwidth 2] -column 1 -row [expr $nECframe + 4] -sticky nwes
+  grid [ttk::label .f.fStatus.fEC.t$addr.name -text "EC ($addr)" ] -column 0 -row 0 -padx 5 -pady 5 -sticky we
+  grid [ttk::label .f.fStatus.fEC.t$addr.uptimeX -text "Uptime:" ] -column 0 -row 1 -padx 5 -pady 5 -sticky we
+  grid [ttk::label .f.fStatus.fEC.t$addr.uptime -textvariable ECuptime($addr)] -column 1 -row 1 -padx 5 -pady 5 -sticky we
+  grid [ttk::label .f.fStatus.fEC.t$addr.onlineX -text "Status:" ] -column 2 -row 1 -padx 5 -pady 5 -sticky we
+  grid [ttk::label .f.fStatus.fEC.t$addr.online -textvariable EConline($addr)] -column 3 -row 1 -padx 5 -pady 5 -sticky we
+  grid [ttk::label .f.fStatus.fEC.t$addr.elementX -text "Actual configuration: " ] -column 0 -row 2 -padx 5 -pady 5 -sticky we
+  grid [ttk::label .f.fStatus.fEC.t$addr.element -textvariable elementConf($addr)] -column 1 -row 2 -padx 5 -pady 5 -sticky we
+  grid [ttk::label .f.fStatus.fEC.t$addr.hwX -text "Capability: " ] -column 0 -row 3 -padx 5 -pady 5 -sticky we
+  grid [ttk::label .f.fStatus.fEC.t$addr.nElementX -text "E: " ] -column 1 -row 3 -padx 5 -pady 5 -sticky we
+  grid [ttk::label .f.fStatus.fEC.t$addr.nElement -textvariable N_ELEMENT($addr)] -column 2 -row 3 -padx 5 -pady 5 -sticky we
+  grid [ttk::label .f.fStatus.fEC.t$addr.nPdeviceX -text "P: " ] -column 3 -row 3 -padx 5 -pady 5 -sticky we
+  grid [ttk::label .f.fStatus.fEC.t$addr.nPdevice -textvariable N_PDEVICE($addr)] -column 4 -row 3 -padx 5 -pady 5 -sticky we
+  grid [ttk::label .f.fStatus.fEC.t$addr.nUdeviceX -text "U: " ] -column 5 -row 3 -padx 5 -pady 5 -sticky we
+  grid [ttk::label .f.fStatus.fEC.t$addr.nUdevice -textvariable N_UDEVICE($addr)] -column 6 -row 3 -padx 5 -pady 5 -sticky we
+  grid [ttk::label .f.fStatus.fEC.t$addr.nLdeviceX -text "L: " ] -column 7 -row 3 -padx 5 -pady 5 -sticky we
+  grid [ttk::label .f.fStatus.fEC.t$addr.nLdevice -textvariable N_LDEVICE($addr)] -column 8 -row 3 -padx 5 -pady 5 -sticky we
 }
 
-
-
-
-proc destroyTrainFrame {} {
-global nTrainFrame
-  for {set index 0} {$index < $nTrainFrame} {incr index} {
-    destroy .f.fTrain.t$index
-  }
-  set nTrainFrame 0
+proc destroyECframe {} {
+global nECframe
+  destroy .f.fStatus.fEC
+  grid [ttk::frame .f.fStatus.fEC -padding "3 3 12 12" -relief solid -borderwidth 2] -column 1 -columnspan 2 -row 5 -sticky nwes
+  set nECframe 0
 }
 
 #------------------------------------------------- indication handlers
@@ -345,7 +341,7 @@ grid [ttk::button .f.buttonT4 -text "TEST4" -command test4] -column 5 -row 2 -st
 #grid [tk::scrollbar .f.sbh -orient horizontal -command ".f.canvas xview"] -column 2 -columnspan 7 -row 4 -sticky we
 #grid [tk::scrollbar .f.sbv -orient vertical -command ".f.canvas yview"] -column 9 -row 3 -sticky ns
 
-grid [ttk::frame .f.fStatus -padding "3 3 3 3" -relief solid -borderwidth 2] -column 1 -row 4 -columnspan 8 -sticky nwes
+grid [ttk::frame .f.fStatus -padding "3 3 3 3" -relief solid -borderwidth 2] -column 1 -row 4 -columnspan 9 -sticky nwes
 # -------------------------------------------------- Balise and Server frames
   grid [ttk::frame .f.fStatus.server -padding "3 3 12 12" -relief solid -borderwidth 2] -column 1 -row 2 -sticky nwes
   grid [ttk::label .f.fStatus.server.name -text "Server"] -column 0 -row 0 -padx 5 -pady 5 -sticky we
@@ -362,7 +358,7 @@ grid [ttk::frame .f.fStatus -padding "3 3 3 3" -relief solid -borderwidth 2] -co
   grid [ttk::label .f.fStatus.tms.uptimeX -text "Status:"] -column 0 -row 1 -padx 5 -pady 5 -sticky we
   grid [ttk::label .f.fStatus.tms.uptime -textvariable tmsStatus] -column 1 -row 1 -padx 5 -pady 5 -sticky we
 
-  grid [ttk::frame .f.fStatus.balise -padding "3 3 12 12" -relief solid -borderwidth 2] -column 2 -row 2 -rowspan 2 -sticky nwes
+  grid [ttk::frame .f.fStatus.balise -padding "3 3 12 12" -relief solid -borderwidth 2] -column 2 -row 2 -rowspan 3 -sticky nwes
   grid [ttk::label .f.fStatus.balise.name -text "HHT Balise Reader"] -column 0 -row 0 -padx 5 -pady 5 -sticky we
   grid [ttk::label .f.fStatus.balise.baliseID -textvariable baliseID] -column 0 -row 1 -padx 5 -pady 5 -sticky we
   grid [ttk::label .f.fStatus.balise.baliseName -textvariable baliseName] -column 1 -row 1 -padx 5 -pady 5 -sticky we
@@ -372,6 +368,8 @@ grid [ttk::frame .f.fStatus -padding "3 3 3 3" -relief solid -borderwidth 2] -co
   grid [ttk::button .f.fStatus.balise.dumpAll -text "Dump Balise List" -command "dumpAll"] -column 0 -row 3 -padx 5 -pady 5 -sticky we
   grid [ttk::label .f.fStatus.balise.countX -text "Balise count (total/unassigned):"] -column 1 -columnspan 2 -row 3 -padx 5 -pady 5 -sticky we
   grid [ttk::label .f.fStatus.balise.count -textvariable baliseCount] -column 3 -row 3 -padx 5 -pady 5 -sticky we
+
+  grid [ttk::frame .f.fStatus.fEC -padding "3 3 12 12" -relief solid -borderwidth 2] -column 1 -columnspan 2 -row 5 -sticky nwes
  
 
 disconnected
