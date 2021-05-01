@@ -139,6 +139,14 @@ proc exitTMS {} {
   sendCommand "exitTMS"
 }
 
+proc reloadRBC {} {
+  sendCommand "rlRBC"
+}
+
+proc reloadTMS {} {
+  sendCommand "rlTMS"
+}
+
 proc disableButtons {} {
 global nTrainFrame
   .f.buttonPoint state disabled
@@ -147,6 +155,8 @@ global nTrainFrame
   .f.buttonLX state disabled
   .f.buttonERBC state disabled
   .f.buttonETMS state disabled
+  .f.buttonRLRBC state disabled
+  .f.buttonRLTMS state disabled
   .f.buttonT1 state disabled
   .f.buttonT2 state disabled
   .f.buttonT3 state disabled
@@ -165,6 +175,8 @@ global aColor nTrainFrame
   .f.buttonLX state !disabled
   .f.buttonERBC state !disabled
   .f.buttonETMS state !disabled
+  .f.buttonRLRBC state !disabled
+  .f.buttonRLTMS state !disabled
   .f.buttonT1 state !disabled
   .f.buttonT2 state !disabled
   .f.buttonT3 state !disabled
@@ -333,6 +345,8 @@ grid [ttk::button .f.buttonOpr -text "Request operation" -command rqopr] -column
 grid [ttk::button .f.buttonEHMI -text "Exit MCe" -command exit] -column 6 -row 1 -sticky e
 grid [ttk::button .f.buttonERBC -text "Exit RBC" -command exitRBC] -column 8 -row 1 -sticky e
 grid [ttk::button .f.buttonETMS -text "Exit TMS" -command exitTMS] -column 9 -row 1 -sticky e
+grid [ttk::button .f.buttonRLRBC -text "Reload RBC" -command reloadRBC] -column 10 -row 1 -sticky e
+grid [ttk::button .f.buttonRLTMS -text "Reload TMS" -command reloadTMS] -column 11 -row 1 -sticky e
 grid [ttk::button .f.buttonT1 -text "TrainData" -command test1] -column 2 -row 2 -sticky e
 grid [ttk::button .f.buttonT2 -text "LockedRoutes" -command test2] -column 3 -row 2 -sticky e
 grid [ttk::button .f.buttonT3 -text "TEST3" -command test3] -column 4 -row 2 -sticky e
@@ -341,7 +355,7 @@ grid [ttk::button .f.buttonT4 -text "TEST4" -command test4] -column 5 -row 2 -st
 #grid [tk::scrollbar .f.sbh -orient horizontal -command ".f.canvas xview"] -column 2 -columnspan 7 -row 4 -sticky we
 #grid [tk::scrollbar .f.sbv -orient vertical -command ".f.canvas yview"] -column 9 -row 3 -sticky ns
 
-grid [ttk::frame .f.fStatus -padding "3 3 3 3" -relief solid -borderwidth 2] -column 1 -row 4 -columnspan 9 -sticky nwes
+grid [ttk::frame .f.fStatus -padding "3 3 3 3" -relief solid -borderwidth 2] -column 1 -row 4 -columnspan 11 -sticky nwes
 # -------------------------------------------------- Balise and Server frames
   grid [ttk::frame .f.fStatus.server -padding "3 3 12 12" -relief solid -borderwidth 2] -column 1 -row 2 -sticky nwes
   grid [ttk::label .f.fStatus.server.name -text "Server"] -column 0 -row 0 -padx 5 -pady 5 -sticky we
@@ -358,7 +372,7 @@ grid [ttk::frame .f.fStatus -padding "3 3 3 3" -relief solid -borderwidth 2] -co
   grid [ttk::label .f.fStatus.tms.uptimeX -text "Status:"] -column 0 -row 1 -padx 5 -pady 5 -sticky we
   grid [ttk::label .f.fStatus.tms.uptime -textvariable tmsStatus] -column 1 -row 1 -padx 5 -pady 5 -sticky we
 
-  grid [ttk::frame .f.fStatus.balise -padding "3 3 12 12" -relief solid -borderwidth 2] -column 2 -row 2 -rowspan 3 -sticky nwes
+  grid [ttk::frame .f.fStatus.balise -padding "3 3 12 12" -relief solid -borderwidth 2] -column 2 -row 2 -rowspan 2 -sticky nwes
   grid [ttk::label .f.fStatus.balise.name -text "HHT Balise Reader"] -column 0 -row 0 -padx 5 -pady 5 -sticky we
   grid [ttk::label .f.fStatus.balise.baliseID -textvariable baliseID] -column 0 -row 1 -padx 5 -pady 5 -sticky we
   grid [ttk::label .f.fStatus.balise.baliseName -textvariable baliseName] -column 1 -row 1 -padx 5 -pady 5 -sticky we

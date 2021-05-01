@@ -3245,7 +3245,7 @@ global $arduino;
 //----------------------------------------------------------------------------------------- Utility
 //-------------------------------------------- Abus interface
 function AbusInit() {
-global $ABUS;
+global $ABUS, $i2cfh;
   switch ($ABUS) {
     case "genie":
     global $toGenie, $fromGenie, $ABUS_GATEWAYaddress, $ABUS_GATEWAYport;
@@ -3254,9 +3254,9 @@ global $ABUS;
       stream_set_blocking($toGenie,false);
       stream_set_blocking($fromGenie,false);
     break;
-    case "cbu":
-//      global $grInd;
-//      $grInd = fopen("/sys/class/gpio/gpio17/value","w");
+    case "cbu2":
+      $i2cfh = i2c_open("/dev/i2c-1");
+      i2c_select($i2cfh, 0x33);
     break;
   }
 }
@@ -3264,7 +3264,7 @@ global $ABUS;
 function AbusSendPacket($addr, $packet, $length) { // $packet is indexed as Abus packets, that is: packet type at index 2
 global $ABUS;
   switch ($ABUS) {
-    case "genie":
+    case "genie": // AbusMasterGateway connected via Ethernet
     global $toGenie;
       $TXbuf = sprintf("A%02X",$addr);
       for ($b = 2; $b <$length; $b++) {
@@ -3273,17 +3273,23 @@ global $ABUS;
       fwrite($toGenie,$TXbuf);
     break;
     case "cbu":
+    case "cbu2":
       $packet[0] = $addr;
       $packet[1] = 0; // dummy
-      $data = AbusGateway($packet,20);
-      for ($x = 0; $x < count($data); $x++) {
-        $data[$x] = hexdec($data[$x]);
+      if ($ABUS == "cbu") {
+        $data = AbusGateway($packet,20);
+        for ($x = 0; $x < count($data); $x++) { // i2c tool returns data as hex
+          $data[$x] = hexdec($data[$x]);
+        }
+      } else {
+        $data = AbusGateway2($packet,20);
       }
-      if ($data[0] != 0) { // timeout
+      if ($data[0] != 0) { // timeout or other comm error
         errLog("EC ($addr) Abus Time out: {$data[0]} Packet type: {$packet[2]}");
         $addr = false;
         $data = array();
       }
+      array_shift($data); // Removing the gateway status at index 0 leaving the full Abus packet
       receivedFromEC($addr, $data);
     break;
   }
@@ -3291,8 +3297,6 @@ global $ABUS;
 
 function AbusGateway($AbusPackage, $PackageLength = 20) {
 global $MaxAbusBuf, $AbusMasterI2Caddress;
-
-//  fputs($gr,"1"); // flash green RasPI indicator
 
   $cmd = "/usr/sbin/i2cset -y 1 $AbusMasterI2Caddress 101";
   for ($x = 0; $x < count($AbusPackage); $x++) {
@@ -3305,9 +3309,9 @@ global $MaxAbusBuf, $AbusMasterI2Caddress;
       errLog("AbusGateway retry $n");
     }
     exec($cmd,$output,$wStat);
-    usleep(120000); //  Afvent evt. timeout på Abus
+    usleep(10000); //  Wait for potentiel Abus timeout
     $res = array();
-    for ($t = 0; $t < $PackageLength; $t++) {
+    for ($t = 0; $t < $PackageLength + 1; $t++) {
       exec("/usr/sbin/i2cget -y 1 $AbusMasterI2Caddress",$res,$rStat);
       if ($rStat) errLog("AbusGateway: Error reading AbusMaster. Status: $rStat");
     }
@@ -3316,12 +3320,33 @@ global $MaxAbusBuf, $AbusMasterI2Caddress;
   if ($wStat) {
     errLog("AbusGateway: Error writing AbusMaster. Status: $wStat after $n retry");
   }
-//  fputs($gr,"0");
+  return $res;
+}
+
+function AbusGateway2($AbusPackage, $PackageLength = 20) {
+global $MaxAbusBuf, $AbusMasterI2Caddress, $i2cfh;
+
+  $n = 0;
+  do {
+    if ($n > 0) {
+      errLog("AbusGateway retry $n");
+    }
+      i2c_write($i2cfh, 101, $AbusPackage);
+    usleep(10000); //  Wait for potentiel Abus timeout
+    $res = array();
+    for ($b = 0; $b < 21; $b++) {
+      $res[] = i2c_read($i2cfh, 1)[0];
+    }
+    $n += 1;
+  } while (false and $n < N_I2CSET);
+  if (false) {
+    errLog("AbusGateway: Error writing AbusMaster. Status: $wStat after $n retry");
+  }
   return $res;
 }
 
 
-function AbusReceivedPacketGenie($line) {
+function AbusReceivedPacketGenie($line) { // When AbusMasterGateway is connected via Ethernet
   debugPrint ("Abus: >$line<");
   if (substr($line, 0,9) != "<TimeOut>") {
     $data = array();
@@ -3336,12 +3361,6 @@ function AbusReceivedPacketGenie($line) {
   receivedFromEC($addr, $data);
 }
 
-function I2C($cmd) {
-//global $grInd;
-//  fputs($grInd,"1"); // blink grøn
-  exec($cmd);
-//  fputs($grInd,"0"); // blink grøn
-}
 //----------------------------------------------------------------
 
 function toSigned($b1, $b2) {
@@ -3409,6 +3428,10 @@ Usage:
     case "-c":
       $ABUS = "cbu";
       fwrite(STDERR,"Abus gateway: CBUMaster\n");
+      break;
+    case "-c2":
+      $ABUS = "cbu2";
+      fwrite(STDERR,"Abus gateway: CBUMaster2\n");
       break;
     case "-g":
       $ABUS = "genie";
