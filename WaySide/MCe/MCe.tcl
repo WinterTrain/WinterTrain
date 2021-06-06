@@ -187,20 +187,20 @@ global aColor nTrainFrame
 }
 
 
-proc test1 { } {
-  sendCommand "test1"
+proc cmd1 { } {
+  sendCommand "CMD1"
 }
 
-proc test2 { } {
-  sendCommand "test2"
+proc cmd2 { } {
+  sendCommand "CMD2"
 }
 
-proc test3 { } {
-  sendCommand "test3"
+proc cmd3 { } {
+  sendCommand "CMD3"
 }
 
-proc test4 { } {
-  sendCommand "test4"
+proc cmd4 { } {
+  sendCommand "CMD4"
 }
 
 #---------------------------------------------------- Communication
@@ -347,10 +347,10 @@ grid [ttk::button .f.buttonERBC -text "Exit RBC" -command exitRBC] -column 8 -ro
 grid [ttk::button .f.buttonETMS -text "Exit TMS" -command exitTMS] -column 9 -row 1 -sticky e
 grid [ttk::button .f.buttonRLRBC -text "Reload RBC" -command reloadRBC] -column 10 -row 1 -sticky e
 grid [ttk::button .f.buttonRLTMS -text "Reload TMS" -command reloadTMS] -column 11 -row 1 -sticky e
-grid [ttk::button .f.buttonT1 -text "TrainData" -command test1] -column 2 -row 2 -sticky e
-grid [ttk::button .f.buttonT2 -text "LockedRoutes" -command test2] -column 3 -row 2 -sticky e
-grid [ttk::button .f.buttonT3 -text "TEST3" -command test3] -column 4 -row 2 -sticky e
-grid [ttk::button .f.buttonT4 -text "TEST4" -command test4] -column 5 -row 2 -sticky e
+grid [ttk::button .f.buttonT1 -text "DumpTrackModel" -command cmd1] -column 2 -row 2 -sticky e
+grid [ttk::button .f.buttonT2 -text "CMD2" -command cmd2] -column 3 -row 2 -sticky e
+grid [ttk::button .f.buttonT3 -text "CMD3" -command cmd3] -column 4 -row 2 -sticky e
+grid [ttk::button .f.buttonT4 -text "CMD4" -command cmd4] -column 5 -row 2 -sticky e
 
 #grid [tk::scrollbar .f.sbh -orient horizontal -command ".f.canvas xview"] -column 2 -columnspan 7 -row 4 -sticky we
 #grid [tk::scrollbar .f.sbv -orient vertical -command ".f.canvas yview"] -column 9 -row 3 -sticky ns

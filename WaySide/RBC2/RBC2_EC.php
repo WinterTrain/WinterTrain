@@ -1,17 +1,98 @@
 <?php
 // WinterTrain, RBC2
-// EC
+// Element Controller handlers
 
-function receivedFromEC($addr, $data) { // Call-back function called by Abus interface handlers when receiving data from Abus slave
-print "receivedFromEC: addr $addr ";
-print_r($data);
-print "
-";
+function elementStatusEC($addr, $data) { // Analyse element status for one EC
+global $EC, $PT2;
+  if (isset($EC[$addr]) and $data[3] < count($EC[$addr]["index"])) { // Check EC configuration
+    errLog("EC ($addr) not configured: #conf. element EC: {$data[3]}, RBC: ".count($EC[$addr]["index"]));
+    unset($EC[$addr]);
+    initEC($addr);
+  } else {
+    if (!$EC[$addr]["EConline"]) { // Was off-line
+      errLog("EC ($addr) on-line");
+      $EC[$addr]["EConline"] = true;
+    }
+    $EC[$addr]["validTimer"] = time() + EC_TIMEOUT;
+// Analyse EC status
+// call point state and LX state handler
+  }
 }
 
-function initEC($specificEC = "") {
+function pollNextEC() { // Poll one EC at a time
+global $EC, $pollEC;
+  if ($pollEC) {
+    requestElementStatusEC(key($EC));
+    if (next($EC) === FALSE) {
+      reset($EC);
+      $pollEC = false;
+    }
+  }
+}
+
+function checkECtimeout() {
+global $PT2, $EC, $now, $radioLinkAddr;
+  foreach ($EC as $addr => &$ec) {
+    if ($now > $ec["validTimer"]) { // EC not providing status - EC assumed offline
+      if ($ec["EConline"]) { // Was online
+        errLog("EC ($addr) off-line");
+        $ec["EConline"] = false;
+      }
+      // apply consequences
+      // call point state and LX state handler
+
+    }
+  }
+}
+
+function receivedFromEC($addr, $data) { // Call-back function called by Abus interface handlers when receiving data from Abus slave
+global $EC, $radioInterface;
+//print "receivedFromEC: addr >$addr< ";
+//print_r($data);
+//print "
+//";
+
+  if ($addr) {
+    switch ($data[2]) { // packet type
+      case 01: // status
+      case 10: // status
+        elementStatusEC($addr, $data);
+        break;
+      case 02: // EC status
+        $uptime = 0;
+        for ($i = 3; $i >= 0; $i--) {
+          $uptime = 256 * $uptime + (int)$data[$i + 3];
+        }
+        $EC[$addr]["uptime"] = round($uptime / 1000);
+        $EC[$addr]["elementConf"] = $data[7];
+        $EC[$addr]["N_ELEMENT"] = $data[8];
+        $EC[$addr]["N_UDEVICE"] = $data[9];
+        $EC[$addr]["N_LDEVICE"] = $data[10];
+        $EC[$addr]["N_PDEVICE"] = $data[11];
+        break;  
+      case 03: // position report from radio via Abus
+        if ($radioInterface == "ABUS") {
+          fatalError("Position report via Abus not implemented");
+          // processPositionReport(   ); // Unpack packet from Abus module
+        }
+        break;
+      case 20: // configuration
+        if ($data[3] > 0) {
+          errLog("EC ($addr), Configuration error: ".$data[3]);
+        } else {
+          debugPrint ("EC ($addr), Configuration OK");
+        }
+        break;
+      default:
+        errLog("EC ($addr) Unknown Abus packet: ".$data[2]);
+    }
+  } // else ignore empty packet
+}
+
+function initEC($specificEC = "") { // Initialize all or one specific EC from data in PT2
 global $PT2, $EC;
 
+  if ($specificEC == "") $EC = array(); // Enforce a rebuild of EC table from PT2 as PT2 might have been reloaded
   foreach ($PT2 as $name => &$element) {
     if ($specificEC == "" or (isset($element["EC"]["addr"]) and $element["EC"]["addr"] == $specificEC)) {
       switch ($element["element"]) {
@@ -64,7 +145,7 @@ global $PT2, $EC;
   }
 }
 
-function addEC($addr) {
+function addEC($addr) { // Add new Element Controller data to EC table
 global $EC;
   $EC[$addr]["index"] = array();
   $EC[$addr]["validTimer"] = 0;
@@ -81,7 +162,7 @@ global $EC;
 function resetEC($addr) {
   $packet[2] = 20;
   $packet[3] = 00;
-  AbusSendPacket($addr, $packet, 4);
+  AbusSendPacket($addr, $packet);
 }
 
 function configureEC($addr, $elementType, $majorDevice, $minorDevice = 0) {
@@ -90,7 +171,17 @@ function configureEC($addr, $elementType, $majorDevice, $minorDevice = 0) {
   $packet[4] = $elementType;
   $packet[5] = $majorDevice;
   $packet[6] = $minorDevice;
-  AbusSendPacket($addr, $packet, 7);
+  AbusSendPacket($addr, $packet);
+}
+
+function requestECstatus($addr) {
+  $packet[2] = 02;
+  AbusSendPacket($addr, $packet);
+}
+
+function requestElementStatusEC($addr) {
+  $packet[2] = 01;
+  AbusSendPacket($addr, $packet);
 }
 
 ?>

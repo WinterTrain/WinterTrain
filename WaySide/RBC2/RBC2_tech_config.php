@@ -31,22 +31,26 @@ $TMSaddress = "0.0.0.0";
 $TMSport = 9903;
 
 // ---------------------------------------------------------- Radio network
-$RF12GROUP = 101;
-$RBC_RADIO_ID = 10;
+define("RF12GROUP", 101);
+define("RBC_RADIO_ID", 10);
+define("RF12_ID_MASK", 0x1f);
+
 // Via USB
 $RADIO_DEVICE_FILE = "/dev/ttyUSB0";
 
 // ---------------------------------------------------------- Abus Gateway
 // Via I2C
-$ABUS_I2C_FILE = "/dev/i2c-9";
-$MaxAbusBuf = 20;             // Abus protocol max packet size
-$AbusMasterI2Caddress = 0x33; // Address of AbusMaster (arduino) connected to RasPI via I2C
-define("ABUS_WAIT",10000);    // Delay for waiting for slave to reply
-define("N_I2CSET",2);         // Number of retry using I2C tool
+$ABUS_I2C_FILE = "/dev/i2c-1";
+define("MAX_ABUS_BUF", 20);             // Abus protocol max packet size
+define("ABUS_MASTER_I2C_ADDR", 0x33);  // Address of AbusMaster (arduino) connected to RasPI via I2C
+define("ABUS_WAIT",15000);              // Delay for waiting for slave to reply
+define("N_I2CSET",2);                   // Number of retry using I2C tool
+define("N_I2C_WRITE",2);                // Number of retry using PHP I2C extention
 
 // Via IP
-$ABUS_GATEWAYaddress = "10.0.0.201";
-$ABUS_GATEWAYport = 9200;
-
+define("ABUS_GATEWAYaddress", "10.0.0.201"); // AbusGateway
+define("ABUS_GATEWAYport", 9200);
+define("LOCAL_GATEWAYaddress", "0.0.0.0");    // Local listenerfor replies from gateway
+define("LOCAL_GATEWAYport", 9202);
 
 ?>

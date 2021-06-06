@@ -16,6 +16,8 @@ $PT1_PROJECT_NAME = "(n/a)";
 $PT1_DATE = "(n/a)";
 $PT1_AUTHOR ="(n/a)";
 
+$doReplaceDefaultID = true;
+
 // -------------------------------------- SignallingLayout rewrite
 
 // parameters are assumed common across all element types
@@ -349,14 +351,20 @@ global $DIRECTORY, $GNETLIST_CMD, $SIGNALLING_LAYOUT_FILE, $PT1;
 }
 
 function verifySignallingLayout() {
-global $PT1, $elementCount, $projectName, $projectDate, $projectAuthor;
+global $PT1, $elementCount, $projectName, $projectDate, $projectAuthor, $doReplaceDefaultID;
 
   $frame = false;
-  foreach($PT1 as $name => $element) {
+  $virtuelID = 1; 
+  foreach($PT1 as $name => &$element) {
     switch($element["element"]) {
     case "BL":
-      if ($element["ID"] == "FF:FF:FF:FF:FF" or $element["ID"] == "00:00:00:00:00" or $element["ID"] == "") {
+      if ($element["ID"] == "00:00:00:00:00" or $element["ID"] == "") {
         print "Warning: Empty or default Balise ID assigned to element $name\n";
+      }
+      if ($element["ID"] == "FF:FF:FF:FF:FF" and $doReplaceDefaultID) { // Default balise ID FF:FF:FF:FF:FF will be replaced by unique ID
+                                                                        // Allows balises to be used by simulated trains and as virtual balises
+        $element["ID"] = sprintf("00:00:00:%02X:%02X", intdiv($virtuelID, 256), $virtuelID % 256);
+        $virtuelID +=1;
       }
       if (preg_match("/^[0-9a-fA-F]{2}[:][0-9a-fA-F]{2}[:][0-9a-fA-F]{2}[:][0-9a-fA-F]{2}[:][0-9a-fA-F]{2}$/", $element["ID"]) == 0){
         print "Error: Invalid balise ID format: \"{$element["ID"]}\", element $name\n";
@@ -448,7 +456,7 @@ fwrite($pt2Fh, "<?php
 
 
 function CmdLineParam() {
-global $debug, $SCREEN_LAYOUT_FILE, $SIGNALLING_LAYOUT_FILE, $PT2_FILE, $DIRECTORY,$BALISE_DUMP_FILE, $element1, $element2, $argv, $PT1, $command, $symbolDebug;
+global $debug, $SCREEN_LAYOUT_FILE, $SIGNALLING_LAYOUT_FILE, $PT2_FILE, $DIRECTORY,$BALISE_DUMP_FILE, $element1, $element2, $argv, $PT1, $command, $symbolDebug, $doReplaceDefaultID;
   if (in_array("-h",$argv) or count($argv) == 1) {
     print "Usage: [option] COMMAND [PARAM]
 Generate PT2 data for the WinterTrain. All files are located in working directory unless option -D is called..
@@ -472,6 +480,7 @@ Commands D, N, U and O will rename the input file \"$SIGNALLING_LAYOUT_FILE\" to
 -si <file>        read signalling layout from <file>
 -bl <file>        read balise list (for command U and O) from <file>
 -p2 <file>        write PT2 data to <file>
+-nv               do not replace default balise ID FF:FF:FF:FF:FF with unique ID
 -d                enable debug info
 -s                enable symbol debug info
 ";
@@ -487,6 +496,9 @@ Commands D, N, U and O will rename the input file \"$SIGNALLING_LAYOUT_FILE\" to
       case "O":
       case "B":
         $command = $opt;
+      break;
+      case "-nv":
+        $doReplaceDefaultID = false;
       break;
       case "-sc":
         list(,$p) = each($argv);
