@@ -1,0 +1,32 @@
+<?php
+
+$trainData = [
+[
+  "deployment" => "R", // R: real, S: Simulated, I: Inactive (not present)
+  "ID" => 20,
+  "name" => "Cargo",
+  "lengthFront" => 20,
+  "lengthBehind" => 15,
+  "wheelFactor" => 5,
+  "simFile" => "",
+  ],
+[
+  "deployment" => "S", // R: real, S: Simulated, I: Inactive (not present)
+  "ID" => 22,
+  "name" => "Circus",
+  "lengthFront" => 20,
+  "lengthBehind" => 15,
+  "wheelFactor" => 5,
+  "simFile" => "Train22_sim1.txt",
+  ],
+[
+  "deployment" => "S", // R: real, S: Simulated, I: Inactive
+  "ID" => 50,
+  "name" => "Cargo",
+  "lengthFront" => 20,
+  "lengthBehind" => 15,
+  "wheelFactor" => 5,
+  "simFile" => "Train50_sim1.txt",
+  ],
+];
+?>
