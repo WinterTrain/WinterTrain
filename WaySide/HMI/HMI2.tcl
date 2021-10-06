@@ -700,6 +700,26 @@ global fColor tColor tcColor toColor
   }
 }
 
+proc srGeneral {allowed} {
+global srAllowed
+  set srAllowed $allowed
+}
+
+proc shGeneral {allowed} {
+global shAllowed
+  set shAllowed $allowed
+}
+
+proc fsGeneral {allowed} {
+global fsAllowed
+  set fsAllowed $allowed
+}
+
+proc atoGeneral {allowed} {
+global atoAllowed
+  set atoAllowed $allowed
+}
+
 proc SRmode {trainIndex allowed} {
 global sr
   set sr($trainIndex) $allowed
@@ -983,6 +1003,26 @@ proc buttonARSALL {} { ;# toggle ARS overall
   sendCommand "arsAll"
 }
 
+proc setSRallowed {} {
+global srAllowed
+  sendCommand "SRallowed $srAllowed"
+} 
+
+proc setSHallowed {} {
+global shAllowed
+  sendCommand "SHallowed $shAllowed"
+} 
+
+proc setFSallowed {} {
+global fsAllowed
+  sendCommand "FSallowed $fsAllowed"
+} 
+
+proc setATOallowed {} {
+global atoAllowed
+  sendCommand "ATOallowed $atoAllowed"
+} 
+
 proc setSR {trainIndex} {
 global sr
   sendCommand "SR $trainIndex $sr($trainIndex)"
@@ -1085,6 +1125,11 @@ global nTrainFrame rtoDisplay
   .f.buttonARS state disabled
   .f.buttonStop state disabled
   .f.buttonARSALL state disabled
+  .f.sr_allowed state disabled
+  .f.sh_allowed state disabled
+  .f.fs_allowed state disabled
+  .f.ato_allowed state disabled
+
 #  .f.buttonERBC state disabled
   .f.buttonT state disabled
   for {set x 0} {$x < $nTrainFrame} {incr x} {
@@ -1124,7 +1169,11 @@ global aColor nTrainFrame rtoDisplay
   .f.buttonARS state !disabled
   .f.buttonStop state !disabled
   .f.buttonARSALL state !disabled
-
+  .f.sr_allowed state !disabled
+  .f.sh_allowed state !disabled
+  .f.fs_allowed state !disabled
+  .f.ato_allowed state !disabled
+  
 #  .f.buttonERBC state !disabled
   .f.buttonT state !disabled
   for {set x 0} {$x < $nTrainFrame} {incr x} {
@@ -1261,6 +1310,10 @@ set startLoop yes
 set debug no
 set status "Udef."
 set tmsStatus "Udef."
+set srAllowed 0
+set shAllowed 0
+set fsAllowed 0
+set atoAllowed 0
 
 set reqIP no
 set reqScale no
@@ -1330,7 +1383,7 @@ Usage:
   }
 }
 
-#----------------------------------------------- window layout
+#----------------------------------------------------------------------------------------------------------------------- window layout
 proc rotate {} {
 global liveT live liveTxt liveIndicator liveC
   incr liveC
@@ -1377,6 +1430,19 @@ grid [ttk::label .f.tmsStatus -textvariable tmsStatus] -column 12 -columnspan 2 
 grid [ttk::label .f.response -textvariable response] -column 2 -columnspan 8 -row 5 -padx 5 -pady 2 -sticky w
 
 # System and HMI commands
+  grid [ttk::label .f.sr_allowedX -text "SR:"] -column 1 -row 8 -padx 5 -pady 2 -sticky we
+  grid [ttk::checkbutton .f.sr_allowed -variable srAllowed -command "setSRallowed" ] -column 2 -row 8 -padx 5 -pady 2 -sticky we
+  .f.sr_allowed state disabled
+  grid [ttk::label .f.sh_allowedX -text "SH:"] -column 3 -row 8 -padx 5 -pady 2 -sticky we
+  grid [ttk::checkbutton .f.sh_allowed -variable shAllowed -command "setSHallowed" ] -column 4 -row 8 -padx 5 -pady 2 -sticky we
+  .f.sh_allowed state disabled
+    grid [ttk::label .f.fs_allowedX -text "FS:"] -column 5 -row 8 -padx 5 -pady 2 -sticky we
+  grid [ttk::checkbutton .f.fs_allowed -variable fsAllowed -command "setFSallowed" ] -column 6 -row 8 -padx 5 -pady 2 -sticky we
+  .f.fs_allowed state disabled
+    grid [ttk::label .f.ato_allowedX -text "ATO:"] -column 7 -row 8 -padx 5 -pady 2 -sticky we
+  grid [ttk::checkbutton .f.ato_allowed -variable atoAllowed -command "setATOallowed" ] -column 8 -row 8 -padx 5 -pady 2 -sticky we
+  .f.ato_allowed state disabled
+  
 grid [ttk::button .f.buttonOpr -text "Request operation" -command rqopr] -column 9 -row 8 -sticky we
 grid [ttk::button .f.buttonShowGrid -text "Show Grid" -command showGrid] -column 10 -row 8 -sticky we
 grid [ttk::button .f.buttonShowLabel -text "Show Label" -command showLabel] -column 11 -row 8 -sticky we

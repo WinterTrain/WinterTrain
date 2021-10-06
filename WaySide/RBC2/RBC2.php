@@ -34,6 +34,11 @@ $triggerMCeUpdate = false;
 $HMItimeout = 0;
 $MCetimeout = 0;
 
+// -------------------------------------- Operational varaibles
+$emergencyStop = false;
+$arsEnabled = true;
+$allowSR = false; $allowSH = false; $allowFS = false; $allowATO = false; // Overall allowance of modes
+
 // Test
 $test = false;
 $recCount = 0;
@@ -70,6 +75,7 @@ do {
       $secondTimeout = $now;
       $pollEC = true; // Trigger EC poll once per second
       checkECtimeout();
+      // check OBU communication timeout FIXME
     }
     if ($triggerHMIupdate or $now >= $HMItimeout) { 
       $HMItimeout = $now + HMI_UPDATE;  

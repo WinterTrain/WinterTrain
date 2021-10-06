@@ -50,7 +50,7 @@ global $AbusInterface, $listenerRBC, $listenerMCe, $clients, $clientsData, $inCh
         }
       } elseif ($r == $listenerTMS) { // new TMS Client
           if ($newClient = stream_socket_accept($listenerTMS,0,$clientName)) {
-            if (!$inChargeTMS) { // Only one TMC client allowed
+            if (!$inChargeTMS) { // Only one TMC client at a time allowed
               $inChargeTMS = $newClient;
               $clients[] = $newClient;
               $clientsData[(int)$newClient] = [
@@ -122,7 +122,7 @@ global $AbusInterface, $listenerRBC, $listenerMCe, $clients, $clientsData, $inCh
 }
 
 function AbusSendPacket($addr, $packet) { // $packet is indexed as Abus packets, that is: packet type at index 2
-// Data from the slave is returned via call back function  receivedFromEC($addr, $data)
+// Data from the slave is returned via call back function  AbusReceivedFrom($addr, $data)
 global $AbusInterface, $toAbusGw, $AbusI2CFh;
 
   if (count($packet) > MAX_ABUS_BUF) {
@@ -185,9 +185,15 @@ global $AbusInterface, $toAbusGw, $AbusI2CFh;
         return;
       }
       array_shift($data); // Remove the gateway status at index 0 leaving the Abus packet
-      receivedFromEC($addr, $data);
+      AbusReceivedFrom($addr, $data);
     break;
   }
+}
+
+function sendToRadioLink($packet) { // Send radio packet via USB radio
+global $radioLinkFh;
+
+  fwrite($radioLinkFh, "$packet\n");
 }
 
 function receivedFromRadioLink($data) {  // Distribute radio packet received via USB radio
@@ -196,7 +202,7 @@ function receivedFromRadioLink($data) {  // Distribute radio packet received via
     switch ($res[2]) {
     case 10: // Packet type Position report
       // Unpack Abus packet
-      // processPositionReport($trainID, $requestedMode, $MAreceived, $monDir, $pwr, $balise, $distance,  $speed, $rtoMode);
+      // syntax: processPositionReport($trainID, $requestedMode, $MAreceived, $monDir, $pwr, $balise, $distance,  $speed, $rtoMode);
       processPositionReport($res[1] & $RF12_ID_MASK, $res[11] & 0x07, ($res[11] & 0x80) >> 7, ($res[11] & 0x18) >> 3,
         ($res[11] & 0x60) >> 5, sprintf("%02X:%02X:%02X:%02X:%02X",$res[3],$res[4],$res[5],$res[6],$res[7]), 
         toSigned($res[8], $res[9]), $res[10], $res[12]);

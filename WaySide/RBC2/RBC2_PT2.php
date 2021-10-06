@@ -26,7 +26,7 @@ global $DIRECTORY, $PT2_FILE, $PT2, $trackModel, $HMI, $balisesID, $baliseCountT
       case "BL":
         $balisesID[$element["ID"]] = $name;
 //        $element["dynName"] = false; // HHT FIXME
-        if ($element["ID"] == "FF:FF:FF:FF:FF") $baliseCountUnassigned++; // Other unassigned IDs ?? e.g. 00:00:00:00:00 FIXME 
+        if ($element["ID"] == "FF:FF:FF:FF:FF") $baliseCountUnassigned++; // Other unassigned/default IDs ?? e.g. 00:00:00:00:00 FIXME 
         $baliseCountTotal++;
         $trackModel[$name] = new BGelement($name);
       break;
@@ -139,7 +139,7 @@ global $DIRECTORY, $PT2_FILE, $PT2, $trackModel, $HMI, $balisesID, $baliseCountT
     if ($baliseCountUnassigned > 0) msgLog("Warning: Found $baliseCountUnassigned balises with default ID (FF:FF:FF:FF:FF)");
   }
   
-// FIXME Check uniqueness of balises - done by DMT. Allow for virtual balises with same ID
+// FIXME Check uniqueness of balises - done by DMT. Allow for virtual balises with same ID?
 
 // ------------------------------------- Check HMI data
   if (array_key_exists("", $HMI["baliseTrack"])) { unset($HMI["baliseTrack"][""]); } // Delete any remaining template entry

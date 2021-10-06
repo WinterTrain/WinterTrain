@@ -8,21 +8,27 @@ global $trainData, $trainIndex, $DIRECTORY, $TRAIN_DATA_FILE, $SRallowed, $SHall
 
   require("$DIRECTORY/$TRAIN_DATA_FILE");
   $simTrain = array();
-  foreach($trainData as $index => &$train) {
-    $train["SRallowed"] = $SRallowed;
-    $train["SHallowed"] = $SHallowed;
-    $train["FSallowed"] = $FSallowed;
-    $train["ATOallowed"] = $ATOallowed;
+  foreach($trainData as $index => &$train) { // FIXME check completeness of train data
     $train["reqMode"] = M_UDEF;
     $train["authMode"] = M_N;
     $train["baliseName"] = "(00:00:00:00:00)"; // PT1 name
     $train["distance"] = 0;
+    $train["MAdir"] = MD_NODIR;
+    $train["maxSpeed"] = 0; // Resulting allowed speed
+    if (!isset($train["SRmaxSpeed"])) $train["SRmaxSpeed"] = SR_MAX_SPEED_DEFAULT;
+    if (!isset($train["SHmaxSpeed"])) $train["SHmaxSpeed"] = SH_MAX_SPEED_DEFAULT;
+    if (!isset($train["FSmaxSpeed"])) $train["FSmaxSpeed"] = FS_MAX_SPEED_DEFAULT;
+    if (!isset($train["ATOmaxSpeed"])) $train["ATOmaxSpeed"] = ATO_MAX_SPEED_DEFAULT;
     $train["positionUnambiguous"] = false;
     $train["speed"] = 0;
-    $train["nomDir"] = D_UDEF; // nominel driving direction (UP/DOWN)
+    $train["comTimeStamp"] = 0;
+    $train["posTimeStamp"] = 0;
+    $train["posRestored"] = true; // To prevent position restore until a real position report has been received.
+    $train["nomDir"] = D_UDEF; // Nominel driving direction (UP/DOWN)
     $train["pwr"] = P_UDEF;
     $train["MAreceived"] = 0;
     $train["rtoMode"] = RTO_UDEF;
+    $train["MAbalise"] = "00:00:00:00:00";
     $train["MAbaliseName"] = "(00:00:00:00:00)";
     $train["MAdist"] = 0;
     $train["MAdir"] = D_UDEF;
@@ -75,7 +81,8 @@ global $simTrain, $DIRECTORY, $PT2;
       $lineNo +=1;
       list($line) = explode("//", trim($line));
       if ($line) {
-        list($sim["script"][$scriptIndex]["baliseName"], $sim["script"][$scriptIndex]["dist"]) = explode(" ", $line); // FIXME syntax and semantics check
+        list($sim["script"][$scriptIndex]["baliseName"], $sim["script"][$scriptIndex]["dist"]) = explode(" ", $line);
+        // FIXME syntax and semantics check
         if (isset($PT2[$sim["script"][$scriptIndex]["baliseName"]]) and $PT2[$sim["script"][$scriptIndex]["baliseName"]]["element"] == "BL") {
           $sim["script"][$scriptIndex]["baliseID"] = $PT2[$sim["script"][$scriptIndex]["baliseName"]]["ID"];
         } else {

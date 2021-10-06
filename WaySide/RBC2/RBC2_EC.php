@@ -14,8 +14,8 @@ global $EC, $PT2;
       $EC[$addr]["EConline"] = true;
     }
     $EC[$addr]["validTimer"] = time() + EC_TIMEOUT;
-// Analyse EC status
-// call point state and LX state handler
+// Analyse EC status  and apply consequences FIXME
+// call point state and LX state handler, optional call generateMA()
   }
 }
 
@@ -38,14 +38,14 @@ global $PT2, $EC, $now, $radioLinkAddr;
         errLog("EC ($addr) off-line");
         $ec["EConline"] = false;
       }
-      // apply consequences
-      // call point state and LX state handler
+      // Apply consequences  FIXME
+      // call point state and LX state handler, optional call generateMA()
 
     }
   }
 }
 
-function receivedFromEC($addr, $data) { // Call-back function called by Abus interface handlers when receiving data from Abus slave
+function AbusReceivedFrom($addr, $data) { // Call-back function called by Abus interface handler when receiving data from Abus slave
 global $EC, $radioInterface;
 //print "receivedFromEC: addr >$addr< ";
 //print_r($data);
@@ -54,8 +54,8 @@ global $EC, $radioInterface;
 
   if ($addr) {
     switch ($data[2]) { // packet type
-      case 01: // status
-      case 10: // status
+      case 01: // Element status
+      case 10: // Element status
         elementStatusEC($addr, $data);
         break;
       case 02: // EC status
@@ -72,7 +72,7 @@ global $EC, $radioInterface;
         break;  
       case 03: // position report from radio via Abus
         if ($radioInterface == "ABUS") {
-          fatalError("Position report via Abus not implemented");
+          fatalError("Position report via Abus connected ratio not implemented");
           // processPositionReport(   ); // Unpack packet from Abus module
         }
         break;
@@ -145,6 +145,7 @@ global $PT2, $EC;
   }
 }
 
+// ------------------------------------------------------------------------------------------------- Low level command handlers for EC
 function addEC($addr) { // Add new Element Controller data to EC table
 global $EC;
   $EC[$addr]["index"] = array();

@@ -30,7 +30,7 @@ global $run, $reloadRBC, $inChargeMCe, $clientsData, $EC, $trackModel, $test, $t
     break;
     case "CMD2":
       if ($from == $inChargeMCe) {
-      print "\n";
+      print "\n"; // FIXME
         foreach ($trackModel as $name => $model) {
           if ($model->elementType == "PF" or $model->elementType == "PT") {
           print "Point $name {$model->pointState}\n";
@@ -43,8 +43,8 @@ global $run, $reloadRBC, $inChargeMCe, $clientsData, $EC, $trackModel, $test, $t
       }
     break;
     case "CMD4":
-      if ($from == $inChargeMCe) {
-      $test = !$test;
+      if ($from == $inChargeMCe) { 
+      $test = !$test; // FIXME
       $trackModel["P1"]->vacancyState = $test ? V_CLEAR : V_OCCUPIED;
       }
     break;
@@ -66,7 +66,7 @@ global $run, $reloadRBC, $inChargeMCe, $clientsData, $EC, $trackModel, $test, $t
     case "posRepDrv":
       $triggerHMIupdate = true;
       $sim = $simTrain[$param[1]]; // FIXME check existance ?
-      // processPositionReport($trainID, $requestedMode, $MAreceived, $nomDir, $pwr, $balise, $distance,  $speed, $rtoMode);
+      // syntax: processPositionReport($trainID, $requestedMode, $MAreceived, $nomDir, $pwr, $balise, $distance,  $speed, $rtoMode);
       processPositionReport($sim["ID"], $param[2], 1, D_UDEF, P_UDEF, $sim["script"][$sim["scriptIndex"]]["baliseID"], 
         $sim["script"][$sim["scriptIndex"]]["dist"], 1, RTO_UDEF);
       if ($simTrain[$param[1]]["scriptIndex"] < sizeof($simTrain[$param[1]]["script"]) - 1) {
@@ -76,7 +76,7 @@ global $run, $reloadRBC, $inChargeMCe, $clientsData, $EC, $trackModel, $test, $t
     case "posRepSt":
       $triggerHMIupdate = true;
       $sim = $simTrain[$param[1]]; // FIXME check existance ?
-      // processPositionReport($trainID, $requestedMode, $MAreceived, $nomDir, $pwr, $balise, $distance,  $speed, $rtoMode);
+      // syntax: processPositionReport($trainID, $requestedMode, $MAreceived, $nomDir, $pwr, $balise, $distance,  $speed, $rtoMode);
       processPositionReport($sim["ID"], $param[2], 0, D_UDEF, P_UDEF, $sim["script"][$sim["scriptIndex"]]["baliseID"], 
         $sim["script"][$sim["scriptIndex"]]["dist"], 0, RTO_UDEF);
 
@@ -84,7 +84,7 @@ global $run, $reloadRBC, $inChargeMCe, $clientsData, $EC, $trackModel, $test, $t
     case "posRepUdef":
       $triggerHMIupdate = true;
       $sim = $simTrain[$param[1]]; // FIXME check existance ?
-      // processPositionReport($trainID, $requestedMode, $MAreceived, $nomDir, $pwr, $balise, $distance,  $speed, $rtoMode);
+      // syntax: processPositionReport($trainID, $requestedMode, $MAreceived, $nomDir, $pwr, $balise, $distance,  $speed, $rtoMode);
       processPositionReport($sim["ID"], $param[2], 0, D_UDEF, P_UDEF, "00:00:00:00:00", 0,  0, RTO_UDEF);
 
     break;
@@ -135,6 +135,7 @@ global $EC, $simTrain, $triggerMCeUpdate;
   foreach ($EC as  $addr => $ec) {
     MCeIndication($client, "ECframe $addr");
   }
+// If client already is in charge, initialize train frame with various buttons enabled FIXME
   foreach ($simTrain as  $index => $train) {
     MCeIndication($client, "SimFrame $index {$train["name"]} {$train["ID"]}");
   }

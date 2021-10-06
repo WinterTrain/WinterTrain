@@ -3,7 +3,7 @@
 // RBC core functionalty
 
 
-// Class definitions for track model
+// ------------------------------------------------------------------------------------------- Class definitions for track model
 
 abstract class genericElement { // ---------------------------------------------------------------------------- Generic Element
   public $elementName;
@@ -33,6 +33,10 @@ abstract class genericElement { // ---------------------------------------------
   }
     
   public function cmdToggleBlocking() {
+    return false;
+  }
+
+  public function cmdToggleARS() {
     return false;
   }
   
@@ -246,7 +250,16 @@ class Selement extends genericElement { // -------------------------------------
     }    
     return true;
   }
-  
+
+  public function cmdToggleARS() {
+    if ($this->arsState == ARS_ENABLED) {
+      $this->arsState = ARS_DISABLED;
+    } else {
+      $this->arsState = ARS_ENABLED;
+    }    
+    return true;
+  }
+    
   public function cmdSetRouteTo($endPoint) {
     if ($this->routeLockingState != R_IDLE and $this->routeLockingType != RT_END_POINT) return false;
     if ($this->blockingState == B_BLOCKED_START_VIA) return false;
@@ -372,92 +385,254 @@ class PHTelement extends genericElement { // -----------------------------------
     $this->elementType = $PT2[$consName]["element"];
   }
 }
+// -------- End of object oriented Track Model ----------------------------------------------------------------------------------------------
 
-function processPositionReport($trainID, $requestedMode, $MAreceived, $nomDir, $pwr, $baliseID, $distance,  $speed, $rtoMode) {
-global $TD_TXT_MODE, $TD__TXT_ACK, $TD_TXT_DIR, $TD_TXT_PWR, $TD_TXT_RTOMODE, $trainData, $trainIndex, $now, $PT2, $balisesID;
 
-  print "PosRep: TrainID: $trainID, reqMode: {$TD_TXT_MODE[$requestedMode]}, MAreceived: {$TD__TXT_ACK[$MAreceived]}, ".
+function generateMA($index) { // -------------------------------------------------- Generate mode and movement authority for specific train
+global $trainData, $allowSR, $allowSH, $allowFS, $allowATO, $emergencyStop;
+print "Generate MA for train {$trainData[$index]["ID"]}\n";
+
+// FS, ATO
+// if no route assigned to train: search for applicable route and assign to train
+// if route assigned and MB open:
+// max speed for train / wheel factor
+// allowed driving direction of route for FS, ATO
+// distance to EOA / wheel factor
+
+
+  $train = &$trainData[$index];
+
+  $train["authMode"] = M_N;
+  $train["MAdir"] = MD_NODIR;
+  switch ($train["reqMode"]) {
+    case M_SR:
+      if ($allowSR and $train["SRallowed"]) {
+        $train["authMode"] = M_SR;
+        $train["maxSpeed"] = $train["SRmaxSpeed"];
+        $train["MAdir"] = MD_BOTH;
+// if route assigned to train: unassign route
+      }
+    break;
+    case M_SH:
+      if ($allowSH and $train["SHallowed"]) {
+        $train["authMode"] = M_SH;
+        $train["maxSpeed"] = $train["SHmaxSpeed"];
+        $train["MAdir"] = MD_BOTH;
+// if route assigned to train: unassign route
+      }
+    break;
+    case M_FS:
+      if  ($allowFS and $train["FSallowed"]) {
+        $train["authMode"] = M_FS;
+        $train["maxSpeed"] = $train["FSmaxSpeed"];
+        // $train["MAdir"] = ; FIXME
+      }
+    break;
+    case M_ATO:
+      if ($allowATO and $train["ATOallowed"]) {
+        $train["authMode"] = M_ATO;
+        $train["maxSpeed"] = $train["ATOmaxSpeed"];
+        // $train["MAdir"] = ; FIXME
+      }
+    break;
+  }
+
+  sendMA($index, ($emergencyStop ? M_ESTOP : $train["authMode"]), $train["MAdir"], $train["MAbalise"], $train["MAdist"], $train["maxSpeed"]);
+}
+
+function sendMA($index, $authMode, $MAdir, $balise, $dist, $speed) { // To be moved in generateMA() ?? FIXME
+global  $trainData, $TD_TXT_MODE, $radioInterface;
+  print "MA packet: trainID {$trainData[$index]["ID"]}, authMode { $TD_TXT_MODE[$authMode]}, MAdir $MAdir, balise $balise, distance $dist, speed $speed\n";
+
+  if ($trainData[$index]["deployment"] == "R") { // Real train
+    switch ($radioInterface) {
+      case "USB":
+      // assemble packet               including MAdir  FIXME
+        sendToRadioLink($packet);
+      break;
+      case "ABUS":
+        fatalError("sendMA via EC/LINK not implemented");
+      break;
+    }
+  } // else no MA send to simulated or ignored trains 
+}
+
+function sendPosRestore($trainID, $balise, $distance) {  // FIXME
+global $radioLinkAddr, $radioLink, $radio;
+print "PosRestore to be implemented\n";
+
+  switch ($radioInterface) { 
+    case "USB":
+      $data = "33,$trainID,";
+      $baliseArray = explode(":", $balise);
+      for ($b = 0; $b < 5; $b++) 
+        $data .= hexdec($baliseArray[$b]).",";
+      $data .=  ($distance & 0xFF).",".(($distance & 0xFF00) >> 8).",0s";
+      sendToRadioLink($data);
+    break;
+    case "ABUS":
+      fatalError("Position restore via EC/Link not implemented");
+    break;
+  }
+}
+
+function processPositionReport($trainID, $requestedMode, $MAreceived, $nomDir, // ---------------------Process Point Position Report from OBU
+  $pwr, $baliseID, $distance,  $speed, $rtoMode) {
+global $TD_TXT_MODE, $TD_TXT_ACK, $TD_TXT_DIR, $TD_TXT_PWR, $TD_TXT_RTOMODE, $trainData, $trainIndex, $now, $PT2, $balisesID,
+  $posRestoreEnabled;
+
+  print "PosRep: TrainID: $trainID, reqMode: {$TD_TXT_MODE[$requestedMode]}, MAreceived: {$TD_TXT_ACK[$MAreceived]}, ".
   "nomDir: {$TD_TXT_DIR[$nomDir]}, pwr: {$TD_TXT_PWR[$pwr]}, Balise: $baliseID, Distance: $distance, Speed: $speed, ".
   "rtoMode: {$TD_TXT_RTOMODE[$rtoMode]} \n";
+  
   $triggerHMIupdate = true; // posRep will likely result in new states
-  if (isset($trainIndex[$trainID])) {
+  if (isset($trainIndex[$trainID])) { // Train is known
     $index = $trainIndex[$trainID];
     $train = &$trainData[$index];
     $train["dataValid"] = "OK";
     $train["comTimeStamp"] = $now;
     $train["reqMode"] = $requestedMode;
-    $train["nomDir"] = $nomDir;
+    $train["nomDir"] = $nomDir; // Up or Down - Computed by OBU ------------- ??? concept of up/down is not known to OBU FIXME
     $train["pwr"] = $pwr;
     $train["MAreceived"] = $MAreceived;
     if ($train["pwr"] == P_R) { // determin orientation of train front end
       $train["front"] = D_UP;
     } elseif ($train["pwr"] == P_L) {
       $train["front"] = D_DOWN;
-    } // else orientation undefined by OBU, FIXME
+    } // else orientation undefined by OBU - what to do? FIXME
     $train["rtoMode"] = $rtoMode;
-    $train["distance"] = $distance;
     $train["speed"] = $speed;
-    
-    if ($baliseID == "00:00:00:00:00") { // OBU indicates void position FIXME
-// try restore position in OBU FIXME
-      $train["baliseID"] = "00:00:00:00:00";
+    if ($baliseID == "00:00:00:00:00") { // ----------------------- OBU indicates void position
       $train["baliseName"] = "<void balise>";
-    } elseif (isset($balisesID[$baliseID])) { // provided balise ID is known in PT2
+      $train["distance"] = 0;
+      $train["baliseID"] = $baliseID;
+      $train["posTimeStamp"] = $now;
+      if ($posRestoreEnabled) {
+        if (!$train["posRestored"]) {
+          if ($now - $train["posTimeStamp"] <= POSITION_TIMEOUT) {
+            errLog("Train ({$train["ID"]}): Position restored to: {$train["baliseID"]} {$train["distance"]} Stamped: ".
+                date("Ymd H:i:s", $train["posTimeStamp"]));
+            sendPosRestore($train["ID"], $train["baliseID"], (int)($train["distance"] / $train["wheelFactor"]));
+            // New posRep from OBU is awaited before position is determined (to verify restore)
+            $train["posRestored"] = true; // to prevent continuous restore
+          } else {
+            errLog("Train ({$train["ID"]}): RBC position ({$train["baliseID"]}) not restored - outdated. Stamped: ".
+              date("Ymd H:i:s", $train["posTimeStamp"]));
+          }
+        } else {
+          errLog("Train ({$train["ID"]}): position void, but already restored. Awaiting new real position.");
+        }
+      } 
+    } elseif (isset($balisesID[$baliseID])) { // ------------------ OBU indicates known position
+      $train["posTimeStamp"] = $now;
+      $train["distance"] = $distance;
       $train["baliseID"] = $baliseID;
       $train["baliseName"] = $balisesID[$baliseID];
-      $train["posTimeStamp"] = $now;
+      $train["posRestored"] = false;
       // Determine track occupation FIXME
-    } else { // Unknown balise
-      $train["baliseID"] = $baliseID;
-      $train["baliseName"] = "($baliseID)";
-      $train["posTimeStamp"] = $now;
-      msgLog("Warning: Unknown baliseID >$baliseID< provided in position report from train $trainID");
-      // Track occupation cannot be determined
+      
+      
+      
+    } else { // --------------------------------------------------- OBU indicates unknown balise
+      // Unknown balise, track occupation cannot be updated -  position report ignored
+      msgLog("Warning: Unknown baliseID >$baliseID< provided in position report from train $trainID.".
+        "Prev. posRep: {$train["baliseID"]} at distance {$train["distance"]}");
     }
-//    print_r($train);
-  } else { //unknown train ID in posrep FIXME
+    generateMA($index);
+  } else {
     errLog("Unknown train ID ($trainID) in posRep");
   }
 }
 
 function processCommandRBC($command, $from) { // ------------------------------------------- Process commands from HMI clients
-global $inChargeHMI, $clientsData, $trackModel, $recCount, $triggerHMIupdate;
+global $inChargeHMI, $clientsData, $trackModel, $recCount, $triggerHMIupdate, 
+  $allowSR, $allowSH, $allowFS, $allowATO, $trainData, $arsEnabled;
   
-  $triggerHMIupdate = true; // RBC command will likely result in new states
+  $triggerHMIupdate = true; // RBC command will likely result in new states, so trigger HMI update
   $param = explode(" ",$command);
   if ($param[0] == "Rq") {// Request operation
     if ($inChargeHMI) {
       HMIindication($from, "displayResponse {Rejected ".$clientsData[(int)$inChargeHMI]["addr"]." is in charge (since ".
-        $clientsData[(int)$inChargeHMI]["inChargeSince"].")}\n");
+        $clientsData[(int)$inChargeHMI]["inChargeSince"].")}");
     } else {
       $inChargeHMI = $from;
       $clientsData[(int)$from]["inChargeSince"] = date("Ymd H:i:s");
-      HMIindication($from, "oprAllowed\n");
+      HMIindication($from, "oprAllowed");
     }
     return;
   }
   if ($from == $inChargeHMI) {
     switch ($param[0]) {
+      case "eStop": // Toggle emergency STOP
+        toggleEmergencyStop();
+      break;
+      case "arsAll": // Toggle overall ARS state
+        $arsEnabled = !$arsEnabled;
+      break;
+// Elements
       case "pt": // Point Throw
-        HMIindication($from, "displayResponse {".($trackModel[$param[1]]->cmdTogglePoint() ? "OK" : "Rejected")."}\n");
-      break;
-      case "tr": // Set route
-        $recCount = 0; // FIXME
-        HMIindication($from, "displayResponse {".($trackModel[$param[1]]->cmdSetRouteTo($param[2]) ? "OK" : "Rejected")."}\n");
-      break;
-      case "rr": // Release route
-      $recCount = 0; // FIXME
-        HMIindication($from, "displayResponse {".($trackModel[$param[1]]->cmdReleaseRoute() ? "OK" : "Rejected")."}\n");
+        HMIindication($from, "displayResponse {".($trackModel[$param[1]]->cmdTogglePoint() ? "OK" : "Rejected")."}");
       break;
       case "pb": // Block point throw
-        HMIindication($from, "displayResponse {".($trackModel[$param[1]]->cmdToggleBlocking() ? "OK" : "Rejected")."}\n");
+        HMIindication($from, "displayResponse {".($trackModel[$param[1]]->cmdToggleBlocking() ? "OK" : "Rejected")."}");
       break;
       case "sb": // Block locking signal as START or VIA
-        HMIindication($from, "displayResponse {".($trackModel[$param[1]]->cmdToggleBlocking() ? "OK" : "Rejected")."}\n");
+        HMIindication($from, "displayResponse {".($trackModel[$param[1]]->cmdToggleBlocking() ? "OK" : "Rejected")."}");
+      break;
+      case "ars": // Toggle ARS for signal FIXME
+        HMIindication($from, "displayResponse {".($trackModel[$param[1]]->cmdToggleARS() ? "OK" : "Rejected")."}");
+      break;
+// Routes
+      case "tr": // Set route
+        $recCount = 0; // FIXME
+        if ($trackModel[$param[1]]->cmdSetRouteTo($param[2])) {
+          HMIindication($from, "displayResponse {OK}");
+          // assign route to train if any, then send MA FIXME
+        } else {
+          HMIindication($from, "displayResponse {Rejected - no route possible}");
+        }
+      break;
+      case "rr": // Release route if no train assigned or train is at stand still (without timer)
+        $recCount = 0; // FIXME
+        if (true) { //if train assigned to route and at stand still or no train assigned to route FIXME
+          if ($trackModel[$param[1]]->cmdReleaseRoute()) {
+            HMIindication($from, "displayResponse {OK}");
+          } else {
+            HMIindication($from, "displayResponse {Rejected - no route}");
+          }
+        } else { // reject due to train driving
+          HMIindication($from, "displayResponse {Rejected - train running}");
+        }
+      break;
+// Train mode
+      case "SR":
+        $trainData[$param[1]]["SRallowed"] = $param[2];
+      break;
+      case "SH":
+        $trainData[$param[1]]["SHallowed"] = $param[2];
+      break;
+      case "FS":
+        $trainData[$param[1]]["FSallowed"] = $param[2];
+      break;
+      case "ATO":
+        $trainData[$param[1]]["ATOallowed"] = $param[2];
+      break;
+// General
+      case "SRallowed":
+        $allowSR = $param[1];
+      break;
+      case "SHallowed":
+        $allowSH = $param[1];
+      break;
+      case "FSallowed":
+        $allowFS = $param[1];
+      break;
+      case "ATOallowed":
+        $allowATO = $param[1];
       break;
       case "Rl": // Release operation
         $inChargeHMI = false;
-        HMIindication($from, "oprReleased\n");
+        HMIindication($from, "oprReleased");
       break;
       default :
   //    errLog("Unknown command from HMI client: >$command<"); // FIXME
@@ -467,9 +642,22 @@ global $inChargeHMI, $clientsData, $trackModel, $recCount, $triggerHMIupdate;
   }
 }
 
+function toggleEmergencyStop() {
+global $trainData, $emergencyStop;
 
-function initRBC() { // FIXME
+  $emergencyStop = !$emergencyStop;
+  foreach ($trainData as $index => $train) {
+    generateMA($index);
+  }
+}
 
+function initRBC() {
+global $trainData;
+
+  foreach ($trainData as $index => $train) {
+    generateMA($index);
+  }
+// More?? FIXME
 }
 
 ?>

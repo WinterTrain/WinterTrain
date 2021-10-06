@@ -3,11 +3,17 @@
 // Utility functions
 
 function CmdLineParam() {
-global $argv, $debug, $background, $PT2_FILE, $TRAIN_DATA_FILE, $DIRECTORY, $ERRLOG_FILE, $MSGLOG_FILE, $BL_FILE, $radioInterface, $AbusInterface;
+global $argv, $debug, $background, $PT2_FILE, $TRAIN_DATA_FILE, $DIRECTORY, $ERRLOG_FILE, $MSGLOG_FILE, $BL_FILE, $radioInterface, $AbusInterface,
+      $allowSR, $allowSH, $allowFS, $allowATO;
   if (in_array("-h",$argv)) {
     print "RBC2 - WinterTrain
     
 Usage:
+
+-sr               Allow mode SR
+-sh               Allow mode SH
+-fs               Allow mode FS
+-ato              Allow mode ATO
 
 -nr               No Radio, disable radio interface
 -ai2c             Abus gateway via I2C
@@ -35,6 +41,18 @@ Usage:
   next($argv);
   while (list(,$opt) = each($argv)) {
     switch ($opt) {
+    case "-sr":
+      $allowSR = true;
+      break;
+    case "-sh":
+      $allowSH = true;
+      break;
+    case "-fs":
+      $allowFS = true;
+      break;
+    case "-ato":
+      $allowATO = true;
+      break;
     case "-nr":
       $radioInterface = "NONE";
       print "Warning: Radio interface disabled\n";

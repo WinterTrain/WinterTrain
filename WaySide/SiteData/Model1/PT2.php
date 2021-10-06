@@ -3,8 +3,8 @@
 $PT2_SIGNALLING_LAYOUT_FILE = "/home/jabe/Desktop/Projekter/Git/WinterTrain/WaySide/SiteData/Model1/signallingLayout.sch";
 $PT2_SIGNALLING_LAYOUT_FILE_DATE = "2021-05-13 23:07:07";
 $PT2_SCREEN_LAYOUT_FILE = "/home/jabe/Desktop/Projekter/Git/WinterTrain/WaySide/SiteData/Model1/screenLayout.sch";
-$PT2_SCREEN_LAYOUT_FILE_DATE = "2021-05-13 23:08:23";
-$PT2_GENERATION_TIME = "2021-06-06 22:24:02";
+$PT2_SCREEN_LAYOUT_FILE_DATE = "2021-10-03 16:31:08";
+$PT2_GENERATION_TIME = "2021-10-03 16:31:18";
 $PT1_PROJECT_NAME = "Model1";
 $PT1_DATE = "2021-04-10";
 $PT1_AUTHOR = "JB";
@@ -459,6 +459,18 @@ $PT1 = array (
 $HMI = array (
   'label' => 
   array (
+    0 => 
+    array (
+      'x' => 20.125,
+      'y' => 0.75,
+      'text' => 'Vest',
+    ),
+    1 => 
+    array (
+      'x' => 1.125,
+      'y' => 5.375,
+      'text' => 'Øst',
+    ),
   ),
   'projectName' => 'Model1',
   'baliseTrack' => 
@@ -529,6 +541,16 @@ $HMI = array (
       'y' => 5,
       'l' => 3,
     ),
+  ),
+  'eStopIndicator' => 
+  array (
+    'x' => 1,
+    'y' => 1,
+  ),
+  'arsIndicator' => 
+  array (
+    'x' => 8,
+    'y' => 1,
   ),
 );
 ?>

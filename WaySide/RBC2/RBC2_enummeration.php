@@ -83,6 +83,12 @@ define("D_DOWN",1);
 define("D_UP",2);
 define("D_STOP",3);
 
+// Authorized MA direction
+define("MD_NODIR",0);
+define("MD_BACKWARD",1);
+define("MD_FORWARD",2);
+define("MD_BOTH",3);
+
 // --------------------------------- HMI interface
 
 // Return codes for commands

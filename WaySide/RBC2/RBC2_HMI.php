@@ -4,10 +4,22 @@
 
 // For function processCommandHMI() see RBC2_RBC.php
 
-function updateIndicationHMI() { // Update track indications for all HMI clients
-global $trainData, $PT2, $HMI, $trackModel, $triggerHMIupdate;
+function updateIndicationHMI() { // Update general and track indications for all HMI clients
+global $trainData, $PT2, $HMI, $trackModel, $triggerHMIupdate, $allowSR, $allowSH, $allowFS, $allowATO, $emergencyStop, $arsEnabled;
 
-// Track layout
+  $triggerHMIupdate = false;
+
+// General data
+  HMIindicationAll("srGeneral {{$allowSR}}");
+  HMIindicationAll("shGeneral {{$allowSH}}");
+  HMIindicationAll("fsGeneral {{$allowFS}}");
+  HMIindicationAll("atoGeneral {{$allowATO}}");
+
+// Track layoyt / indicators
+  HMIindicationAll("eStopInd ".($emergencyStop ? "true" : "false"));
+  HMIindicationAll("arsAllInd ".($arsEnabled ? "true" : "false"));
+  
+// Track layout / Element state
   foreach ($PT2 as $name => $element) {
     $model = $trackModel[$name];
     switch ($element["element"]) {
@@ -29,7 +41,7 @@ global $trainData, $PT2, $HMI, $trackModel, $triggerHMIupdate;
     }
   }
   
-// Track indication
+// Track state
   foreach ($HMI["baliseTrack"] as $trackName => $baliseTrack) {
     $routeLockingState = R_IDLE;
     $vacancyState = V_CLEAR;
@@ -43,34 +55,53 @@ global $trainData, $PT2, $HMI, $trackModel, $triggerHMIupdate;
     }
     HMIindicationAll("trState $trackName $routeLockingState $vacancyState\n");
   }
-  $triggerHMIupdate = false; 
 }
 
 function updateTrainDataHMI() { // Update train indications for all HMI clients
-global $trainData, $TD_TXT_MODE, $TD_TXT_DIR, $TD_TXT_PWR, $TD_TXT_ACK, $TD_TXT_RTOMODE, $TD_TXT_UNAMB;
+global $trainData, $TD_TXT_MODE, $TD_TXT_DIR, $TD_TXT_MADIR, $TD_TXT_PWR, $TD_TXT_ACK, $TD_TXT_RTOMODE, $TD_TXT_UNAMB;
   foreach ($trainData as $index => &$train) {
-    HMIindicationAll("SRmode ".$index." ".$train["SRallowed"]."\n");
-    HMIindicationAll("SHmode ".$index." ".$train["SHallowed"]."\n");
-    HMIindicationAll("FSmode ".$index." ".$train["FSallowed"]."\n");
-    HMIindicationAll("ATOmode ".$index." ".$train["ATOallowed"]."\n");
+    HMIindicationAll("SRmode ".$index." {".$train["SRallowed"]."}");
+    HMIindicationAll("SHmode ".$index." {".$train["SHallowed"]."}");
+    HMIindicationAll("FSmode ".$index." {".$train["FSallowed"]."}");
+    HMIindicationAll("ATOmode ".$index." {".$train["ATOallowed"]."}");
+    
     HMIindicationAll("trainDataD ".$index." {".$TD_TXT_MODE[$train["authMode"]]." (".$TD_TXT_MODE[$train["reqMode"]].")} {".$train["baliseName"].
       "} {".$train["distance"]."} {".$TD_TXT_UNAMB[$train["positionUnambiguous"]]."} {".$train["speed"]."} {".$TD_TXT_DIR[$train["nomDir"]].
       "} {".$TD_TXT_PWR[$train["pwr"]]."} {".
       $TD_TXT_ACK[$train["MAreceived"]]."} ".$train["dataValid"]." {".$TD_TXT_RTOMODE[$train["rtoMode"]]."} {".
-      $train["MAbaliseName"]."} {".$train["MAdist"]."} {".$TD_TXT_DIR[$train["MAdir"]]."} {".$train["trn"]."} {".$train["trnStatus"]."} {".
-      ($train["etd"] != 0 ? date("H:i:s",$train["etd"]) : "")."}\n");
+      $train["MAbaliseName"]."} {".$train["MAdist"]."} {".$TD_TXT_MADIR[$train["MAdir"]]."} {".$train["trn"]."} {".$train["trnStatus"]."} {".
+      ($train["etd"] != 0 ? date("H:i:s",$train["etd"]) : "")."}");
   }
 }
 
 function HMIstartup($client) { // Initialise specific HMI client with static comfiguration, screen layout etc.
-global $PT2, $HMI, $trainData, $triggerHMIupdate;
+global $PT2, $HMI, $trainData, $triggerHMIupdate, $allowSR, $allowSH, $allowFS, $allowATO, $emergencyStop, $arsEnabled;
 
   $triggerHMIupdate = true; // Trigger a dynamic update afterwards
-  HMIindication($client,".f.canvas delete all\n");
-  HMIindication($client,"destroyTrainFrame\n");
-  HMIindication($client,"dGrid\n");  
-  HMIindication($client,"resetLabel\n");
-// Track layout
+  HMIindication($client,".f.canvas delete all");
+  HMIindication($client,"destroyTrainFrame");
+  HMIindication($client,"dGrid");
+  HMIindication($client,"resetLabel");
+  
+// General data
+  HMIindication($client,"srGeneral {{$allowSR}}");
+  HMIindication($client,"shGeneral {{$allowSH}}");
+  HMIindication($client,"fsGeneral {{$allowFS}}");
+  HMIindication($client,"atoGeneral {{$allowATO}}");
+
+// Track layoyt / lables and indicators
+  foreach ($HMI["label"] as $label) {
+    HMIindication($client,"label {".$label["text"]."} ".$label["x"]." ".$label["y"]."\n");  
+  }
+  if (isset($HMI["eStopIndicator"]))
+    HMIindication($client,"eStopIndicator ".$HMI["eStopIndicator"]["x"]." ".$HMI["eStopIndicator"]["y"]."\n");  
+  if (isset($HMI["arsIndicator"]))
+    HMIindication($client,"arsIndicator ".$HMI["arsIndicator"]["x"]." ".$HMI["arsIndicator"]["y"]."\n");  
+  HMIindication($client, "eStopInd ".($emergencyStop ? "true" : "false"));
+  HMIindication($client, "arsAllInd ".($arsEnabled ? "true" : "false"));
+
+
+// Track layout / elements
   foreach ($PT2 as $name => $element) {
     switch ($element["element"]) {
     case "PF":
@@ -96,12 +127,13 @@ global $PT2, $HMI, $trainData, $triggerHMIupdate;
   }
   HMIindication($client,".f.canvas raise button [.f.canvas create text 0 0]\n"); // Ensure that all element buttons are on the top layer
   
-// Track indication
+// Track state indication
   foreach ($HMI["baliseTrack"] as $trackName => $baliseTrack) {
     HMIindication($client,"track $trackName {$baliseTrack["x"]} {$baliseTrack["y"]} {$baliseTrack["l"]} {$baliseTrack["or"]}\n");
   }
 
 // Train data
+// If client already is in charge, initialize train frame with various buttons enabled FIXME
   foreach ($trainData as $index => &$train) {
     HMIindication($client, "trainFrame ".$index."\n");
     HMIindication($client, "trainDataS ".$index." {".$train["name"]." (".$train["ID"].")} ".$train["lengthFront"]."+".$train["lengthBehind"]."\n");
