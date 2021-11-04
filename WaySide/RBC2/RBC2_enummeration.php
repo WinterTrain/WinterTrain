@@ -13,9 +13,9 @@ define("V_CLEAR", 2);
 define("R_UNDEFINED", 0);
 define("R_IDLE", 1);
 define("R_LOCKED", 2);
-define("R_SUPERVISED", 3);
-define("R_UNSUPERVISED", 4);
-define("R_CAN_RELEASE", 5); // Waiting for previous element to be released 
+define("R_SUPERVISED", 3); // points locked in correct lie ??? FIXME
+define("R_UNSUPERVISED", 4); // points not locked ??? FIXME
+define("R_CAN_RELEASE", 5); // Waiting for previous element to be released  - needed? FIXME
 
 // Route Locking Type
 define("RT_IDLE", 1);

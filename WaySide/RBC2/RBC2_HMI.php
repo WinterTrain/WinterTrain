@@ -45,15 +45,21 @@ global $trainData, $PT2, $HMI, $trackModel, $triggerHMIupdate, $allowSR, $allowS
   foreach ($HMI["baliseTrack"] as $trackName => $baliseTrack) {
     $routeLockingState = R_IDLE;
     $vacancyState = V_CLEAR;
+    $occupationTrainID = "";
     foreach ($baliseTrack["balises"] as $baliseName ) {
       if ($trackModel[$baliseName]->vacancyState != V_CLEAR) {
         $vacancyState = V_OCCUPIED;
+        if ($occupationTrainID == "") {
+          $occupationTrainID = $trackModel[$baliseName]->occupationTrainID;
+        } else if ($occupationTrainID != $trackModel[$baliseName]->occupationTrainID) {
+          $occupationTrainID .= "/".$trackModel[$baliseName]->occupationTrainID;
+        }
       }
       if ($trackModel[$baliseName]->routeLockingState != R_IDLE) {
         $routeLockingState = R_LOCKED;
       }
     }
-    HMIindicationAll("trState $trackName $routeLockingState $vacancyState\n");
+    HMIindicationAll("trState $trackName $routeLockingState $vacancyState {$occupationTrainID}\n");
   }
 }
 
@@ -66,7 +72,7 @@ global $trainData, $TD_TXT_MODE, $TD_TXT_DIR, $TD_TXT_MADIR, $TD_TXT_PWR, $TD_TX
     HMIindicationAll("ATOmode ".$index." {".$train["ATOallowed"]."}");
     
     HMIindicationAll("trainDataD ".$index." {".$TD_TXT_MODE[$train["authMode"]]." (".$TD_TXT_MODE[$train["reqMode"]].")} {".$train["baliseName"].
-      "} {".$train["distance"]."} {".$TD_TXT_UNAMB[$train["positionUnambiguous"]]."} {".$train["speed"]."} {".$TD_TXT_DIR[$train["nomDir"]].
+      "} {".$train["distance"]."} {".$TD_TXT_UNAMB[$train["curPositionUnambiguous"]]."} {".$train["speed"]."} {".$TD_TXT_DIR[$train["nomDir"]].
       "} {".$TD_TXT_PWR[$train["pwr"]]."} {".
       $TD_TXT_ACK[$train["MAreceived"]]."} ".$train["dataValid"]." {".$TD_TXT_RTOMODE[$train["rtoMode"]]."} {".
       $train["MAbaliseName"]."} {".$train["MAdist"]."} {".$TD_TXT_MADIR[$train["MAdir"]]."} {".$train["trn"]."} {".$train["trnStatus"]."} {".

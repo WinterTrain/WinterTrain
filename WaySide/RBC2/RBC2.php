@@ -24,7 +24,6 @@ include("RBC2_TrainData.php");      // Process TrainData
 //--------------------------------------- System variables
 $debug = 0x00; $background = false; $run = true; $reloadRBC = false; $pollEC = false;
 $startTime = $secondTimeout = time();
-$PT1 = array();
 $trainData = array();
 $simTrain = array();
 

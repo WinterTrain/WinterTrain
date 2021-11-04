@@ -42,5 +42,11 @@ $RLT_TXT_SH[RT_LEFT] = "L";
         
 // Route Locking Diretion
 $RDIR_TXT_SH[true] = "Up";
-$RDIR_TXT_SH[false] = "Dn";    
+$RDIR_TXT_SH[false] = "Dn";   
+
+// Point state
+$PS_TXT_SH[P_UNDEFINED] = "?"; 
+$PS_TXT_SH[P_UNSUPERVISED] = "U"; 
+$PS_TXT_SH[P_SUPERVISED_RIGHT] = "R";
+$PS_TXT_SH[P_SUPERVISED_LEFT] = "L"; 
 ?>

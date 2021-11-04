@@ -40,8 +40,77 @@ abstract class genericElement { // ---------------------------------------------
     return false;
   }
   
+  public function notLockedInRoute() {
+    return $this->routeLockingState == R_IDLE and $this->routeLockingType == RT_IDLE; // More ?? FIXME
+  }
+  
+  public function occupyElementTrack($trainID) {
+    $this->vacancyState = V_OCCUPIED;
+    $this->occupationTrainID = $trainID; // what if occupied by more trains?? ---------------------------------------------------- FIXME
+    // Apply consequences like LX deactivation FIXME
+  }
+
+  public function routeIsClear() {
+//  print "$this->elementName ";
+    return $this->routeLockingState == R_IDLE or ($this->vacancyState == V_CLEAR and $this->routeLockingUp ? $this->neighbourDown->routeIsClear() : $this->neighbourUp->routeIsClear());
+  }
+  
+  public function releaseElementTrack($drivingDirection) {
+    // $drivingDirection indicates in which direction  (UP, DOWN, Udef) the train left the (track) extent of the element
+    $this->vacancyState = V_CLEAR;
+    if ($this->routeLockingState != R_IDLE) {
+      switch ($drivingDirection){
+        case D_UP:
+          if ($this->routeLockingUp and $this->neighbourDown->notLockedInRoute()) { // other conditions ?? FIXME
+            $this->routeLockingState = R_IDLE;
+            $this->routeLockingType = RT_IDLE;
+            $this->occupationTrainID = "";
+          } // else Warning train moved against route direction FIXME
+        break;
+        case D_DOWN:
+          if (!$this->routeLockingUp and $this->neighbourUp->notLockedInRoute()) { // other conditions ?? FIXME
+            $this->routeLockingState = R_IDLE;
+            $this->routeLockingType = RT_IDLE;
+            $this->occupationTrainID = "";
+          } // else Warning train moved against route direction FIXME
+        break;
+        default:
+          // Warning train released element in unknown direction - what to do FIXME
+          print "Warning Train released element {$this->elementName} in unknown direction\n";
+        break;
+      }
+    }  // else route not locked - ignore element release
+  }
+  
+  public function checkOccupationUp($trainIndex, $trainPositionUp, $trainPositionDown, $caller, $reportIndex) {
+  global $PT2;
+    $elementLength = $PT2[$this->elementName]["U"]["dist"] + $PT2[$this->elementName]["D"]["dist"];
+//    print "checkUp:  $this->elementName: Up $trainPositionUp, Down $trainPositionDown, Length $elementLength\n";
+    $occupation = ($trainPositionDown < $elementLength ? array($reportIndex => $this->elementName) : array()); // train occupying this element?
+    if ($trainPositionUp > $elementLength) { // Up position located further Up, check neighbour Up
+      $occupation = $occupation + $this->neighbourUp->
+        checkOccupationUp($trainIndex, $trainPositionUp - $elementLength, $trainPositionDown - $elementLength, $this, $reportIndex + 1);
+    }
+    return $occupation;
+  }
+  
+  public function checkOccupationDown($trainIndex, $trainPositionUp, $trainPositionDown, $caller, $reportIndex) {
+  global $PT2;
+    $elementLength = $PT2[$this->elementName]["U"]["dist"] + $PT2[$this->elementName]["D"]["dist"];
+//    print "checkDown:  $this->elementName: Up $trainPositionUp, Down $trainPositionDown, Length $elementLength\n";
+    $occupation = ($trainPositionUp > -$elementLength ? array($reportIndex => $this->elementName) : array()); // train occupying this element?
+    if ($trainPositionDown < -$elementLength) { // Down position located further Down, check neighbour DOwn
+      $occupation = $occupation + $this->neighbourDown->
+        checkOccupationDown($trainIndex, $trainPositionUp + $elementLength, $trainPositionDown + $elementLength, $this, $reportIndex - 1);
+    }
+    return $occupation;
+  }
+    
   protected function setRouteTo($directionUp, $endPoint, $caller) {
-    if ($this->routeLockingState != R_IDLE) return false;
+  global $recCount;
+    $recCount +=1;
+    if ($recCount > 100) die("Recursion"); // FIXME
+    if ($this->routeLockingState != R_IDLE or $this->vacancyState != V_CLEAR) return false;
     if (!($directionUp ? 
       $this->neighbourUp->setRouteTo(true, $endPoint, $this) : $this->neighbourDown->setRouteTo(false, $endPoint, $this))) return false;
     $this->routeLockingState = R_LOCKED;
@@ -49,17 +118,31 @@ abstract class genericElement { // ---------------------------------------------
     $this->routeLockingUp = $directionUp;
     return true;
   }
-  
-  protected function releaseRoute() {
-    if ($this->routeLockingState == R_IDLE) return true;
-    if ($this->routeLockingUp ? $this->neighbourDown->releaseRoute() : $this->neighbourUp->releaseRoute()) {
+
+  public function searchRouteUp() {
+    return $this->neighbourUp->searchRouteUp();
+  }
+    
+  public function searchRouteDown() {
+    return $this->neighbourDown->searvhRouteDown();
+  }
+
+  protected function releaseRoute($caller) { // unconditional route release
+  global $recCount;
+    $recCount +=1;
+    if ($recCount > 100) die("Recursion"); // FIXME
+    if ($this->routeLockingState != R_IDLE) {
+      $this->routeLockingUp ? $this->neighbourDown->releaseRoute($this) : $this->neighbourUp->releaseRoute($this);
       $this->routeLockingState = R_IDLE;
       $this->routeLockingType = RT_IDLE;
-      return true;
     }
-    return false;
   }
   
+  public function dumpRoute() {
+    return $this->routeLockingState == R_IDLE ? "" :
+      ($this->routeLockingUp ? $this->neighbourDown->dumpRoute() : $this->neighbourUp->dumpRoute())." $this->elementName";
+  }
+
   public function __construct($consName) {
     $this->elementName = $consName;
   }
@@ -93,8 +176,203 @@ class Pelement extends genericElement { // -------------------------------------
     return true;
   }
 
+  public function routeIsClear() {
+//  print "$this->elementName ";
+    return $this->routeLockingState == R_IDLE or ($this->vacancyState == V_CLEAR and
+      $this->routeLockingUp ? 
+        ($this->facingUp ? 
+          $this->neighbourTip->routeIsClear()
+        :
+          ($this->routeLockingType == RT_RIGHT ?
+            $this->neighbourRight->routeIsClear() : $this->neighbourLeft->routeIsClear()))
+      : 
+        ($this->facingUp ? 
+          ($this->routeLockingType == RT_RIGHT ?
+            $this->neighbourRight->routeIsClear() : $this->neighbourLeft->routeIsClear())
+          :
+          $this->neighbourTip->routeIsClear()));
+  }
+  
+  public function releaseElementTrack($drivingDirection) {
+    // $drivingDirection indicates in which direction  (UP, DOWN, Udef) the train left the (track) extent of the element
+    $this->vacancyState = V_CLEAR;
+    if ($this->routeLockingState != R_IDLE) {
+      switch ($drivingDirection){
+        case D_UP:
+          if ($this->routeLockingUp and // other conditions ?? FIXME
+              ($this->facingUp ?
+                $this->neighbourTip->notLockedInRoute()
+              :
+                ($this->routeLockingType == RT_RIGHT ? $this->neighbourRight->notLockedInRoute() : $this->neighbourLeft->notLockedInRoute())
+              )) { 
+            $this->routeLockingState = R_IDLE;
+            $this->routeLockingType = RT_IDLE;
+            $this->throwLockedByRoute = false;
+            $this->occupationTrainID = "";
+          } // else Warning train moved against route direction FIXME
+        break;
+        case D_DOWN:
+          if (!$this->routeLockingUp and  // other conditions ?? FIXME
+              (!$this->facingUp ?
+                $this->neighbourTip->notLockedInRoute() 
+              :
+                ($this->routeLockingType == RT_RIGHT ? $this->neighbourRight->notLockedInRoute() : $this->neighbourLeft->notLockedInRoute() ))) {
+            $this->routeLockingState = R_IDLE;
+            $this->routeLockingType = RT_IDLE;
+            $this->throwLockedByRoute = false;
+            $this->occupationTrainID = "";
+          } // else Warning train moved against route direction FIXME
+        break;
+        default:
+          // Warning train released element in unknown direction - what to do FIXME
+          print "Warning Train released element {$this->elementName} in unknown direction\n";
+        break;
+      }
+    }  // else route not locked - ignore element release
+  }
+  
+  public function checkOccupationUp($trainIndex, $trainPositionUp, $trainPositionDown, $caller, $reportIndex) {
+  global $PT2, $trainData;
+
+    $occupation = array();
+    if ($this->facingUp) { // Point is facing in search direction
+      $elementLengthRight = $PT2[$this->elementName]["T"]["dist"] + $PT2[$this->elementName]["R"]["dist"];
+      $elementLengthLeft = $PT2[$this->elementName]["T"]["dist"] + $PT2[$this->elementName]["L"]["dist"];
+      if ($trainPositionDown < ($this->logicalLieRight ? $elementLengthRight : $elementLengthLeft)) {
+        // Point is occupied by this train in the logical lie. Hence throwing is blocked, lie can be trusted and position is unambiguous
+        if ($this->logicalLieRight) {
+          $occupation = array($reportIndex => $this->elementName);
+          if ($trainPositionUp > $elementLengthRight) { // Up position located further Up, check neighbour at Right
+            $occupation = $occupation + $this->neighbourRight->
+              checkOccupationUp($trainIndex, $trainPositionUp - $elementLengthRight, $trainPositionDown - $elementLengthRight,
+                $this, $reportIndex + 1);
+          }
+        } else {
+          $occupation = array($reportIndex => $this->elementName);
+          if ($trainPositionUp > $elementLengthRight) { // Up position located further Up, check neighbour at Left
+            $occupation = $occupation + $this->neighbourLeft->
+              checkOccupationUp($trainIndex, $trainPositionUp - $elementLengthLeft, $trainPositionDown - $elementLengthLeft,
+                $this, $reportIndex + 1);
+          }
+        }
+      } else { // Position might be ambiguous
+//print "{$this->elementName} Ambiguous??\n";
+        if ($trainData[$trainIndex]["curPositionUnambiguous"]) { // Current occupation might be used to determin new occupation
+          $occupationRight = $this->neighbourRight->
+            checkOccupationUp($trainIndex, $trainPositionUp - $elementLengthRight, $trainPositionDown - $elementLengthRight,
+              $this, $reportIndex + 1);
+          $occupationLeft = $this->neighbourLeft->
+            checkOccupationUp($trainIndex, $trainPositionUp - $elementLengthLeft, $trainPositionDown - $elementLengthLeft,
+              $this, $reportIndex +1);
+          $overlapRight = array_intersect($trainData[$trainIndex]["curOccupation"], $occupationRight);
+          $overlapLeft = array_intersect($trainData[$trainIndex]["curOccupation"], $occupationLeft);
+          if ($overlapRight) {
+            if ($overlapLeft) { // The new occupations are both overlapping current occupation - Ambiguous
+              $occupation = $occupationRight + $occupationLeft + array("Ambiguous" => "");
+            } else {
+              $occupation = $occupationRight;
+            }
+          } else {
+            if ($overlapLeft) {
+              $occupation = $occupationLeft;
+            } else { // New occupation is not overlapping current occupation - Ambiguous
+              $occupation = $occupationRight + $occupationLeft + array("Ambiguous" => "");
+            }
+          }               
+        } else {
+          $occupation = array("Ambiguous" => "");
+        }
+      }
+    } else { // Point is trailing in search direction
+      if ($caller === $this->neighbourRight) { // occupation search reached this point via right branch
+        $elementLength = $PT2[$this->elementName]["T"]["dist"] + $PT2[$this->elementName]["R"]["dist"];
+//print "checkUpR:  $this->elementName: Up $trainPositionUp, Down $trainPositionDown, Length $elementLength\n";
+      } else { // occupation search reached this point via left branch
+        $elementLength = $PT2[$this->elementName]["T"]["dist"] + $PT2[$this->elementName]["L"]["dist"];          
+//print "checkUpL:  $this->elementName: Up $trainPositionUp, Down $trainPositionDown, Length $elementLength\n";
+      }
+      $occupation = ($trainPositionDown < $elementLength ? array($reportIndex => $this->elementName) : array()); // train occupying this element?
+      if ($trainPositionUp > $elementLength) { // Up position located further Up, check neighbour at Tip
+        $occupation = $occupation + $this->neighbourTip->
+          checkOccupationUp($trainIndex, $trainPositionUp - $elementLength, $trainPositionDown - $elementLength,
+            $this, $reportIndex + 1);
+      }
+    }
+    return $occupation;
+  }
+  
+  public function checkOccupationDown($trainIndex, $trainPositionUp, $trainPositionDown, $caller, $reportIndex) {
+  global $PT2, $trainData;
+  
+    $occupation = array();
+    if ($this->facingUp) { // Point is trailing in search direction
+      if ($caller === $this->neighbourRight) { // occupation search reached this point via right branch
+        $elementLength = $PT2[$this->elementName]["T"]["dist"] + $PT2[$this->elementName]["R"]["dist"];      
+//print "checkDownR:  $this->elementName: Up $trainPositionUp, Down $trainPositionDown, Length $elementLength\n";
+      } else { // occupation search reached this point via left branch
+        $elementLength = $PT2[$this->elementName]["T"]["dist"] + $PT2[$this->elementName]["L"]["dist"];          
+//print "checkDownL:  $this->elementName: Up $trainPositionUp, Down $trainPositionDown, Length $elementLength\n";
+      }
+      $occupation = ($trainPositionUp > -$elementLength ? array($reportIndex => $this->elementName) : array()); // train occupying this element?
+      if ($trainPositionDown < -$elementLength) { // Down position located further Down, check neighbour at Tip
+        $occupation = $occupation + $this->neighbourTip->
+          checkOccupationDown($trainIndex, $trainPositionUp + $elementLength, $trainPositionDown + $elementLength,
+            $this, $reportIndex - 1);
+      }
+    } else { // Point is facing in search direction
+      $elementLengthRight = $PT2[$this->elementName]["T"]["dist"] + $PT2[$this->elementName]["R"]["dist"];
+      $elementLengthLeft = $PT2[$this->elementName]["T"]["dist"] + $PT2[$this->elementName]["L"]["dist"];
+      if ($trainPositionUp > -($this->logicalLieRight ? $elementLengthRight : $elementLengthLeft)) {
+        // Point is occupied by this train in the logical lie. Hence throwing is blocked, lie can be trusted and position is unambiguous
+        if ($this->logicalLieRight) {
+          $occupation = array($reportIndex => $this->elementName);
+          if ($trainPositionDown < -$elementLengthRight) { // Down position located further Down, check neighbour at Right
+            $occupation = $occupation + $this->neighbourRight->
+              checkOccupationDown($trainIndex, $trainPositionUp + $elementLengthRight, $trainPositionDown + $elementLengthRight,
+                $this, $reportIndex - 1);
+          }
+        } else {
+          $occupation = array($reportIndex => $this->elementName);
+          if ($trainPositionDown < -$elementLengthRight) { // Down position located further Down, check neighbour at Left
+            $occupation = $occupation + $this->neighbourLeft->
+              checkOccupationDown($trainIndex, $trainPositionUp + $elementLengthLeft, $trainPositionDown + $elementLengthLeft,
+                $this, $reportIndex - 1);
+          }
+        }
+      } else { // Position might be ambiguous
+//print "{$this->elementName} Ambiguous??\n";
+        if ($trainData[$trainIndex]["curPositionUnambiguous"]) { // Current occupation might be used to determin new occupation
+          $occupationRight = $this->neighbourRight->
+            checkOccupationDown($trainIndex, $trainPositionUp + $elementLengthRight, $trainPositionDown + $elementLengthRight,
+              $this, $reportIndex - 1);
+          $occupationLeft = $this->neighbourLeft->
+            checkOccupationDown($trainIndex, $trainPositionUp + $elementLengthLeft, $trainPositionDown + $elementLengthLeft,
+              $this, $reportIndex - 1);
+          $overlapRight = array_intersect($trainData[$trainIndex]["curOccupation"], $occupationRight);
+          $overlapLeft = array_intersect($trainData[$trainIndex]["curOccupation"], $occupationLeft);
+          if ($overlapRight) {
+            if ($overlapLeft) { // The new occupations are both overlapping current occupation - Ambiguous
+              $occupation = $occupationRight + $occupationLeft + array("Ambiguous" => "");
+            } else {
+              $occupation = $occupationRight;
+            }
+          } else {
+            if ($overlapLeft) {
+              $occupation = $occupationLeft;
+            } else { // New occupation is not overlapping current occupation - Ambiguous
+              $occupation = $occupationRight + $occupationLeft + array("Ambiguous" => "");
+            }
+          }               
+        } else {
+          $occupation = array("Ambiguous" => "");
+        }
+      }
+    }
+    return $occupation;
+  }
+  
   protected function throwPoint($throwRight) { // Throw point to specific lie (param true: right, false: left)
-    if ($this->throwLockedByConfiguration or $this->throwLockedByRoute or $this->throwLockedByCmd) return false;
+    if ($this->throwLockedByConfiguration or $this->throwLockedByRoute or $this->throwLockedByCmd or $this->vacancyState != V_CLEAR) return false;
     if ($throwRight == $this->logicalLieRight) return true; // Point is already in requested lie
       $this->logicalLieRight = $throwRight;
       switch ($this->supervisionMode) {
@@ -103,7 +381,7 @@ class Pelement extends genericElement { // -------------------------------------
         break;
         case "S": // Point lie simulated
           $this->pointState = $this->logicalLieRight ? P_SUPERVISED_RIGHT : P_SUPERVISED_LEFT;
-          if ($this->routeLockingState != R_IDLE) { // Point is locked in route, check if throw is to be locked
+          if ($this->routeLockingState != R_IDLE) { // Point is locked in route, check if throwing is to be locked
             if ($this->logicalLieRight == ($this->routeLockingType == RT_RIGHT)) $this->throwLockedByRoute = true;
           };
           return true;
@@ -122,8 +400,10 @@ class Pelement extends genericElement { // -------------------------------------
   }
   
   protected function setRouteTo($directionUp, $endPoint, $caller) { // Set route further - called by neighbour
-  global $automaticPointThrowEnabled;
-    if ($this->routeLockingState != R_IDLE) return false;
+  global $automaticPointThrowEnabled, $recCount;
+    $recCount +=1;
+    if ($recCount > 100) die("Recursion"); // FIXME
+    if ($this->routeLockingState != R_IDLE or $this->vacancyState != V_CLEAR) return false;
     $this->routeLockingUp = $directionUp;
     if ($directionUp == $this->facingUp) { // Point is facing in route direction
       if ($this->logicalLieRight) { // Follow logical lie right
@@ -190,28 +470,51 @@ class Pelement extends genericElement { // -------------------------------------
     }    
   }
   
-  protected function releaseRoute() {
-    if ($this->routeLockingState == R_IDLE) return true;
-    if ($this->routeLockingUp == $this->facingUp) { // Locked facing in route
-      if ($this->neighbourTip->releaseRoute()) {
+  protected function releaseRoute($caller) {
+  global $recCount;
+    $recCount +=1;
+    if ($recCount > 100) die("Recursion"); // FIXME
+    if ($this->routeLockingState == R_IDLE) return;
+    if ($this->routeLockingUp == $this->facingUp) { // Point is locked facing in route
+      if (($caller == $this->neighbourRight and $this->routeLockingType == RT_RIGHT) or
+        ($caller == $this->neighbourLeft and $this->routeLockingType == RT_LEFT)) {
+        $this->neighbourTip->releaseRoute($this);
         $this->routeLockingState = R_IDLE;
         $this->routeLockingType = RT_IDLE;
         $this->throwLockedByRoute = false;
-        return true;
       }
-      return false;
-    } else { // Locked trailing in route
-      if ($this->routeLockingType == RT_RIGHT ? $this->neighbourRight->releaseRoute() : $this->neighbourLeft->releaseRoute()) {
-        $this->routeLockingState = R_IDLE;
-        $this->routeLockingType = RT_IDLE;
-        $this->throwLockedByRoute = false;
-        return true;
-      }
-      return false;
+    } else { // Point is locked trailing in route
+      $this->routeLockingType == RT_RIGHT ? $this->neighbourRight->releaseRoute($this) : $this->neighbourLeft->releaseRoute($this);
+      $this->routeLockingState = R_IDLE;
+      $this->routeLockingType = RT_IDLE;
+      $this->throwLockedByRoute = false;
     }
   }
 
-  public function __construct($consName) {
+  public function searchRouteUp() {
+    return "";
+  }
+    
+  public function searchRouteDown() {
+    return "";
+  }
+  
+  public function dumpRoute() {
+    return $this->routeLockingState == R_IDLE ? "" :
+      ($this->routeLockingUp ?
+        ($this->facingUp ?
+          $this->neighbourTip->dumpRoute()
+        :
+          ($this->routeLockingType == RT_RIGHT ? $this->neighbourRight->dumpRoute() : $this->neighbourLeft->dumpRoute()))
+      :
+        ($this->facingUp ?
+          ($this->routeLockingType == RT_RIGHT ? $this->neighbourRight->dumpRoute() : $this->neighbourLeft->dumpRoute())
+        :
+          $this->neighbourTip->dumpRoute()
+        ))." $this->elementName".($this->routeLockingType == RT_RIGHT ? "(R)" : "(L)");
+  }
+  
+public function __construct($consName) {
   global $PT2;
     $this->elementName = $consName;
     $this->elementType = $PT2[$consName]["element"];
@@ -277,20 +580,116 @@ class Selement extends genericElement { // -------------------------------------
     return false;
   }
   
-  public function cmdReleaseRoute() {
-    if ($this->routeLockingState == R_IDLE or $this->routeLockingType != RT_END_POINT) return false;
-    if ($this->facingUp ? $this->neighbourDown->releaseRoute() : $this->neighbourUp->releaseRoute()) {
+  public function cmdReleaseRoute() { // Unconditional route release
+    if ($this->routeLockingType == RT_END_POINT) {
+      $this->facingUp ? $this->neighbourDown->releaseRoute($this) : $this->neighbourUp->releaseRoute($this);
       $this->routeLockingState = R_IDLE;
       $this->routeLockingType = RT_IDLE;
       return true;
+    } else {
+      return false;
     }
-    return false;
+  }
+  
+  public function routeIsClear() {
+//  print "$this->elementName ";
+    return $this->routeLockingState == R_IDLE or ($this->vacancyState == V_CLEAR and
+      ($this->routeLockingType == RT_START_POINT or
+        $this->routeLockingUp ? $this->neighbourDown->routeIsClear() : $this->neighbourUp->routeIsClear()));
+  }
+  
+  public function releaseElementTrack($drivingDirection) {
+    $this->vacancyState = V_CLEAR;
+    if ($this->routeLockingState != R_IDLE) {
+      switch ($drivingDirection){
+        case D_UP:
+          if ($this->routeLockingUp) {
+            switch ($this->routeLockingType) {
+              case RT_START_POINT:
+                // Close signal FIXME
+                $this->routeLockingState = R_IDLE;
+                $this->routeLockingType = RT_IDLE;
+                $this->occupationTrainID = "";
+              break;
+              case RT_VIA:
+                if ($this->neighbourDown->notLockedInRoute()) { // other conditions FIXME
+                  // Close signal FIXME
+                  $this->routeLockingState = R_IDLE;
+                  $this->routeLockingType = RT_IDLE;
+                  $this->occupationTrainID = "";
+                } // else Warning: element release in the middle of a route - ignored
+              break;
+              case RT_VIA_REVERSE:
+                if ($this->neighbourDown->notLockedInRoute()) { // other conditions FIXME
+                  $this->routeLockingState = R_IDLE;
+                  $this->routeLockingType = RT_IDLE;
+                  $this->occupationTrainID = "";
+                } // else Warning: element release in the middle of a route - ignored
+              break;
+              case RT_END_POINT:
+                // train continued passing the end point signal - what to do?? FIXME
+                if ($this->neighbourDown->notLockedInRoute()) { // other conditions FIXME
+                  $this->routeLockingState = R_IDLE;
+                  $this->routeLockingType = RT_IDLE;
+                  $this->occupationTrainID = "";
+                } // else Warning: element release in the middle of a route - ignored
+              break;
+              default: // FIXME
+print "default locking type {$this->routeLockingType} ";
+              break;
+            }
+          } else {
+print "Train moving against route direction ";} // else Warning train moved against route direction FIXME
+        break;
+        case D_DOWN:
+          if (!$this->routeLockingUp) {
+            switch ($this->routeLockingType) {
+              case RT_START_POINT:
+                // Close signal FIXME
+                $this->routeLockingState = R_IDLE;
+                $this->routeLockingType = RT_IDLE;
+                $this->occupationTrainID = "";
+              break;
+              case RT_VIA:
+                if ( $this->neighbourUp->notLockedInRoute() ) { // other conditions FIXME
+                  // Close signal FIXME
+                  $this->routeLockingState = R_IDLE;
+                  $this->routeLockingType = RT_IDLE;
+                  $this->occupationTrainID = "";
+                } // else Warning: element release in the middle of a route - ignored
+              break;
+              case RT_VIA_REVERSE:
+                if ( $this->neighbourUp->notLockedInRoute() ) { // other conditions FIXME
+                  $this->routeLockingState = R_IDLE;
+                  $this->routeLockingType = RT_IDLE;
+                  $this->occupationTrainID = "";
+                } // else Warning: element release in the middle of a route - ignored
+              break;
+              case RT_END_POINT:
+                // train continued passing the end point signal - what to do?? FIXME
+                if ( $this->neighbourUp->notLockedInRoute() ) { // other conditions FIXME
+                  $this->routeLockingState = R_IDLE;
+                  $this->routeLockingType = RT_IDLE;
+                  $this->occupationTrainID = "";
+                } // else Warning: element release in the middle of a route - ignored
+              break;
+              default: // FIXME
+              break;
+            }        
+          } // else Warning train moved against route direction FIXME
+        break;
+        default: // moving direction unknown - ignore release
+          // Warning train released element in unknown direction - what to do FIXME
+          print "Warning Train released element {$this->elementName} in unknown direction\n";
+        break;
+      }
+    } // else route not locked - ignore element release
   }
 
   protected function setRouteTo($directionUp, $endPoint, $caller) {
   global $recCount;
-  $recCount +=1;
-  if ($recCount > 10) die("Recursion"); // FIXME
+    $recCount +=1;
+    if ($recCount > 100) die("Recursion"); // FIXME
     if ($directionUp == $this->facingUp) { // Signal is facing in route direction
       if ($endPoint == $this->elementName) { // End point found
         if ($this->routeLockingState != R_IDLE and $this->routeLockingType != RT_START_POINT) return false;
@@ -304,7 +703,7 @@ class Selement extends genericElement { // -------------------------------------
         $this->routeLockingUp = $directionUp;
         return true;
       } else {
-        if ($this->routeLockingState != R_IDLE or $this->blockingState == B_BLOCKED_START_VIA) return false;
+        if ($this->routeLockingState != R_IDLE or $this->blockingState == B_BLOCKED_START_VIA or $this->vacancyState != V_CLEAR) return false;
         if ($this->facingUp ? $this->neighbourUp->setRouteTo(true, $endPoint, $this) : $this->neighbourDown->setRouteTo(false, $endPoint, $this)) {
           $this->routeLockingState = R_LOCKED;
           $this->routeLockingType = RT_VIA;
@@ -314,7 +713,7 @@ class Selement extends genericElement { // -------------------------------------
         return false; 
       }
     } else { // Signal is reverse in route direction
-      if ($this->routeLockingState != R_IDLE) return false;
+      if ($this->routeLockingState != R_IDLE or $this->vacancyState != V_CLEAR) return false;
       if ($directionUp ? $this->neighbourUp->setRouteTo(true, $endPoint, $this) : $this->neighbourDown->setRouteTo(false, $endPoint, $this)) {
         $this->routeLockingState = R_LOCKED;
         $this->routeLockingType = RT_VIA_REVERSE;
@@ -324,20 +723,29 @@ class Selement extends genericElement { // -------------------------------------
       return false;
     }
   }
-  
+
+  public function searchRouteUp() {
+    return ($this->facingUp and $this->routeLockingState == R_LOCKED and $this->routeLockingType == RT_START_POINT ) ? $this->elementName : "";
+  }    
+
+  public function searchRouteDown() {
+    return (!$this->facingUp and $this->routeLockingState == R_LOCKED and $this->routeLockingType == RT_START_POINT) ? $this->elementName : "";
+  }  
+
   public function __construct($consName) {
   global $PT2;
     $this->elementName = $consName;
     $this->elementType = $PT2[$consName]["element"];
     $this->blockingState = B_NOT_BLOCKED;
     $this->facingUp = ($this->elementType == "SU");
+    $this->assignedTrain = ""; // Valid only when locked as EP
   }
 }
 
 class BSelement extends genericElement { // ----------------------------------------------------------------------- Buffer Stop
 
   protected function setRouteTo($directionUp, $endPoint, $caller) {
-    if ($this->routeLockingState != R_IDLE) return false;
+    if ($this->routeLockingState != R_IDLE or $this->vacancyState != V_CLEAR) return false;
     if ($endPoint == $this->elementName) { // End point found
       $this->routeLockingState = R_LOCKED;
       $this->routeLockingType = RT_END_POINT;
@@ -348,20 +756,57 @@ class BSelement extends genericElement { // ------------------------------------
   }
 
   public function cmdReleaseRoute() {
-    if ($this->routeLockingState == R_IDLE) return false;
-    if ($this->facingUp ? $this->neighbourDown->releaseRoute() : $this->neighbourUp->releaseRoute()) {
+    if ($this->routeLockingType == RT_END_POINT) {
+      $this->facingUp ? $this->neighbourDown->releaseRoute($this) : $this->neighbourUp->releaseRoute($this);
       $this->routeLockingState = R_IDLE;
       $this->routeLockingType = RT_IDLE;
       return true;
+    } else {
+      return false;
     }
-    return false;
+  }
+
+  public function routeIsClear() {
+  
+    return $this->routeLockingState == R_IDLE or ($this->vacancyState == V_CLEAR and $this->routeLockingUp ? $this->neighbourDown->routeIsClear() : $this->neighbourUp->routeIsClear());
+  }
+
+  public function releaseElementTrack($drivingDirection) {
+    // $drivingDirection indicates in which direction  (UP, DOWN, Udef) the train left the (track) extent of the element
+    $this->vacancyState = V_CLEAR;
+// Release approach area before start signal FIXME
+  }
+  
+  public function checkOccupationUp($trainIndex, $trainPositionUp, $trainPositionDown, $caller, $reportIndex) {
+  global $PT2, $trainData;
+    $elementLength = $PT2[$this->elementName]["D"]["dist"];
+//print "checkUp:  $this->elementName: Up $trainPositionUp, Down $trainPositionDown, Length $elementLength\n";
+    $occupation = ($trainPositionDown < $elementLength ? array($reportIndex => $this->elementName) : array()); // train occupying this element?
+    if ($trainPositionUp > $elementLength) { // Up position located further Up - train crashed into bufferstop
+//      msgLog("Warning: Train {$trainData[$trainIndex]["ID"]} crashed into bufferstop {$this->elementName} according to position report "); 
+// print only if this was the train FIXME
+    }
+    return $occupation;
+  }
+  
+  public function checkOccupationDown($trainIndex, $trainPositionUp, $trainPositionDown, $caller, $reportIndex) {
+  global $PT2, $trainData;
+    $elementLength = $PT2[$this->elementName]["U"]["dist"];
+//print "checkDown:  $this->elementName: Up $trainPositionUp, Down $trainPositionDown, Length $elementLength\n";
+    $occupation = ($trainPositionUp > -$elementLength ? array($reportIndex => $this->elementName) : array()); // train occupying this element?
+    if ($trainPositionDown < -$elementLength) { // Down position located further Down - train has crashed the buffer stop
+//      msgLog("Warning: Train {$trainData[$trainIndex]["ID"]} crashed into bufferstop {$this->elementName} according to position report ");
+// print only if this was the train FIXME
+    }
+    return $occupation;
   }
   
   public function __construct($consName) {
   global $PT2;
     $this->elementName = $consName;
     $this->elementType = $PT2[$consName]["element"];
-    $this->facingUp = ($this->elementType == "BSE"); // BufferStop End is seen as facing (end point)
+    $this->facingUp = ($this->elementType == "BSE"); // BufferStop End is seen as a facing (end point) signal
+    $this->assignedTrain = ""; // Valid only when locked as EP
   }
 }
 
@@ -389,11 +834,10 @@ class PHTelement extends genericElement { // -----------------------------------
 
 
 function generateMA($index) { // -------------------------------------------------- Generate mode and movement authority for specific train
-global $trainData, $allowSR, $allowSH, $allowFS, $allowATO, $emergencyStop;
-print "Generate MA for train {$trainData[$index]["ID"]}\n";
+global $trainData, $trackModel, $allowSR, $allowSH, $allowFS, $allowATO, $emergencyStop;
+//print "Generate MA for train {$trainData[$index]["ID"]}\n";
 
-// FS, ATO
-// if no route assigned to train: search for applicable route and assign to train
+// FS, ATO: if no route assigned to train: search for applicable route and assign to train
 // if route assigned and MB open:
 // max speed for train / wheel factor
 // allowed driving direction of route for FS, ATO
@@ -404,13 +848,23 @@ print "Generate MA for train {$trainData[$index]["ID"]}\n";
 
   $train["authMode"] = M_N;
   $train["MAdir"] = MD_NODIR;
+  $train["MAbalise"] = "00:00:00:00:00";
   switch ($train["reqMode"]) {
+    case M_N:
+      if ($train["assignedRoute"] != "") { // if route assigned to train: unassign route
+        $trackModel[$train["assignedRoute"]]->assignedTrain = "";
+        $train["assignedRoute"] = "";
+      }
+    break;
     case M_SR:
       if ($allowSR and $train["SRallowed"]) {
         $train["authMode"] = M_SR;
         $train["maxSpeed"] = $train["SRmaxSpeed"];
         $train["MAdir"] = MD_BOTH;
-// if route assigned to train: unassign route
+      }
+      if ($train["assignedRoute"] != "") { // if route assigned to train: unassign route
+        $trackModel[$train["assignedRoute"]]->assignedTrain = "";
+        $train["assignedRoute"] = "";
       }
     break;
     case M_SH:
@@ -418,31 +872,106 @@ print "Generate MA for train {$trainData[$index]["ID"]}\n";
         $train["authMode"] = M_SH;
         $train["maxSpeed"] = $train["SHmaxSpeed"];
         $train["MAdir"] = MD_BOTH;
-// if route assigned to train: unassign route
+      }
+      if ($train["assignedRoute"] != "") { // if route assigned to train: unassign route
+        $trackModel[$train["assignedRoute"]]->assignedTrain = "";
+        $train["assignedRoute"] = "";
       }
     break;
     case M_FS:
       if  ($allowFS and $train["FSallowed"]) {
         $train["authMode"] = M_FS;
         $train["maxSpeed"] = $train["FSmaxSpeed"];
-        // $train["MAdir"] = ; FIXME
+        if ($train["curPositionUnambiguous"] and ($train["nomDir"] == D_UP or $train["nomDir"] == D_DOWN)) {
+          if ($train["assignedRoute"] == "") { // search for and assign route to train according to requested driving direction
+          // $train["MAdir"] = ; FIXME
+  print_r($train["curOccupation"]);
+  
+            $iUp = -1000; 
+            $iDown = 1000;
+            foreach ($train["curOccupation"] as $i => $pos) { // Identify border of occupation
+              if ($i > $iUp) $iUp = $i;
+              if ($i < $iDown) $iDown = $i;
+            }
+            $occupiedElement =
+              $train["nomDir"] == D_UP ? $trackModel[$train["curOccupation"][$iUp]] : $trackModel[$train["curOccupation"][$iDown]];
+            switch ($occupiedElement->elementType) {
+              case "BSB":
+                $route = $train["nomDir"] == D_UP ? $occupiedElement->neighbourUp->searchRouteUp() : "";
+              break;
+              case "BSE":
+                $route = $train["nomDir"] == D_DOWN ? $occupiedElement->neighbourDown->searchRouteDown() : "";
+              break;
+              case "PF":
+                if ($train["nomDir"] == D_UP ) {
+                  switch ($occupiedElement->pointState) {
+                    case P_SUPERVISED_RIGHT:
+                      $route = $occupiedElement->neighbourRight->searchRouteUp();
+                    break;
+                    case P_SUPERVISED_LEFT:
+                      $route = $occupiedElement->neighbourLeft->searchRouteUp();
+                    break;
+                    default:
+                      $route = "";
+                    break;
+                    }
+                } else {
+                  $route = $occupiedElement->neighbourTip->earchRouteDown();
+                }              
+              break;
+              case "PT":
+                if ($train["nomDir"] == D_DOWN ) {
+                  switch ($occupiedElement->pointState) {
+                    case P_SUPERVISED_RIGHT:
+                      $route = $occupiedElement->neighbourRight->searchRouteDown();
+                    break;
+                    case P_SUPERVISED_LEFT:
+                      $route = $occupiedElement->neighbourLeft->searchRouteDown();
+                    break;
+                    default:
+                      $route = "";
+                    break;
+                    }
+                } else {
+                  $route = $occupiedElement->neighbourTip->searchRouteUp();
+                }
+              break;
+              default:
+                if ($train["nomDir"] == D_UP ) {
+                  $route = $occupiedElement->neighbourUp->searchRouteUp();
+                } else {
+                  $route = $occupiedElement->sneighbourDown->earchRouteDown();
+                }
+              break;
+            }
+            print "Route found: <$route>\n";
+          } else { // route already assigned: check route signalling
+          }
+        }
       }
     break;
     case M_ATO:
       if ($allowATO and $train["ATOallowed"]) {
         $train["authMode"] = M_ATO;
         $train["maxSpeed"] = $train["ATOmaxSpeed"];
+        if ($train["assignedRoute"] == "") {
+        // assign train to route according to requested driving direction
         // $train["MAdir"] = ; FIXME
+        } else { // route already assigned: check route signalling
+        }
       }
     break;
   }
-
   sendMA($index, ($emergencyStop ? M_ESTOP : $train["authMode"]), $train["MAdir"], $train["MAbalise"], $train["MAdist"], $train["maxSpeed"]);
 }
 
-function sendMA($index, $authMode, $MAdir, $balise, $dist, $speed) { // To be moved in generateMA() ?? FIXME
+function searchRoute($element, $ndirectio) {;
+return "Search from $element";
+}
+
+function sendMA($index, $authMode, $MAdir, $balise, $dist, $speed) { // To be moved to generateMA() ?? FIXME
 global  $trainData, $TD_TXT_MODE, $radioInterface;
-  print "MA packet: trainID {$trainData[$index]["ID"]}, authMode { $TD_TXT_MODE[$authMode]}, MAdir $MAdir, balise $balise, distance $dist, speed $speed\n";
+//  print "sendMA: trainID {$trainData[$index]["ID"]}, authMode {$TD_TXT_MODE[$authMode]}, MAdir $MAdir, balise $balise, distance $dist, speed $speed\n";
 
   if ($trainData[$index]["deployment"] == "R") { // Real train
     switch ($radioInterface) {
@@ -458,7 +987,7 @@ global  $trainData, $TD_TXT_MODE, $radioInterface;
 }
 
 function sendPosRestore($trainID, $balise, $distance) {  // FIXME
-global $radioLinkAddr, $radioLink, $radio;
+global $radioLinkAddr, $radioLink, $radioInterface;
 print "PosRestore to be implemented\n";
 
   switch ($radioInterface) { 
@@ -481,25 +1010,28 @@ function processPositionReport($trainID, $requestedMode, $MAreceived, $nomDir, /
 global $TD_TXT_MODE, $TD_TXT_ACK, $TD_TXT_DIR, $TD_TXT_PWR, $TD_TXT_RTOMODE, $trainData, $trainIndex, $now, $PT2, $balisesID,
   $posRestoreEnabled;
 
-  print "PosRep: TrainID: $trainID, reqMode: {$TD_TXT_MODE[$requestedMode]}, MAreceived: {$TD_TXT_ACK[$MAreceived]}, ".
+/*  print "processPosRep: TrainID: $trainID, reqMode: {$TD_TXT_MODE[$requestedMode]}, MAreceived: {$TD_TXT_ACK[$MAreceived]}, ".
   "nomDir: {$TD_TXT_DIR[$nomDir]}, pwr: {$TD_TXT_PWR[$pwr]}, Balise: $baliseID, Distance: $distance, Speed: $speed, ".
   "rtoMode: {$TD_TXT_RTOMODE[$rtoMode]} \n";
-  
+  */
   $triggerHMIupdate = true; // posRep will likely result in new states
   if (isset($trainIndex[$trainID])) { // Train is known
     $index = $trainIndex[$trainID];
     $train = &$trainData[$index];
-    $train["dataValid"] = "OK";
+    if ($train["deployment"] == "R" ) $train["dataValid"] = "OK";
     $train["comTimeStamp"] = $now;
     $train["reqMode"] = $requestedMode;
-    $train["nomDir"] = $nomDir; // Up or Down - Computed by OBU ------------- ??? concept of up/down is not known to OBU FIXME
+    $train["nomDir"] = $nomDir; // Nominel driving direction UP or DOWN, determined by OBU
     $train["pwr"] = $pwr;
     $train["MAreceived"] = $MAreceived;
-    if ($train["pwr"] == P_R) { // determin orientation of train front end
+    if ($train["pwr"] == P_R) { // Determin orientation of train front
       $train["front"] = D_UP;
     } elseif ($train["pwr"] == P_L) {
       $train["front"] = D_DOWN;
-    } // else orientation undefined by OBU - what to do? FIXME
+    } else { // orientation undefined by OBU - what to do? FIXME
+      $train["front"] = D_UP;
+      msgLog("Warning: Unknown orientation of train, assuming front Up");
+    }
     $train["rtoMode"] = $rtoMode;
     $train["speed"] = $speed;
     if ($baliseID == "00:00:00:00:00") { // ----------------------- OBU indicates void position
@@ -507,6 +1039,8 @@ global $TD_TXT_MODE, $TD_TXT_ACK, $TD_TXT_DIR, $TD_TXT_PWR, $TD_TXT_RTOMODE, $tr
       $train["distance"] = 0;
       $train["baliseID"] = $baliseID;
       $train["posTimeStamp"] = $now;
+      $train["curPositionUnambiguous"] = false; 
+      // $train["curOccupation"] = array(); Delete current occupation if position is void??? FIXME
       if ($posRestoreEnabled) {
         if (!$train["posRestored"]) {
           if ($now - $train["posTimeStamp"] <= POSITION_TIMEOUT) {
@@ -529,10 +1063,7 @@ global $TD_TXT_MODE, $TD_TXT_ACK, $TD_TXT_DIR, $TD_TXT_PWR, $TD_TXT_RTOMODE, $tr
       $train["baliseID"] = $baliseID;
       $train["baliseName"] = $balisesID[$baliseID];
       $train["posRestored"] = false;
-      // Determine track occupation FIXME
-      
-      
-      
+      determineOccupation($index);      
     } else { // --------------------------------------------------- OBU indicates unknown balise
       // Unknown balise, track occupation cannot be updated -  position report ignored
       msgLog("Warning: Unknown baliseID >$baliseID< provided in position report from train $trainID.".
@@ -544,6 +1075,56 @@ global $TD_TXT_MODE, $TD_TXT_ACK, $TD_TXT_DIR, $TD_TXT_PWR, $TD_TXT_RTOMODE, $tr
   }
 }
 
+function determineOccupation($index) {
+global $trainData, $trackModel, $PT2;
+
+  $train = &$trainData[$index];
+  $baliseName = $train["baliseName"];
+  $trainPositionUp = $train["distance"] + ($train["front"] == D_UP ? $train["lengthFront"] : $train["lengthBehind"]);
+  $trainPositionDown = $train["distance"] - ($train["front"] == D_UP ? $train["lengthBehind"] : $train["lengthFront"]);
+  $baliseDistanceUp = $PT2[$baliseName]["U"]["dist"];
+  $baliseDistanceDown = $PT2[$baliseName]["D"]["dist"];
+//print "Determine occupation of train {$train["ID"]} located between $trainPositionUp and  $trainPositionDown measured from {$train["baliseName"]}\n";
+  $occupation = array();
+  if ($trainPositionUp > -$baliseDistanceDown and $trainPositionUp < $baliseDistanceUp 
+      or $trainPositionDown > -$baliseDistanceDown and $trainPositionDown < $baliseDistanceUp) { // Reference balise is occupied
+    $occupation[0] = $baliseName;
+  }
+  if ($trainPositionUp > $baliseDistanceUp) { // Up position located further Up, check neighbour Up
+    $occupation = $occupation + $trackModel[$train["baliseName"]]->neighbourUp->
+      checkOccupationUp($index, $trainPositionUp - $baliseDistanceUp, $trainPositionDown - $baliseDistanceUp, $trackModel[$baliseName], 1);
+  }
+  if ($trainPositionDown < -$baliseDistanceDown) { // Down position located further Down, check neighbour Down
+    $occupation = $occupation + $trackModel[$train["baliseName"]]->neighbourDown->
+      checkOccupationDown($index, $trainPositionUp + $baliseDistanceDown, $trainPositionDown + $baliseDistanceDown, $trackModel[$baliseName], -1);
+  }
+//print "Train is occupying: ".(isset($occupation["Ambiguous"]) ? "---but Ambiguous---\n" : "\n");
+//print_r($occupation);
+  // How to indicate ambiguous occupation in track layout FIXME
+  $newPositionUnambiguous = !isset($occupation["Ambiguous"]);
+  unset($occupation["Ambiguous"]); // Delete ambiguous flag in array
+//print "Occupy:\n";
+//print_r(array_diff($occupation, $train["curOccupation"]));
+//print "Release:\n";
+//print_r(array_diff($train["curOccupation"], $occupation));
+  if ($newPositionUnambiguous) {
+    $train["curPositionUnambiguous"] = true; 
+    foreach (array_diff($occupation, $train["curOccupation"]) as $elementName) {
+//print "Occupy $elementName\n";
+      $trackModel[$elementName]->occupyElementTrack($train["ID"]);
+    }
+    foreach (array_diff($train["curOccupation"], $occupation) as $elementName) {
+//print "Release $elementName\n";
+      $trackModel[$elementName]->releaseElementTrack($train["nomDir"]);
+      // Order of element release must reflect actual driving direction - not array order ---- check reportIndex ------------------- FIXME
+    }
+    $train["curOccupation"] = $occupation; 
+//print "---\n";
+   } else {// Keep previous occupation if new is ambiguous
+    $train["curPositionUnambiguous"] = false; 
+  }
+}
+    
 function processCommandRBC($command, $from) { // ------------------------------------------- Process commands from HMI clients
 global $inChargeHMI, $clientsData, $trackModel, $recCount, $triggerHMIupdate, 
   $allowSR, $allowSH, $allowFS, $allowATO, $trainData, $arsEnabled;
@@ -571,7 +1152,7 @@ global $inChargeHMI, $clientsData, $trackModel, $recCount, $triggerHMIupdate,
       break;
 // Elements
       case "pt": // Point Throw
-        HMIindication($from, "displayResponse {".($trackModel[$param[1]]->cmdTogglePoint() ? "OK" : "Rejected")."}");
+        HMIindication($from, "displayResponse {".($trackModel[$param[1]]->cmdToggleElement() ? "OK" : "Rejected")."}");
       break;
       case "pb": // Block point throw
         HMIindication($from, "displayResponse {".($trackModel[$param[1]]->cmdToggleBlocking() ? "OK" : "Rejected")."}");
@@ -579,29 +1160,36 @@ global $inChargeHMI, $clientsData, $trackModel, $recCount, $triggerHMIupdate,
       case "sb": // Block locking signal as START or VIA
         HMIindication($from, "displayResponse {".($trackModel[$param[1]]->cmdToggleBlocking() ? "OK" : "Rejected")."}");
       break;
-      case "ars": // Toggle ARS for signal FIXME
+      case "ars": // Toggle ARS for signal
         HMIindication($from, "displayResponse {".($trackModel[$param[1]]->cmdToggleARS() ? "OK" : "Rejected")."}");
       break;
 // Routes
       case "tr": // Set route
         $recCount = 0; // FIXME
         if ($trackModel[$param[1]]->cmdSetRouteTo($param[2])) {
+          // assign route to train if any, then send MA. Next position report will trigger new MA FIXME
           HMIindication($from, "displayResponse {OK}");
-          // assign route to train if any, then send MA FIXME
         } else {
           HMIindication($from, "displayResponse {Rejected - no route possible}");
         }
       break;
-      case "rr": // Release route if no train assigned or train is at stand still (without timer)
-        $recCount = 0; // FIXME
-        if (true) { //if train assigned to route and at stand still or no train assigned to route FIXME
-          if ($trackModel[$param[1]]->cmdReleaseRoute()) {
-            HMIindication($from, "displayResponse {OK}");
-          } else {
-            HMIindication($from, "displayResponse {Rejected - no route}");
+      case "rr": // Release route (without timer) if not occupied or assigned train is at stand still
+        if ($trackModel[$param[1]]->routeLockingType == RT_END_POINT) {
+          $recCount = 0; // FIXME
+          if ($trackModel[$param[1]]->routeIsClear()) { // // check if the signal track it self is clear????? FIXME
+            if (true) { //if train assigned to route and at stand still or no train assigned to route FIXME
+              $trackModel[$param[1]]->cmdReleaseRoute();
+              // deassign train from route if assigned FIXME
+              HMIindication($from, "displayResponse {OK}");
+            } else { // reject due to train driving
+              HMIindication($from, "displayResponse {Rejected - train running}");
+            }
+          } else { // release occupied route
+            print "Release of occupied route not implemented\n";
+            HMIindication($from, "displayResponse {Rejected, route occupied}");        
           }
-        } else { // reject due to train driving
-          HMIindication($from, "displayResponse {Rejected - train running}");
+        } else {
+          HMIindication($from, "displayResponse {Ignored, not EP of route}");        
         }
       break;
 // Train mode

@@ -1,0 +1,13 @@
+// Train movement simulation
+// Train 50
+pwr 1 // 0: Undef, 1: RightWheelPlus, 2: LeftWheelPlus, 3: NoPower 
+nomDir 2 // Nominel driving direction 0: Undef, 1: DOWN, 2: UP, 3: Stand Still 
+
+BG2 50
+BG3 0
+BG3 50
+BG3 100
+BG3 300
+BG7 0
+BG7 100
+// EOF

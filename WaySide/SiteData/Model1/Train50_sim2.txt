@@ -1,0 +1,19 @@
+// Train movement simulation
+// Train 50
+
+BG7 10
+BG7 20
+BG7 30
+BG7 40
+BG7 50
+BG7 60
+BG7 70
+BG7 80
+BG7 90
+BG7 100
+BG7 110
+
+// EOF
+
+
+

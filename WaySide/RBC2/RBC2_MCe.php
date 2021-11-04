@@ -30,16 +30,12 @@ global $run, $reloadRBC, $inChargeMCe, $clientsData, $EC, $trackModel, $test, $t
     break;
     case "CMD2":
       if ($from == $inChargeMCe) {
-      print "\n"; // FIXME
-        foreach ($trackModel as $name => $model) {
-          if ($model->elementType == "PF" or $model->elementType == "PT") {
-          print "Point $name {$model->pointState}\n";
-          }
-        }
+        dumpRoutes();
       }
     break;
     case "CMD3":
       if ($from == $inChargeMCe) {
+        dumpTrainData();
       }
     break;
     case "CMD4":
@@ -63,11 +59,12 @@ global $run, $reloadRBC, $inChargeMCe, $clientsData, $EC, $trackModel, $test, $t
         requestECstatus($addr);
       }
     break;
+// ------------------------------------------------------------------------------------------------ Train SIM
     case "posRepDrv":
       $triggerHMIupdate = true;
       $sim = $simTrain[$param[1]]; // FIXME check existance ?
       // syntax: processPositionReport($trainID, $requestedMode, $MAreceived, $nomDir, $pwr, $balise, $distance,  $speed, $rtoMode);
-      processPositionReport($sim["ID"], $param[2], 1, D_UDEF, P_UDEF, $sim["script"][$sim["scriptIndex"]]["baliseID"], 
+      processPositionReport($sim["ID"], $param[2], 1, $sim["nomDir"], $sim["pwr"], $sim["script"][$sim["scriptIndex"]]["baliseID"], 
         $sim["script"][$sim["scriptIndex"]]["dist"], 1, RTO_UDEF);
       if ($simTrain[$param[1]]["scriptIndex"] < sizeof($simTrain[$param[1]]["script"]) - 1) {
         $simTrain[$param[1]]["scriptIndex"] +=1;
@@ -77,7 +74,7 @@ global $run, $reloadRBC, $inChargeMCe, $clientsData, $EC, $trackModel, $test, $t
       $triggerHMIupdate = true;
       $sim = $simTrain[$param[1]]; // FIXME check existance ?
       // syntax: processPositionReport($trainID, $requestedMode, $MAreceived, $nomDir, $pwr, $balise, $distance,  $speed, $rtoMode);
-      processPositionReport($sim["ID"], $param[2], 0, D_UDEF, P_UDEF, $sim["script"][$sim["scriptIndex"]]["baliseID"], 
+      processPositionReport($sim["ID"], $param[2], 0, D_STOP, $sim["pwr"], $sim["script"][$sim["scriptIndex"]]["baliseID"], 
         $sim["script"][$sim["scriptIndex"]]["dist"], 0, RTO_UDEF);
 
     break;
@@ -85,7 +82,7 @@ global $run, $reloadRBC, $inChargeMCe, $clientsData, $EC, $trackModel, $test, $t
       $triggerHMIupdate = true;
       $sim = $simTrain[$param[1]]; // FIXME check existance ?
       // syntax: processPositionReport($trainID, $requestedMode, $MAreceived, $nomDir, $pwr, $balise, $distance,  $speed, $rtoMode);
-      processPositionReport($sim["ID"], $param[2], 0, D_UDEF, P_UDEF, "00:00:00:00:00", 0,  0, RTO_UDEF);
+      processPositionReport($sim["ID"], $param[2], 0, D_UDEF, $sim["pwr"], "00:00:00:00:00", 0,  0, RTO_UDEF);
 
     break;
     case "reloadSim":
@@ -155,17 +152,55 @@ global $clients, $clientsData;
   }
 }
 
-function dumpTrackModel() {
-global  $trackModel, $TVS_TXT_SH, $RLS_TXT_SH, $RLT_TXT_SH, $RDIR_TXT_SH;
-  print "\nRBC2 Track Model Dump ".date("Ymd H:i:s")."\n";
-  print "Name     Type TVS  RLS  RLT  DIR\n";
+function dumpTrainData() {
+global $trainData;
+  print "\nRBC2 Train Data Dump ".date("Ymd H:i:s")."\n";
+  print "ID  Route   MAbalise         Dist Occupation\n";
+  foreach ($trainData as $index => $train) {
+    printf("%2.2s %-8.8s %-16.16s %4.4s ", $train["ID"], $train["assignedRoute"], $train["MAbaliseName"], $train["MAdist"]);
+    if (!$train["curPositionUnambiguous"]) print "Amb! ";
+    foreach ($train["curOccupation"] as $elementName) {
+      print "$elementName ";
+    }
+    print "\n";
+  }
+}
+
+function dumpRoutes() {
+global $trackModel;
+  print "\nRBC2 Route Dump ".date("Ymd H:i:s")."\n";
+  print "EP       Train Route\n";
   foreach ($trackModel as $name => $model) {
-    printf("%-8.8s %-4.4s %-4.4s %-4.4s %-4.4s %2s\n", $name, $model->elementType, $TVS_TXT_SH[$model->vacancyState], 
-      $RLS_TXT_SH[$model->routeLockingState], $RLT_TXT_SH[$model->routeLockingType], $RDIR_TXT_SH[$model->routeLockingUp]);
+    switch($model->elementType) {
+      case "SU":
+      case "SD":
+      case "BSB":
+      case "BSE":
+        if ($model->routeLockingType == RT_END_POINT) {
+          printf ("%-8.8s %2.2s   ", $name, $model->assignedTrain);
+          print $model->dumpRoute()."\n";
+        }
+      break;
+      default:
+      break;
+    }
+  }
+  print "\n";
+}
+
+function dumpTrackModel() {
+global  $trackModel, $TVS_TXT_SH, $RLS_TXT_SH, $RLT_TXT_SH, $RDIR_TXT_SH, $PS_TXT_SH;
+  print "\nRBC2 Track Model Dump ".date("Ymd H:i:s")."\n";
+  print "Name     Type TVS  RLS  RLT  DIR P\n";
+  foreach ($trackModel as $name => $model) {
+    printf("%-8.8s %-4.4s %-4.4s %-4.4s %-4.4s %2s  %1.1s\n", $name, $model->elementType, $TVS_TXT_SH[$model->vacancyState], 
+      $RLS_TXT_SH[$model->routeLockingState], $RLT_TXT_SH[$model->routeLockingType], $RDIR_TXT_SH[$model->routeLockingUp],
+        (($model->elementType == "PF" or $model->elementType == "PT") ? $PS_TXT_SH[$model->pointState] : ""));
 //    printf("%-8.8s %-4.4s %-4.4s %-4.4s %-4.4s %-2.2s %-8.8s \n", $name, $model->elementType, $model->vacancyState, 
 //      $model->routeLockingState, $model->routeLockingType, $model->routeLockingUp, $model->facingUp);
       //$model->neighbourUp->elementName, $model->neighbourDown->elementName);
   }
+  print "\n";
 }
 
 function prettyPrintTime($sec) {

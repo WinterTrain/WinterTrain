@@ -425,8 +425,8 @@ grid [ttk::button .f.buttonETMS -text "Exit TMS" -command "sendCommand exitTMS"]
 grid [ttk::button .f.buttonRLRBC -text "Reload RBC" -command "sendCommand rlRBC"] -column 10 -row 1 -sticky e
 grid [ttk::button .f.buttonRLTMS -text "Reload TMS" -command "sendCommand rlTMS"] -column 11 -row 1 -sticky e
 grid [ttk::button .f.buttonT1 -text "DumpTrackModel" -command cmd1] -column 2 -row 2 -sticky e
-grid [ttk::button .f.buttonT2 -text "CMD2" -command cmd2] -column 3 -row 2 -sticky e
-grid [ttk::button .f.buttonT3 -text "CMD3" -command cmd3] -column 4 -row 2 -sticky e
+grid [ttk::button .f.buttonT2 -text "DumpRoutes" -command cmd2] -column 3 -row 2 -sticky e
+grid [ttk::button .f.buttonT3 -text "DumpTrainData" -command cmd3] -column 4 -row 2 -sticky e
 grid [ttk::button .f.buttonT4 -text "CMD4" -command cmd4] -column 5 -row 2 -sticky w
 
 #grid [tk::scrollbar .f.sbh -orient horizontal -command ".f.canvas xview"] -column 2 -columnspan 7 -row 4 -sticky we

@@ -1,10 +1,10 @@
 <?php
 // ------------------------------------------------- Sources
 $PT2_SIGNALLING_LAYOUT_FILE = "/home/jabe/Desktop/Projekter/Git/WinterTrain/WaySide/SiteData/Model1/signallingLayout.sch";
-$PT2_SIGNALLING_LAYOUT_FILE_DATE = "2021-05-13 23:07:07";
+$PT2_SIGNALLING_LAYOUT_FILE_DATE = "2021-10-12 21:21:38";
 $PT2_SCREEN_LAYOUT_FILE = "/home/jabe/Desktop/Projekter/Git/WinterTrain/WaySide/SiteData/Model1/screenLayout.sch";
-$PT2_SCREEN_LAYOUT_FILE_DATE = "2021-10-03 16:31:08";
-$PT2_GENERATION_TIME = "2021-10-03 16:31:18";
+$PT2_SCREEN_LAYOUT_FILE_DATE = "2021-10-23 11:41:16";
+$PT2_GENERATION_TIME = "2021-10-23 11:41:19";
 $PT1_PROJECT_NAME = "Model1";
 $PT1_DATE = "2021-04-10";
 $PT1_AUTHOR = "JB";
@@ -12,6 +12,21 @@ $HMI_PROJECT_NAME = "Model1";
 
 // -------------------------------------------------- PT1
 $PT1 = array (
+  'BG8' => 
+  array (
+    'element' => 'BL',
+    'U' => 
+    array (
+      'name' => 'BS4',
+      'dist' => 40,
+    ),
+    'D' => 
+    array (
+      'name' => 'S7',
+      'dist' => 60,
+    ),
+    'ID' => '00:00:00:00:01',
+  ),
   'BG7' => 
   array (
     'element' => 'BL',
@@ -23,9 +38,9 @@ $PT1 = array (
     'D' => 
     array (
       'name' => 'BG6',
-      'dist' => 0,
+      'dist' => 40,
     ),
-    'ID' => '00:00:00:00:01',
+    'ID' => '00:00:00:00:02',
   ),
   'BG6' => 
   array (
@@ -33,14 +48,14 @@ $PT1 = array (
     'U' => 
     array (
       'name' => 'BG7',
-      'dist' => 0,
+      'dist' => 20,
     ),
     'D' => 
     array (
       'name' => 'P3',
       'dist' => 0,
     ),
-    'ID' => '00:00:00:00:02',
+    'ID' => '00:00:00:00:03',
   ),
   'P3' => 
   array (
@@ -108,7 +123,7 @@ $PT1 = array (
     'element' => 'SD',
     'U' => 
     array (
-      'name' => 'BS4',
+      'name' => 'BG8',
       'dist' => 1,
     ),
     'D' => 
@@ -177,7 +192,7 @@ $PT1 = array (
       'name' => 'BS1',
       'dist' => 20,
     ),
-    'ID' => '00:00:00:00:03',
+    'ID' => '00:00:00:00:04',
   ),
   'BG2' => 
   array (
@@ -192,7 +207,7 @@ $PT1 = array (
       'name' => 'S2',
       'dist' => 50,
     ),
-    'ID' => '00:00:00:00:04',
+    'ID' => '00:00:00:00:05',
   ),
   'BG3' => 
   array (
@@ -207,7 +222,7 @@ $PT1 = array (
       'name' => 'BG2',
       'dist' => 70,
     ),
-    'ID' => '00:00:00:00:05',
+    'ID' => '00:00:00:00:06',
   ),
   'BG5' => 
   array (
@@ -222,7 +237,7 @@ $PT1 = array (
       'name' => 'S4',
       'dist' => 60,
     ),
-    'ID' => '00:00:00:00:06',
+    'ID' => '00:00:00:00:07',
   ),
   'S1' => 
   array (
@@ -398,12 +413,12 @@ $PT1 = array (
     'element' => 'BSE',
     'D' => 
     array (
-      'name' => 'S7',
+      'name' => 'BG8',
       'dist' => 10,
     ),
     'HMI' => 
     array (
-      'x' => 22,
+      'x' => 23,
       'y' => 3,
       'l' => 1,
     ),
@@ -451,7 +466,7 @@ $PT1 = array (
       'name' => 'P1',
       'dist' => 1,
     ),
-    'ID' => '00:00:00:00:07',
+    'ID' => '00:00:00:00:08',
   ),
 );
 
@@ -483,28 +498,6 @@ $HMI = array (
       ),
       'or' => 's',
       'x' => 2,
-      'y' => 3,
-      'l' => 1,
-    ),
-    'tr2' => 
-    array (
-      'balises' => 
-      array (
-        0 => 'BG2',
-      ),
-      'or' => 's',
-      'x' => 7,
-      'y' => 3,
-      'l' => 1,
-    ),
-    'tr3' => 
-    array (
-      'balises' => 
-      array (
-        0 => 'BG3',
-      ),
-      'or' => 's',
-      'x' => 8,
       'y' => 3,
       'l' => 1,
     ),
@@ -540,6 +533,29 @@ $HMI = array (
       'x' => 13,
       'y' => 5,
       'l' => 3,
+    ),
+    'tr7' => 
+    array (
+      'balises' => 
+      array (
+        0 => 'BG8',
+      ),
+      'or' => 's',
+      'x' => 22,
+      'y' => 3,
+      'l' => 1,
+    ),
+    'tr2' => 
+    array (
+      'balises' => 
+      array (
+        0 => 'BG2',
+        1 => 'BG3',
+      ),
+      'or' => 's',
+      'x' => 7,
+      'y' => 3,
+      'l' => 2,
     ),
   ),
   'eStopIndicator' => 
