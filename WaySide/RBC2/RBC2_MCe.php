@@ -40,8 +40,6 @@ global $run, $reloadRBC, $inChargeMCe, $clientsData, $EC, $trackModel, $test, $t
     break;
     case "CMD4":
       if ($from == $inChargeMCe) { 
-      $test = !$test; // FIXME
-      $trackModel["P1"]->vacancyState = $test ? V_CLEAR : V_OCCUPIED;
       }
     break;
     case "exitRBC":
@@ -155,7 +153,7 @@ global $clients, $clientsData;
 function dumpTrainData() {
 global $trainData;
   print "\nRBC2 Train Data Dump ".date("Ymd H:i:s")."\n";
-  print "ID  Route   MAbalise         Dist Occupation\n";
+  print "ID Route    MAbalise         Dist Occupation\n";
   foreach ($trainData as $index => $train) {
     printf("%2.2s %-8.8s %-16.16s %4.4s ", $train["ID"], $train["assignedRoute"], $train["MAbaliseName"], $train["MAdist"]);
     if (!$train["curPositionUnambiguous"]) print "Amb! ";
@@ -191,11 +189,13 @@ global $trackModel;
 function dumpTrackModel() {
 global  $trackModel, $TVS_TXT_SH, $RLS_TXT_SH, $RLT_TXT_SH, $RDIR_TXT_SH, $PS_TXT_SH;
   print "\nRBC2 Track Model Dump ".date("Ymd H:i:s")."\n";
-  print "Name     Type TVS  RLS  RLT  DIR P\n";
+  print "Name     Type TVS  RLS  RLT  DIR P Train\n";
   foreach ($trackModel as $name => $model) {
-    printf("%-8.8s %-4.4s %-4.4s %-4.4s %-4.4s %2s  %1.1s\n", $name, $model->elementType, $TVS_TXT_SH[$model->vacancyState], 
+    printf("%-8.8s %-4.4s %-4.4s %-4.4s %-4.4s %2s  %1.1s %2.2s\n", $name, $model->elementType, $TVS_TXT_SH[$model->vacancyState], 
       $RLS_TXT_SH[$model->routeLockingState], $RLT_TXT_SH[$model->routeLockingType], $RDIR_TXT_SH[$model->routeLockingUp],
-        (($model->elementType == "PF" or $model->elementType == "PT") ? $PS_TXT_SH[$model->pointState] : ""));
+        (($model->elementType == "PF" or $model->elementType == "PT") ? $PS_TXT_SH[$model->pointState] : ""),
+        (($model->elementType == "SU" or $model->elementType == "SD" or $model->elementType == "BSB" or $model->elementType == "BSE") ?
+          $model->assignedTrain : "" ));
 //    printf("%-8.8s %-4.4s %-4.4s %-4.4s %-4.4s %-2.2s %-8.8s \n", $name, $model->elementType, $model->vacancyState, 
 //      $model->routeLockingState, $model->routeLockingType, $model->routeLockingUp, $model->facingUp);
       //$model->neighbourUp->elementName, $model->neighbourDown->elementName);

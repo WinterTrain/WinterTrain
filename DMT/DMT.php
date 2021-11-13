@@ -473,7 +473,7 @@ O                 Overwrite ID of all balises in \"$SIGNALLING_LAYOUT_FILE\" to 
 
 B                 Overwrite ID of all Balises in \"$SIGNALLING_LAYOUT_FILE\" to default ID = \"FF:FF:FF:FF:FF\".
 
-Commands D, N, U and O will rename the input file \"$SIGNALLING_LAYOUT_FILE\" to \"{$SIGNALLING_LAYOUT_FILE}_OLD\" and create a new \"$SIGNALLING_LAYOUT_FILE\"
+Commands D, N, U, O and B will rename the input file \"$SIGNALLING_LAYOUT_FILE\" to \"{$SIGNALLING_LAYOUT_FILE}_OLD\" and create a new \"$SIGNALLING_LAYOUT_FILE\"
                   
 -D <dir>          use <dir> as directory for all files. Must be given before -bl -sc -si and -p2 in order to take effect.
 -sc <file>        read screenLayout from <file>
