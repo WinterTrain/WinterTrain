@@ -1378,7 +1378,7 @@ global $PT1;
 //      print "canBeLocked: element: $element, prev: $previousElement, direction: $direction isLocked:".isLocked($element)." isClear:".isClear($element)."\n";
       if (isLocked($element) or !isClear($element)) {return false;}
       if ($direction == "U") {
-print "Element: {$PT1[$element]["element"]} BlockingState: {$PT1[$element]["blockingState"]}\n";
+//print "Element: {$PT1[$element]["element"]} BlockingState: {$PT1[$element]["blockingState"]}\n";
         if ($element != $s2 and $PT1[$element]["element"] == "SU" and $PT1[$element]["blockingState"] != B_UNBLOCKED ) {
           return false; // destination can be locked even if blocked
         }

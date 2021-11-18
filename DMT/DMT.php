@@ -80,9 +80,114 @@ reading new IDs from:
     require($BALISE_DUMP_FILE);
     modifySL();
   break;
+  case "S":
+    generateShuntingBorder();
+  break;
   default:
     print "Error: Command $command not implemented (yet)\n";
 }
+
+function generateShuntingBorder() {
+global $PT1, $elementName, $distance, $maxBalise;
+  readSignallingLayout();
+  verifySignallingLayout();
+  if (isset($PT1[$elementName])) {
+    switch ($PT1[$elementName]["element"]) {
+      case "BSB":
+      case "SD":
+        if ($distance >= 0) {
+          distUp($PT1[$elementName]["U"]["dist"] - $distance, $PT1[$elementName]["U"]["name"], 0, $elementName);        
+        } else {
+          print "Error: Border distance must be positive or zero for element type BSB and SD\n";
+        }
+      break;
+      case "BSE":
+      case "SU":
+        if ($distance <= 0) {
+          distDown($PT1[$elementName]["D"]["dist"] + $distance, $PT1[$elementName]["D"]["name"], 0, $elementName);        
+        } else {
+          print "Error: Border distance must be negative or zero for element type BSE and SU\n";
+        }
+      break;
+      default:
+        print "Error: Border element $elementName must be of type Buffer Stop or facing Signal.";
+      break;
+    }
+  } else {
+    print "Error: Element \"$elementName\" not found in PT1\n";
+  }
+}
+
+function distUp($sum, $elementName, $baliseCount, $caller) {
+global $PT1, $maxBalise, $wheelFactor;
+  $element = $PT1[$elementName];
+  switch($element["element"]) {
+    case "BSE":
+      return;
+    break;
+    case "SU":
+    case "SD":
+    case "PHTU":
+    case "PHTD":
+      $sumCenter = $sum + $element["D"]["dist"];
+      distUp($sumCenter + $element["U"]["dist"], $element["U"]["name"], $baliseCount, $elementName);
+    break;
+    case "BL":
+      if ($baliseCount < $maxBalise) {
+        $sumCenter = $sum + $element["D"]["dist"];
+        print "{{0x".substr($element["ID"],0,2).", 0x".substr($element["ID"],3,2).", 0x".substr($element["ID"],6,2).", 0x".substr($element["ID"],9,2).", 0x".substr($element["ID"],12,2)."},  ".round(-$sumCenter / $wheelFactor)."},    /* $elementName / ".-$sumCenter." cm */\\\n";
+
+        distUp($sumCenter + $element["U"]["dist"], $element["U"]["name"], $baliseCount + 1, $elementName);
+      }
+    break;
+    case "PT":
+      $sumCenter = $sum + ($caller == $element["R"]["name"] ? $element["R"]["dist"] :  $element["L"]["dist"]);
+      distUp($sumCenter + $element["T"]["dist"], $element["T"]["name"], $baliseCount, $elementName);    
+    break;
+    case "PF":
+      return;
+    break;
+    default:
+    print "Ups...\n";
+    break;    
+  }
+}
+
+function distDown($sum, $elementName, $baliseCount, $caller) {
+global $PT1, $maxBalise, $wheelFactor;
+  $element = $PT1[$elementName];
+  switch($element["element"]) {
+    case "BSE":
+      return;
+    break;
+    case "SU":
+    case "SD":
+    case "PHTU":
+    case "PHTD":
+      $sumCenter = $sum + $element["U"]["dist"];
+      distDown($sumCenter + $element["D"]["dist"], $element["D"]["name"], $baliseCount, $elementName);
+    break;
+    case "BL":
+      if ($baliseCount < $maxBalise) {
+        $sumCenter = $sum + $element["U"]["dist"];
+        print "{{0x".substr($element["ID"],0,2).", 0x".substr($element["ID"],3,2).", 0x".substr($element["ID"],6,2).", 0x".substr($element["ID"],9,2).", 0x".substr($element["ID"],12,2)."},  ".round($sumCenter / $wheelFactor)."},    /* $elementName / ".$sumCenter." cm */\\\n";
+
+        distDown($sumCenter + $element["D"]["dist"], $element["D"]["name"], $baliseCount + 1, $elementName);
+      }
+    break;
+    case "PF":
+      $sumCenter = $sum + ($caller == $element["R"]["name"] ? $element["R"]["dist"] :  $element["L"]["dist"]);
+      distDown($sumCenter + $element["T"]["dist"], $element["T"]["name"], $baliseCount, $elementName);    
+    break;
+    case "PT":
+      return;
+    break;
+    default:
+    print "Ups...\n";
+    break;    
+  }
+}
+
 
 function modifySL() {
 global $DIRECTORY, $SIGNALLING_LAYOUT_FILE, $command, $DEFAULT_PARAM, $baliseList, $refdes, $BALISE_DUMP_FILE;
@@ -456,7 +561,7 @@ fwrite($pt2Fh, "<?php
 
 
 function CmdLineParam() {
-global $debug, $SCREEN_LAYOUT_FILE, $SIGNALLING_LAYOUT_FILE, $PT2_FILE, $DIRECTORY,$BALISE_DUMP_FILE, $element1, $element2, $argv, $PT1, $command, $symbolDebug, $doReplaceDefaultID;
+global $debug, $SCREEN_LAYOUT_FILE, $SIGNALLING_LAYOUT_FILE, $PT2_FILE, $DIRECTORY,$BALISE_DUMP_FILE, $element1, $element2, $argv, $PT1, $command, $symbolDebug, $doReplaceDefaultID, $elementName, $distance, $wheelFactor, $maxBalise;
   if (in_array("-h",$argv) or count($argv) == 1) {
     print "Usage: [option] COMMAND [PARAM]
 Generate PT2 data for the WinterTrain. All files are located in working directory unless option -D is called..
@@ -473,6 +578,12 @@ O                 Overwrite ID of all balises in \"$SIGNALLING_LAYOUT_FILE\" to 
 
 B                 Overwrite ID of all Balises in \"$SIGNALLING_LAYOUT_FILE\" to default ID = \"FF:FF:FF:FF:FF\".
 
+S <element> <distance> <wheel factor> <max balises>
+                  Generate a list of distances from balises to a location <distance> away from <element>. The sign of <distance> indicates the direction
+                  from <element>. <wheel factor> is the conversion from wheel turn to distance.
+                  The element must be of type Buffer stop or facing signal. A maximum of <max balises> will be included in the list.
+                  The list will be formatted as an array in C syntax ready to be used in OBU application data. 
+                  
 Commands D, N, U, O and B will rename the input file \"$SIGNALLING_LAYOUT_FILE\" to \"{$SIGNALLING_LAYOUT_FILE}_OLD\" and create a new \"$SIGNALLING_LAYOUT_FILE\"
                   
 -D <dir>          use <dir> as directory for all files. Must be given before -bl -sc -si and -p2 in order to take effect.
@@ -486,8 +597,7 @@ Commands D, N, U, O and B will rename the input file \"$SIGNALLING_LAYOUT_FILE\"
 ";
     exit();
   }
-  next($argv);
-  while (list(,$opt) = each($argv)) {
+  while ($opt = next($argv)) {
     switch ($opt) {
       case "C":
       case "D":
@@ -497,13 +607,29 @@ Commands D, N, U, O and B will rename the input file \"$SIGNALLING_LAYOUT_FILE\"
       case "B":
         $command = $opt;
       break;
+      case "S":
+        $command = $opt;
+        if (count($argv) >=4) {
+          $elementName = next($argv);
+          if (!is_numeric($distance  = next($argv))) {
+            print "Error: <distance> must be an integer\n";
+          }
+          if (!is_numeric($wheelFactor  = next($argv))) {
+            print "Error: <wheel factor> must be an integer\n";
+          }
+          if (!is_numeric($maxBalise =  next($argv))) {
+            print "Error: <max balise> must be an integer\n";          
+          }
+        } else {
+          print "Error: command S requires four parameters\n";
+          exit(1);
+        }        
       case "-nv":
         $doReplaceDefaultID = false;
       break;
       case "-sc":
-        list(,$p) = each($argv);
-        if ($p) {
-          $SCREEN_LAYOUT_FILE = $p;
+        if (count($argv) >= 1) {
+          $SCREEN_LAYOUT_FILE = next($argv);
           if (!is_readable("$DIRECTORY/$SCREEN_LAYOUT_FILE")) {
             print "Error: option -sc: Cannot read $DIRECTORY/$SCREEN_LAYOUT_FILE \n";
             exit(1);
@@ -514,9 +640,8 @@ Commands D, N, U, O and B will rename the input file \"$SIGNALLING_LAYOUT_FILE\"
         }
         break;
       case "-si":
-        list(,$p) = each($argv);
-        if ($p) {
-          $SIGNALLING_LAYOUT_FILE = $p;
+        if (count($argv) >= 1) {
+          $SIGNALLING_LAYOUT_FILE = next($argv);
           if (!is_readable("$DIRECTORY/$SIGNALLING_LAYOUT_FILE")) {
             print "Error: option -si: Cannot read $DIRECTORY/$SIGNALLING_LAYOUT_FILE \n";
             exit(1);
@@ -527,9 +652,8 @@ Commands D, N, U, O and B will rename the input file \"$SIGNALLING_LAYOUT_FILE\"
         }
         break;
       case "bl":
-        list(,$p) = each($argv);
-        if ($p) {
-          $BALISE_DUMP_FILE = $p;
+        if (count($argv) >= 1) {
+          $BALISE_DUMP_FILE = next($argv);
           if (!is_readable("$DIRECTORY/$BALISE_DUMP_FILE")) {
             print "Error: option -bl: Cannot read $DIRECTORY/$BALISE_DUMP_FILE \n";
             exit(1);
@@ -540,9 +664,8 @@ Commands D, N, U, O and B will rename the input file \"$SIGNALLING_LAYOUT_FILE\"
         }
         break;
         case "-p2":
-        list(,$p) = each($argv);
-        if ($p) {
-          $P2_FILE = $p;
+        if (count($argv) >= 1) {
+          $P2_FILE = next($argv);
           if (!is_writeable("$DIRECTORY/$P2_FILE")) {
             print "Error: option -p2: Cannot write $DIRECTORY/$P2_FILE \n";
             exit(1);
@@ -553,9 +676,8 @@ Commands D, N, U, O and B will rename the input file \"$SIGNALLING_LAYOUT_FILE\"
         }
         break;
       case "-D":
-        list(,$p) = each($argv);
-        if ($p) {
-          $DIRECTORY = $p;
+        if (count($argv) >= 1) {
+          $DIRECTORY = next($argv);
           if (!is_dir($DIRECTORY)) {
             print "Error: option -D: Cannot access $DIRECTORY\n";
             exit(1);
