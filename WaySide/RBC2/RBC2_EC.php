@@ -3,7 +3,7 @@
 // Element Controller handlers
 
 function elementStatusEC($addr, $data) { // Analyse element status for one EC
-global $EC, $PT2;
+global $EC, $PT2, $triggerHMIupdate;
   if (isset($EC[$addr]) and $data[3] < count($EC[$addr]["index"])) { // Check EC configuration
     errLog("EC ($addr) not configured: #conf. element EC: {$data[3]}, RBC: ".count($EC[$addr]["index"]));
     unset($EC[$addr]);
@@ -13,10 +13,34 @@ global $EC, $PT2;
       errLog("EC ($addr) on-line");
       $EC[$addr]["EConline"] = true;
     }
-    $EC[$addr]["validTimer"] = time() + EC_TIMEOUT;
-// Analyse EC status  and apply consequences FIXME
-// call point state and LX state handler, optional call generateMA()
   }
+  $EC[$addr]["validTimer"] = time() + EC_TIMEOUT;
+    
+// Analyse EC status for all elements of EC and apply consequences FIXME
+/*
+
+  foreach() {
+    switch (elementType) {
+      case "PF":
+      case "PT":
+        $this->pointState = physical supervision state reported by EC
+        if (supervised in correct lie acc logicalLieRight and $this->routeLockingState != R_IDLE) {
+        // Point is locked in route, check if throwing is to be locked
+          if ($this->logicalLieRight == ($this->routeLockingType == RT_RIGHT)) {
+            $this->throwLockedByRoute = true;
+            $triggerHMIupdate = true;
+          //  generate MA?? FIXME  Right place??
+          }
+        };
+      break;
+      case "LX":
+        fatalErr("LX status not implemented);
+      break;
+      default:
+      break;
+    }
+  }
+  */
 }
 
 function pollNextEC() { // Poll one EC at a time
@@ -76,7 +100,7 @@ global $EC, $radioInterface;
           // processPositionReport(   ); // Unpack packet from Abus module
         }
         break;
-      case 20: // configuration
+      case 20: // EC configuration report
         if ($data[3] > 0) {
           errLog("EC ($addr), Configuration error: ".$data[3]);
         } else {
@@ -92,7 +116,7 @@ global $EC, $radioInterface;
 function initEC($specificEC = "") { // Initialize all or one specific EC from data in PT2
 global $PT2, $EC;
 
-  if ($specificEC == "") $EC = array(); // Enforce a rebuild of EC table from PT2 as PT2 might have been reloaded
+  if ($specificEC == "") $EC = array(); // Enforce a rebuild of EC table from PT2 as PT2 might have been reloaded in this case
   foreach ($PT2 as $name => &$element) {
     if ($specificEC == "" or (isset($element["EC"]["addr"]) and $element["EC"]["addr"] == $specificEC)) {
       switch ($element["element"]) {

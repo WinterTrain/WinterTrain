@@ -26,17 +26,19 @@
 // Balises commanding "stop if in shunting"
 // Distance measured in tacometer pulses
 
-#define N_SABALISES 10 // balise list for "stop if in shunting"
+#define N_SABALISES 12 // balise list for "stop if in shunting"
 // Distances engineered in "wheel turns". OBU will start braking at that distance, allow for 80 cm braking distance
 #define SA_BALISES { \
     /* Christianshavn, end station, braking point at 80 cm in rear of buffer stop */\
     \
+    {{0x1E, 0x00, 0x57, 0x5B, 0x28},  -1},    /* BG5 / 3 cm */\
+    {{0x76, 0x00, 0x0C, 0xE3, 0xA8},  -1},    /* BG7 / 7 cm */\
     {{0x1E, 0x00, 0xEC, 0xF9, 0xE1},  -9},    /* BG10 / -46 cm */\
     {{0x1F, 0x00, 0x78, 0xEF, 0xFD},  -9},    /* BG9 / -46 cm */\
     {{0x74, 0x00, 0x11, 0x07, 0x0B},  -19},    /* BG12 / -97 cm */\
     {{0x1F, 0x00, 0x68, 0xD5, 0xC8},  -43},    /* BG13 / -214 cm */\
     \
-    /* Station Langtbortistan */\
+  /* Station Langtbortistan */\
     {{0x1F, 0x00, 0x69, 0xF3, 0xBB},  -5},    /* BG50 / -26 cm */\
     {{0x1F, 0x00, 0x62, 0x74, 0x36},  9},    /* BG48 / 43 cm */\
     {{0x1F, 0x00, 0x62, 0xA3, 0xD5},  29},    /* BG44b / 143 cm */\

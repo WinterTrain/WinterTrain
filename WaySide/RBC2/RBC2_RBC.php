@@ -154,8 +154,8 @@ class Pelement extends genericElement { // -------------------------------------
   public $neighbourLeft;
   
   public $supervisionMode;              // Read from PT2
-  public $pointState = P_UNSUPERVISED;  // Functional state of point being it from static configuration or physical state
-  public $logicalLieRight = true;       // Logical lie is right
+  public $pointState = P_UNSUPERVISED;  // Functional state of point being it from static configuration or physical state as reported from EC
+  public $logicalLieRight = true;       // Logical lie is right when true. Expected lie
   
   private $throwLockedByConfiguration = false;   // Point throw is locked by configuration
   private $throwLockedByRoute = false;           // Point throw is locked due to position in locked route
@@ -824,9 +824,7 @@ class BSelement extends genericElement { // ------------------------------------
 
   public function searchEP($searchUp) {
     return (($this->facingUp == $searchUp) and $this->routeLockingState == R_LOCKED and $this->routeLockingType == RT_END_POINT) ?
-      $this->elementName
-    :
-      "";
+      $this->elementName : "";
   } 
     
   public function __construct($consName) {
@@ -910,7 +908,7 @@ global $trainData, $trackModel, $allowSR, $allowSH, $allowFS, $allowATO, $emerge
         $train["authMode"] = M_FS;
         $train["maxSpeed"] = $train["FSmaxSpeed"];
         if ($train["curPositionUnambiguous"]) {
-          // search for SP in both directions - to be used by TMS   FIXME
+          // search for possible SP in both directions - to be used also by TMS
           $extentUp = -1000; 
           foreach ($train["curOccupation"] as $i => $pos) { 
             if ($i > $extentUp) $extentUp = $i;
@@ -921,7 +919,7 @@ global $trainData, $trackModel, $allowSR, $allowSH, $allowFS, $allowATO, $emerge
           }
           $occupiedElementUp = $trackModel[$train["curOccupation"][$extentUp]];
           $occupiedElementDown = $trackModel[$train["curOccupation"][$extentDown]];
-  // What if occupied element (or next element) already is locked in route?----------------------------------- FIXME
+          
           switch ($occupiedElementUp->elementType) {
             case "BSB":
               $SPup = $occupiedElementUp->neighbourUp->searchSP(true);
@@ -949,6 +947,7 @@ global $trainData, $trackModel, $allowSR, $allowSH, $allowFS, $allowATO, $emerge
               $SPup = $occupiedElementUp->neighbourUp->searchSP(true);
             break;
           }
+          
           switch ($occupiedElementDown->elementType) {
             case "BSB":
               $SPdown = "";
@@ -978,61 +977,52 @@ global $trainData, $trackModel, $allowSR, $allowSH, $allowFS, $allowATO, $emerge
           }
 print "SPup: $SPup, SPdown: $SPdown\n";
 // inform TMS FIXME
+  // What if occupied element (or next element) already is locked in route assigned to another train?----------------------------------- FIXME
 
           switch ($train["nomDir"]) {
-            case D_UDEFF:
+            case D_UDEF:
             case D_STOP:
               if ($train["assignedRoute"] != "") { // Deassign route if assigned
                 $trackModel[$train["assignedRoute"]]->assignedTrain = "";
                 $train["assignedRoute"] = "";
               }
+              $routeEP = "";
             break;
             case D_UP:
-              if ($train["assignedRoute"] == "") { // search for and assign route to train according to requested driving direction
-            // then search for EP in requested driving direction starting from found SP
-            
-            
-              if ($SPup != "") { // SP in requested direction 
-              
-                $train["assignedRoute"] = ;
-                $trackModel[$route]->assignedTrain = $train["ID"];
-                print "Route $route assigned to train {$train["ID"]}\n";
-              }
-            
-            } else { // route already assigned to train
-            // check if same direction as requested??
-            // check route signalling
+              if ($SPup != "" and $trackModel[$SPup]->routeLockingState == R_LOCKED
+                and $trackModel[$SPup]->routeLockingType == RT_START_POINT) {
+                // locked SP found in requested direction , search for EP and assign
+                $routeEP = $trackModel[$SPup]->searchEP(true);
+                if ($train["assignedRoute"] == "") {
+                  $train["assignedRoute"] = $routeEP;
+                  $trackModel[$routeEP]->assignedTrain = $train["ID"];
+                  print "RouteEP $routeEP assigned to train {$train["ID"]}\n";
+                } else { // train  already assigned to a route - check if same direction as requested??
+                
+                
+                
 print "to be implemented\n";
-            }
+              } // else SP not locked, skip MA request
             
+            }
             break;
             case D_DOWN:
-              if ($train["assignedRoute"] == "") { // search for and assign route to train according to requested driving direction
-            // then search for EP in requested driving direction starting from found SP
-            
-            
-              if (false) {
-                $train["assignedRoute"] = $route;
-                $trackModel[$route]->assignedTrain = $train["ID"];
-                print "Route $route assigned to train {$train["ID"]}\n";
-              }
-            
-            } else { // route already assigned: same direction as requested?? check route signalling
-            }
-
             break;
-            // $train["MAdir"] = ; FIXME
           }
+          // For MA generation: Check that points in the route are locked in requested position: throwLockedByRoute
+            // check route signalling
+            // $train["MAdir"] = ; FIXME
         }
       }
     break;
     case M_ATO:
+    // copy from FS FIXME
       if ($allowATO and $train["ATOallowed"]) {
         $train["authMode"] = M_ATO;
         $train["maxSpeed"] = $train["ATOmaxSpeed"];
         if ($train["assignedRoute"] == "") {
         // assign train to route according to requested driving direction
-        // $train["MAdir"] = ; FIXME
+        // $train["MAdir"] = 
         } else { // route already assigned: check route signalling
         }
       }
