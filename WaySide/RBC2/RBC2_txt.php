@@ -5,7 +5,7 @@
 // -------------------- TrainData
 $TD_TXT_MODE = [0 => "Udef", 1 => "SR", 2 => "SH", 3 => "FS", 4 => "ATO", 5 => "N", ];
 $TD_TXT_DIR = [0 => "Udef", 1 => "Down", 2 => "Up", 3 => "Stop",];
-$TD_TXT_MADIR = [MD_NODIR => "ND", MD_BACKWARD => "B", MD_FORWARD => "F", MD_BOTH => "BF", ];
+$TD_TXT_MADIR = [MD_NODIR => "ND", MD_DOWN => "D", MD_UP => "U", MD_BOTH => "UD", ];
 $TD_TXT_PWR = [0 => "NoComm", 1 => "R", 2 => "L", 3 => "No PWR",];
 $TD_TXT_ACK = [0 => "NO_MA", 1 => "MA_ACK"];
 $TD_TXT_RTOMODE = [RTO_UDEF => "Udef.", RTO_DMI => "DMI", RTO_REMOTE => "Remote take-over", RTO_PEND_REMOTE => "Pending take-over",

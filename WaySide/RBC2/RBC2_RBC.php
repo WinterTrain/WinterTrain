@@ -1062,7 +1062,7 @@ print "SPup: $SPup, SPdown: $SPdown\n";
         $train["authMode"] = M_ATO;
         $train["maxSpeed"] = $train["ATOmaxSpeed"];
 
-// If both SP up and SP down which direction to assign ??? FIXME
+// If both SP up and SP down which direction to assign
 
       }
     break;
@@ -1077,7 +1077,13 @@ global  $trainData, $TD_TXT_MODE, $radioInterface;
   if ($trainData[$index]["deployment"] == "R") { // Real train
     switch ($radioInterface) {
       case "USB":
-      // assemble packet               including MAdir  FIXME
+    // assemble packet               including MAdir  FIXME
+      $packet = "31,$trainID,$authMode,";
+      for ($b = 0; $b < 5; $b++) $packet .= hexdec($baliseArray[$b]).",";
+      $packet .= ($distTurn & 0xFF).",".(($distTurn & 0xFF00) >> 8).",$speed,0s\n"; // "0s" is broadcast
+
+print "Send MA pcaktet: >$packet<\n";      
+      
         sendToRadioLink($packet);
       break;
       case "ABUS":
