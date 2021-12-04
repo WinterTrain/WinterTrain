@@ -197,6 +197,7 @@ global $radioLinkFh;
 }
 
 function receivedFromRadioLink($data) {  // Distribute radio packet received via USB radio
+global $RF12_ID_MASK;
   $res = explode(" ",$data);
   if ($res[0] == "OK") {
     switch ($res[2]) {
@@ -279,6 +280,13 @@ global $HMIport, $MCePort, $TMSport, $HMIaddress, $MCeAddress, $TMSaddress, $lis
     fatalError("Cannot create server socket for TMS connection: $errstr ($errno)");
   }
   stream_set_blocking($listenerTMS,false);
+}
+
+// Utility
+function toSigned($b1, $b2) {
+  $dec = $b2 * 256 + $b1;
+  $_dec = 65536 - $dec;
+  return $dec > $_dec ? -$_dec : $dec;
 }
 
 ?>
