@@ -16,7 +16,7 @@ global $EC, $PT2, $triggerHMIupdate;
   }
   $EC[$addr]["validTimer"] = time() + EC_TIMEOUT;
     
-// Analyse EC status for all elements of EC and apply consequences FIXME
+// Analyse EC status for all elements of EC and apply consequences FIXME   see old impl
 /*
 
   foreach() {
@@ -197,6 +197,13 @@ function configureEC($addr, $elementType, $majorDevice, $minorDevice = 0) {
   $packet[5] = $majorDevice;
   $packet[6] = $minorDevice;
   AbusSendPacket($addr, $packet);
+}
+
+function orderEC($addr, $index, $order) {
+  $packet[2] = 10;
+  $packet[3] = $index;
+  $packet[4] = $order;
+  AbusSendPacket($addr, $packet, 5);
 }
 
 function requestECstatus($addr) {

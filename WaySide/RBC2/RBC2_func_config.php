@@ -22,13 +22,17 @@ define("ATO_MAX_SPEED_DEFAULT", 50);
 
 
 // Automatic operation
-$automaticPointThrowEnabled = false; // Enable automatic point throwing during route setting
+$automaticPointThrowEnabled = true; // Enable automatic point throwing during route setting
 
 // HMI
 define("HMI_UPDATE", 5);    // Interval in sec. between regular HMI update
 
 // MCe
 define("MCe_UPDATE", 10);    // Interval in sec. between regular MCe update
+
+
+// ------------------------------------------------------------------ EC timing
+define("PUMP_TIMEOUT",4);
 
 
 ?>

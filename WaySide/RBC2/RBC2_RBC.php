@@ -162,7 +162,7 @@ class Pelement extends genericElement { // -------------------------------------
   private $throwLockedByCmd = false;             // Point throw is locked by command
   
   public function cmdToggleElement() { // Throw point to opposite lie
-    return $this->throwPoint(!$this->logicalLieRight);
+    return $this->throwPoint(C_TOGGLE);
   }
   
   public function cmdToggleBlocking() { // Block point throw
@@ -370,33 +370,71 @@ class Pelement extends genericElement { // -------------------------------------
     return $occupation;
   }
   
-  protected function throwPoint($throwRight) { // Throw point to specific lie (param true: right, false: left)
+  protected function throwPoint($command) { // Throw point according to command -------------------------- What is returnvalue sed for?? FIXME
+  global $PT2;
     if ($this->throwLockedByConfiguration or $this->throwLockedByRoute or $this->throwLockedByCmd or $this->vacancyState != V_CLEAR) return false;
-    if ($throwRight == $this->logicalLieRight) return true; // Point is already in requested lie
-      $this->logicalLieRight = $throwRight;
-      switch ($this->supervisionMode) {
-        case "U":  // Point lie always P_UNSUPERVISED;
-          return true;
-        break;
-        case "S": // Point lie simulated
-          $this->pointState = $this->logicalLieRight ? P_SUPERVISED_RIGHT : P_SUPERVISED_LEFT;
-          if ($this->routeLockingState != R_IDLE) { // Point is locked in route, check if throwing is to be locked
-            if ($this->logicalLieRight == ($this->routeLockingType == RT_RIGHT)) $this->throwLockedByRoute = true;
-          };
-          return true;
-        break;
-        case "P":
-          // $this->logicalLieRight ? send EC cmd throw rigth : send EC cmd throw left 
-          // when status received if locked in route check if throw command is to be blocked FIXME
-          return false; // As not implemented
-        break;
-        case "F":
-          // $this->logicalLieRight ? send EC cmd throw rigth : send EC cmd throw left 
-          // when status received if locked in route check if throw command is to be blocked FIXME
-          return false; // As not implemented
-        break;
+    switch ($this->supervisionMode) {
+      case "U": // Permanetly unsupervised
+        return true;
+      break;
+      case "CR": // Clamped right
+      case "CL": // Clamped left
+        return false;
+      break;
+      case "S": // Simulated
+        switch($command) {
+          case C_TOGGLE:
+            $this->logicalLieRight = !$this->logicalLieRight;
+          break;
+          case C_RIGHT:
+            $this->logicalLieRight = true;
+          break;
+          case C_LEFT:
+            $this->logicalLieRight = false;
+          break;
+          default: // no change
+        }
+        return true;
+      break;
+      case "P": // Real point machine
+        switch ($command) {
+          case C_TOGGLE:
+            $this->logicalLieRight = !$this->logicalLieRight;
+            $order = ($this->logicalLieRight ? O_RIGHT : O_LEFT);
+          break;
+          case C_RIGHT:
+            $this->logicalLieRight = true;
+            $order = O_RIGHT;
+          break;
+          case C_LEFT:
+            $order = O_LEFT;
+            $this->logicalLieRight = false;
+          break;
+          case C_HOLD:
+            $order = ($this->logicalLieRight ? O_RIGHT_HOLD : O_LEFT_HOLD);
+          break;
+          case C_RELEASE:
+            $order = O_RELEASE;
+          break; 
+          default:
+            return false;
+        }
+        $element = $PT2[$this->elementName];
+        switch ($element["EC"]["type"]) {
+          case 10: // point without feedback; no hold
+            orderEC($element["EC"]["addr"], $element["EC"]["index"], $order);
+            return true;
+          break;
+          default: // type of point machine not assigned or not implemented
+            errLog("Point throw: Point machine type {$element["EC"]["type"]} not implemented");
+            return false;
+        }
+      break;
+      default:
+        return false;
     }
   }
+  
   
   protected function setRouteTo($directionUp, $endPoint, $caller) { // Set route further - called by neighbour
   global $automaticPointThrowEnabled, $recCount;
@@ -875,7 +913,7 @@ global $trainData, $trackModel, $allowSR, $allowSH, $allowFS, $allowATO, $emerge
   $train["MAdir"] = MD_NODIR;
   $train["MAbalise"] = "00:00:00:00:00";
   switch ($train["reqMode"]) {
-    case M_N:
+    case M_N:  // Equivalent to ETCS End of Mission
       if ($train["assignedRoute"] != "") { // if route assigned to train: unassign route
         $trackModel[$train["assignedRoute"]]->assignedTrain = "";
         $train["assignedRoute"] = "";
@@ -903,7 +941,7 @@ global $trainData, $trackModel, $allowSR, $allowSH, $allowFS, $allowATO, $emerge
         $train["assignedRoute"] = "";
       }
     break;
-    case M_FS:
+    case M_FS:  // When driving direction is selected this is equivalent to ETCS Start of Mission
       if  ($allowFS and $train["FSallowed"]) {
         $train["authMode"] = M_FS;
         $train["maxSpeed"] = $train["FSmaxSpeed"];
@@ -919,7 +957,7 @@ global $trainData, $trackModel, $allowSR, $allowSH, $allowFS, $allowATO, $emerge
           }
           $occupiedElementUp = $trackModel[$train["curOccupation"][$extentUp]];
           $occupiedElementDown = $trackModel[$train["curOccupation"][$extentDown]];
-          
+          // Check for SP in direction Up
           switch ($occupiedElementUp->elementType) {
             case "BSB":
               $SPup = $occupiedElementUp->neighbourUp->searchSP(true);
@@ -947,7 +985,7 @@ global $trainData, $trackModel, $allowSR, $allowSH, $allowFS, $allowATO, $emerge
               $SPup = $occupiedElementUp->neighbourUp->searchSP(true);
             break;
           }
-          
+          // Check for SP in direction Down
           switch ($occupiedElementDown->elementType) {
             case "BSB":
               $SPdown = "";
@@ -978,8 +1016,8 @@ global $trainData, $trackModel, $allowSR, $allowSH, $allowFS, $allowATO, $emerge
 print "SPup: $SPup, SPdown: $SPdown\n";
 // inform TMS FIXME
   // What if occupied element (or next element) already is locked in route assigned to another train?----------------------------------- FIXME
-
-          switch ($train["nomDir"]) {
+          
+          switch ($train["nomDir"]) { // Assign route according to requested nomDir
             case D_UDEF:
             case D_STOP:
               if ($train["assignedRoute"] != "") { // Deassign route if assigned
@@ -988,43 +1026,44 @@ print "SPup: $SPup, SPdown: $SPdown\n";
               }
               $routeEP = "";
             break;
-            case D_UP:
+            case D_UP:  // Start of Mission Up
               if ($SPup != "" and $trackModel[$SPup]->routeLockingState == R_LOCKED
                 and $trackModel[$SPup]->routeLockingType == RT_START_POINT) {
-                // locked SP found in requested direction , search for EP and assign
+                // locked SP found in requested direction , search for EP and assign. Overwrite existing assignment if any
                 $routeEP = $trackModel[$SPup]->searchEP(true);
-                if ($train["assignedRoute"] == "") {
-                  $train["assignedRoute"] = $routeEP;
-                  $trackModel[$routeEP]->assignedTrain = $train["ID"];
-                  print "RouteEP $routeEP assigned to train {$train["ID"]}\n";
-                } else { // train  already assigned to a route - check if same direction as requested??
-                
-                
-                
-print "to be implemented\n";
+                $train["assignedRoute"] = $routeEP;
+                $trackModel[$routeEP]->assignedTrain = $train["ID"];
+                print "RouteEP $routeEP assigned to train {$train["ID"]}\n";
+                // generate MA / balise + distance FIXME
+                $train["MAdir"] = MD_UP;
               } // else SP not locked, skip MA request
-            
-            }
             break;
-            case D_DOWN:
+            case D_DOWN:  // Start of Mission Down
+              if ($SPdown != "" and $trackModel[$SPdown]->routeLockingState == R_LOCKED
+                and $trackModel[$SPdown]->routeLockingType == RT_START_POINT) {
+                // locked SP found in requested direction , search for EP and assign. Overwrite existing assignment if any
+                $routeEP = $trackModel[$SPdown]->searchEP(false);
+                $train["assignedRoute"] = $routeEP;
+                $trackModel[$routeEP]->assignedTrain = $train["ID"];
+                print "RouteEP $routeEP assigned to train {$train["ID"]}\n";
+                // generate MA / balise + distance  FIXME
+                $train["MAdir"] = MD_DOWN;
+              } // else SP not locked, skip MA request
             break;
           }
           // For MA generation: Check that points in the route are locked in requested position: throwLockedByRoute
             // check route signalling
-            // $train["MAdir"] = ; FIXME
-        }
-      }
+            
+        } // else Position ambiguous, reject MA request  FIXME
+      } // else What to send if FS is not allowed?  FIXME
     break;
     case M_ATO:
-    // copy from FS FIXME
       if ($allowATO and $train["ATOallowed"]) {
         $train["authMode"] = M_ATO;
         $train["maxSpeed"] = $train["ATOmaxSpeed"];
-        if ($train["assignedRoute"] == "") {
-        // assign train to route according to requested driving direction
-        // $train["MAdir"] = 
-        } else { // route already assigned: check route signalling
-        }
+
+// If both SP up and SP down which direction to assign ??? FIXME
+
       }
     break;
   }
@@ -1306,5 +1345,10 @@ global $trainData;
   }
 // More?? FIXME
 }
+
+function pumpSignal() { // ------------------- FIXME
+
+}
+
 
 ?>

@@ -2,8 +2,37 @@
 // WinterTrain, RBC2
 // Enummerations
 
-// ------------------------------------------------------------------------------------- RBC enummeration
-// ----------------------------------- Element states
+// -------------------------------------------------------------------------------------------------------------------- RBC enummeration
+
+// ------------------------------------------------------------------------------------- EC enummerations
+// Order
+define("O_ROADPASS",41);
+define("O_ROADSTOP",42);
+define("O_STOP",31);
+define("O_PROCEED",32);
+define("O_PROCEEDPROCEED",33);
+define("O_CLOSE_BARRIER",21);
+define("O_OPEN_BARRIER",22);
+define("O_RIGHT",11);
+define("O_LEFT",12);
+define("O_RIGHT_HOLD",13);
+define("O_LEFT_HOLD",14);
+define("O_RELEASE",19);
+
+// Physical status from EC
+define("S_UNSUPERVISED",0);
+define("S_STOP",1);
+define("S_PROCEED",2);
+define("S_PROCEEDPROCEED",3);
+define("S_VOID",10);            // No physical signal connected (i.e. type marker board)
+define("S_BARRIER_CLOSED",1);
+define("S_BARRIER_OPEN",2);
+define("S_U_RIGHT",5);          // Point, unsupervised, previous command was throw right
+define("S_U_LEFT",6);           // Point, unsupervised, previous command was throw left
+define("S_U_RIGHT_HOLDING",7);  // Point, unsupervised, previous command was throw right, holding
+define("S_U_LEFT_HOLDING",8);   // Point, unsupervised, previous command was throw left, holding
+
+// ------------------------------------------------------------------------------------------ Functional Element states
 // Track Vacancy State
 define("V_UNDEFINED", 0);
 define("V_OCCUPIED", 1);
@@ -47,11 +76,20 @@ define("P_UNSUPERVISED", 1);      // Point detected as unsupervised
 define("P_SUPERVISED_RIGHT", 2);
 define("P_SUPERVISED_LEFT", 3);
 
-// Functional Element state, signal
+// Point throw commands
+define("C_TOGGLE",10);            // Throw to opposite af logicalLieRight
+define("C_LEFT",20);
+define("C_RIGHT",21);
+define("C_HOLD",22);              // Hold according to logicalLieRight
+define("C_RELEASE",23);           // Release held point
+
+// Functional Element state, signal -- used ? FIXME
+/*
 define("S_UNDEFINED", 0);         // No information
 define("S_STOP", 1);
 define("S_PROCEED", 2);
 define("S_PROCEED_PROCEED", 3);
+*/
 
 // ARS status
 define("ARS_DISABLED",0);
@@ -85,8 +123,8 @@ define("D_STOP",3);
 
 // Authorized MA direction
 define("MD_NODIR",0);
-define("MD_BACKWARD",1);
-define("MD_FORWARD",2);
+define("MD_DOWN",1);
+define("MD_UP",2);
 define("MD_BOTH",3);
 
 // --------------------------------- HMI interface

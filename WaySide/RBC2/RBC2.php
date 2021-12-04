@@ -32,6 +32,7 @@ $triggerHMIupdate = false;
 $triggerMCeUpdate = false;
 $HMItimeout = 0;
 $MCetimeout = 0;
+$pumpTimeout = 0;
 
 // -------------------------------------- Operational varaibles
 $emergencyStop = false;
@@ -75,6 +76,10 @@ do {
       $pollEC = true; // Trigger EC poll once per second
       checkECtimeout();
       // check OBU communication timeout FIXME
+    }
+    if ($now - $pumpTimeout >= PUMP_TIMEOUT) {
+      $pumpTimeout = $now;
+      pumpSignal();
     }
     if ($triggerHMIupdate or $now >= $HMItimeout) { 
       $HMItimeout = $now + HMI_UPDATE;  
