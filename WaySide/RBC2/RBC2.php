@@ -14,6 +14,7 @@ include("RBC2_EC.php");             // Handlers for Element Controllers
 include("RBC2_MCe.php");            // Handlers for MCe 
 include("RBC2_HHT.php");            // Handlers for HHT
 include("RBC2_HMI.php");            // Handlers for HMI
+include("RBC2_TMS.php");            // Handlers for TMS
 
 include("RBC2_RBC.php");            // Core fuctionalty 
 
@@ -38,6 +39,7 @@ $pumpTimeout = 0;
 $emergencyStop = false;
 $arsEnabled = true;
 $allowSR = false; $allowSH = false; $allowFS = false; $allowATO = false; // Overall allowance of modes
+$tmsStatus = TMS_NO_TMS;
 
 // Test
 $test = false;

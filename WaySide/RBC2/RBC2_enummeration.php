@@ -5,7 +5,7 @@
 // -------------------------------------------------------------------------------------------------------------------- RBC enummeration
 
 // ------------------------------------------------------------------------------------- EC enummerations
-// Order
+// Order to EC
 define("O_ROADPASS",41);
 define("O_ROADSTOP",42);
 define("O_STOP",31);
@@ -55,11 +55,20 @@ define("RT_VIA", 5);
 define("RT_RIGHT", 7);
 define("RT_LEFT", 8);
 
+// Signalling
+define("SIG_UDEF", 0);
+define("SIG_ERROR", 1);
+define("SIG_NOT_LOCKED", 2);
+define("SIG_STOP", 3);
+define("SIG_PROCEED", 4);
+define("SIG_PROCEED_PROCEED", 5);
+
 // Locking state in relation to element FIXME Used?
 define("L_NOT_LOCKED", 1);
 define("L_LOCKED", 2);
 define("L_LOCKED_RIGHT", 3);
 define("L_LOCKED_LEFT", 4);
+
 
 // Blocking state in relation to operator commands
 define("B_NOT_BLOCKED", 1);

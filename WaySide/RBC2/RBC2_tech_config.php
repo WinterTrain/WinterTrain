@@ -25,10 +25,13 @@ $TRAIN_DATA_FILE =  "TrainData.php";
 // IP addresses and port numbers
 $HMIaddress = "0.0.0.0";
 $HMIport = 9900;
+//$HMIport = 9700;
 $MCeAddress = "0.0.0.0";
 $MCePort = 9901;
+//$MCePort = 9701;
 $TMSaddress = "0.0.0.0";
 $TMSport = 9903;
+//$TMSport = 9703;
 
 // ---------------------------------------------------------- Radio network
 define("RF12GROUP", 101);

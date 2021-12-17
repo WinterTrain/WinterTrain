@@ -3,7 +3,7 @@
 // Element Controller handlers
 
 function elementStatusEC($addr, $data) { // Analyse element status for one EC
-global $EC, $PT2, $triggerHMIupdate;
+global $EC, $PT2, $trackModel, $triggerHMIupdate;
   if (isset($EC[$addr]) and $data[3] < count($EC[$addr]["index"])) { // Check EC configuration
     errLog("EC ($addr) not configured: #conf. element EC: {$data[3]}, RBC: ".count($EC[$addr]["index"]));
     unset($EC[$addr]);
@@ -13,34 +13,64 @@ global $EC, $PT2, $triggerHMIupdate;
       errLog("EC ($addr) on-line");
       $EC[$addr]["EConline"] = true;
     }
-  }
-  $EC[$addr]["validTimer"] = time() + EC_TIMEOUT;
+    $EC[$addr]["validTimer"] = time() + EC_TIMEOUT;
+    $triggerHMIupdate = true;
     
-// Analyse EC status for all elements of EC and apply consequences FIXME   see old impl
-/*
-
-  foreach() {
-    switch (elementType) {
-      case "PF":
-      case "PT":
-        $this->pointState = physical supervision state reported by EC
-        if (supervised in correct lie acc logicalLieRight and $this->routeLockingState != R_IDLE) {
-        // Point is locked in route, check if throwing is to be locked
-          if ($this->logicalLieRight == ($this->routeLockingType == RT_RIGHT)) {
-            $this->throwLockedByRoute = true;
-            $triggerHMIupdate = true;
-          //  generate MA?? FIXME  Right place??
+// Analyse EC status for all elements of EC and apply consequences
+      foreach ($EC[$addr]["index"] as $index => $name) {
+      $element = $PT2[$name];
+      $status = $index % 2 ? (int)$data[$index/2 +4] & 0x0F :  ((int)$data[$index/2 +4] & 0xF0) >> 4 ;
+      switch ($element["element"]) {
+        case "PT":
+        case "PF":
+          if ($element["supervisionState"] == "P") {
+            switch ($element["EC"]["type"]) {
+              case 10: // point machine without feedback
+                switch ($status) {
+                  case S_U_RIGHT:
+                  case S_U_RIGHT_HOLDING:
+                    $trackModel[$name]->pointState = P_SUPERVISED_RIGHT;
+                    if ($trackModel[$name]->logicalLieRight) {
+                      if ($trackModel[$name]->routeLockingState != R_IDLE and $trackModel[$name]->routeLockingType == RT_RIGHT) {
+                        $trackModel[$name]->throwLockedByRoute = true;
+                        //  generate MA?? FIXME  Right place??
+                      }
+                    } else {
+                      print "Warning: Reported point position (right), differs from expected lie (left)\n";
+                    }
+                  break;
+                  case S_U_LEFT:
+                  case S_U_LEFT_HOLDING:
+                    $trackModel[$name]->pointState = P_SUPERVISED_LEFT;
+                    if (!$trackModel[$name]->logicalLieRight) {
+                      if ($trackModel[$name]->routeLockingState != R_IDLE and $trackModel[$name]->routeLockingType == RT_LEFT) {
+                        $trackModel[$name]->throwLockedByRoute = true;
+                        //  generate MA?? FIXME  Right place??
+                      }
+                    } else {
+                      print "Warning: Reported point position (left), differs from expected lie (right)\n";
+                    }
+                  break;
+                  default:
+                    $trackModel[$name]->pointState = P_UNSUPERVISED;
+                  break;
+                }
+                break;
+              default:
+                $trackModel[$name]->pointState = P_UNSUPERVISED;
+            }
           }
-        };
-      break;
-      case "LX":
-        fatalErr("LX status not implemented);
-      break;
-      default:
-      break;
+        break;
+        case "SD":
+        case "SU":
+          $trackModel[$name]->pointState = $status; // Used FIXME
+        break;
+        case "LX":
+print "LX status not implemented\n";
+        break;
+      }
     }
   }
-  */
 }
 
 function pollNextEC() { // Poll one EC at a time

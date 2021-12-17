@@ -5,7 +5,7 @@
 // For function processCommandHMI() see RBC2_RBC.php
 
 function updateIndicationHMI() { // Update general and track indications for all HMI clients
-global $trainData, $PT2, $HMI, $trackModel, $triggerHMIupdate, $allowSR, $allowSH, $allowFS, $allowATO, $emergencyStop, $arsEnabled;
+global $trainData, $PT2, $HMI, $trackModel, $triggerHMIupdate, $tmsStatus, $allowSR, $allowSH, $allowFS, $allowATO, $emergencyStop, $arsEnabled, $TMS_STATUS_TXT;
 
   $triggerHMIupdate = false;
 
@@ -14,7 +14,8 @@ global $trainData, $PT2, $HMI, $trackModel, $triggerHMIupdate, $allowSR, $allowS
   HMIindicationAll("shGeneral {{$allowSH}}");
   HMIindicationAll("fsGeneral {{$allowFS}}");
   HMIindicationAll("atoGeneral {{$allowATO}}");
-
+  HMIindicationAll("set ::tmsStatus {{$TMS_STATUS_TXT[$tmsStatus]}}\n");
+  
 // Track layoyt / indicators
   HMIindicationAll("eStopInd ".($emergencyStop ? "true" : "false"));
   HMIindicationAll("arsAllInd ".($arsEnabled ? "true" : "false"));

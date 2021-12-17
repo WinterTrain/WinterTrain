@@ -6,6 +6,7 @@ package require Tk
 set MCeVersion 01P01
 set IPaddress 0.0.0.0
 set IPport 9901
+#set IPport 9701
 
 # Default configuration
 set trackWidth 0.15
@@ -139,7 +140,7 @@ global nECframe nSimFrame
   grid [ttk::frame .f.fStatus.fEC -padding "3 3 12 12" -relief solid -borderwidth 2] -column 1 -columnspan 2 -row 5 -sticky nwes
   set nECframe 0
   destroy .f.fStatus.fSim
-  grid [ttk::frame .f.fStatus.fSim -padding "3 3 12 12" -relief solid -borderwidth 2] -column 1 -columnspan 2 -row 5 -sticky nwes
+  grid [ttk::frame .f.fStatus.fSim -padding "3 3 12 12" -relief solid -borderwidth 2] -column 2 -columnspan 2 -row 5 -sticky nwes
   set nSimFrame 0
 }
 
@@ -350,6 +351,7 @@ set command ""
 set startLoop yes
 set debug no
 set reqIP no
+set reqMCePort no
 
 foreach arg $argv {
   puts $arg
@@ -357,36 +359,45 @@ foreach arg $argv {
     set IPaddress $arg
     set reqIP no
   } else {
-    switch $arg {
-    --help {
-      puts "
+      if ($reqMCePort) {
+        set IPport $arg
+        set reqMCePort no
+      } else {
+      switch $arg {
+      --help {
+        puts "
 Usage:
---test: Do not enter event loop 
---IP <address>: Set server address
---l             Set server address to localhost (127.0.0.1) 
+--test:           Do not enter event loop 
+--IP <address>:   Set server address
+--l               Set server address to localhost (127.0.0.1) 
+--MCePort <port>  Use <port> for RBC interface
 --d: Debug
 "
-      }
-    --test {
-      set startLoop no
-      }
-    --IP {
-      set reqIP yes
-      }
-    --l {
-      set IPaddress "127.0.0.1"
-      }
-    --d {
-      set debug yes
-      }
-    default {
-      puts "Unknown option: $arg"  
-      exit  
+        exit
+        }
+      --test {
+        set startLoop no
+        }
+      --IP {
+        set reqIP yes
+        }
+      --MCePort {
+        set reqMCePort yes
+        }
+      --l {
+        set IPaddress "127.0.0.1"
+        }
+      --d {
+        set debug yes
+        }
+      default {
+        puts "Unknown option: $arg"  
+        exit  
+        }
       }
     }
   }
 }
-
 #----------------------------------------------- window layout
 proc rotate {} {
 global liveT live liveTxt liveIndicator liveC
@@ -433,7 +444,7 @@ grid [ttk::button .f.buttonT4 -text "CMD4" -command cmd4] -column 5 -row 2 -stic
 #grid [tk::scrollbar .f.sbv -orient vertical -command ".f.canvas yview"] -column 9 -row 3 -sticky ns
 
 grid [ttk::frame .f.fStatus -padding "3 3 3 3" -relief solid -borderwidth 2] -column 1 -row 4 -columnspan 10 -sticky nwes
-# -------------------------------------------------- Balise and Server frames
+# -------------------------------------------------- Server frames
   grid [ttk::frame .f.fStatus.server -padding "3 3 12 12" -relief solid -borderwidth 2] -column 1 -row 2 -sticky nwes
   grid [ttk::label .f.fStatus.server.name -text "Server"] -column 0 -row 0 -padx 5 -pady 5 -sticky we
   grid [ttk::label .f.fStatus.server.uptimeX -text "Uptime:"] -column 0 -row 1 -padx 5 -pady 5 -sticky we
@@ -449,7 +460,8 @@ grid [ttk::frame .f.fStatus -padding "3 3 3 3" -relief solid -borderwidth 2] -co
   grid [ttk::label .f.fStatus.tms.uptimeX -text "Status:"] -column 0 -row 1 -padx 5 -pady 5 -sticky we
   grid [ttk::label .f.fStatus.tms.uptime -textvariable tmsStatus] -column 1 -row 1 -padx 5 -pady 5 -sticky we
 
-  grid [ttk::frame .f.fStatus.balise -padding "3 3 12 12" -relief solid -borderwidth 2] -column 2 -row 2 -rowspan 2 -sticky nwes
+# ------------------------------------------------- Balise frame
+  grid [ttk::frame .f.fStatus.balise -padding "3 3 12 12" -relief solid -borderwidth 2] -column 2 -row 2 -rowspan 3 -sticky nwes
   grid [ttk::label .f.fStatus.balise.name -text "HHT Balise Reader"] -column 0 -row 0 -padx 5 -pady 5 -sticky we
   grid [ttk::label .f.fStatus.balise.baliseID -textvariable baliseID] -column 0 -row 1 -padx 5 -pady 5 -sticky we
   grid [ttk::label .f.fStatus.balise.baliseName -textvariable baliseName] -column 1 -row 1 -padx 5 -pady 5 -sticky we
@@ -460,7 +472,10 @@ grid [ttk::frame .f.fStatus -padding "3 3 3 3" -relief solid -borderwidth 2] -co
   grid [ttk::label .f.fStatus.balise.countX -text "Balise count (total/unassigned):"] -column 1 -columnspan 2 -row 3 -padx 5 -pady 5 -sticky we
   grid [ttk::label .f.fStatus.balise.count -textvariable baliseCount] -column 3 -row 3 -padx 5 -pady 5 -sticky we
 
-  grid [ttk::frame .f.fStatus.fSimFrame -padding "3 3 12 12" -relief solid -borderwidth 2] -column 2 -columnspan 2 -row 6 -sticky nwes
+# ------------------------------------------------- Simulator frame
+  grid [ttk::frame .f.fStatus.fSimFrame -padding "3 3 12 12" -relief solid -borderwidth 2] -column 2 -columnspan 2 -row 5 -sticky nwes
+  
+# -------------------------------------------------- EC frames
   grid [ttk::frame .f.fStatus.fEC -padding "3 3 12 12" -relief solid -borderwidth 2] -column 1 -columnspan 2 -row 5 -sticky nwes
  
 

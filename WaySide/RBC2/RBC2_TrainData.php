@@ -11,6 +11,7 @@ global $trainData, $trainIndex, $DIRECTORY, $TRAIN_DATA_FILE, $SRallowed, $SHall
     $train["reqMode"] = M_UDEF;
     $train["authMode"] = M_N;
     $train["baliseName"] = "(00:00:00:00:00)"; // PT1 name of LRBG
+    $train["baliseID"] = "00:00:00:00:00"; // LRBG
     $train["distance"] = 0;
     $train["maxSpeed"] = 0; // Resulting allowed speed
     if (!isset($train["SRmaxSpeed"])) $train["SRmaxSpeed"] = SR_MAX_SPEED_DEFAULT;

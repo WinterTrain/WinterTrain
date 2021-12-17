@@ -8,6 +8,7 @@ set panelEnabled no ;# Enable test interface to operator panel prototype for pro
 set HMIversion 01P01
 set IPaddress 192.168.8.230
 set IPport 9900
+#set IPport 9700
 
 # Default configuration
 set trackWidth 0.15
@@ -1318,6 +1319,7 @@ set atoAllowed 0
 set reqIP no
 set reqScale no
 set reqFsize no
+set reqHMIport no
 
 foreach arg $argv {
   if {$reqIP} {
@@ -1333,49 +1335,58 @@ foreach arg $argv {
       set buttonFontSize $arg
       set reqFsize no
       } else {
+      if ($reqHMIport) {
+        set IPport $arg
+        set reqHMIport no
+      } else {
         switch $arg {
         --help {
-        puts "
+          puts "
 WinterTrain HMI
 Usage:
---scale <int>   Set scale factor of track layout
---font <int>    Set font size
---rto           Enable Remote Take-over display
---test          Do not enter event loop 
---IP <address>  Set server address
---l             Set server address to localhost (127.0.0.1) 
---p             Enable connection to HMI panel
---d             Debug
-"
-          exit
+--scale <int>     Set scale factor of track layout
+--font <int>      Set font size
+--rto             Enable Remote Take-over display
+--test            Do not enter event loop 
+--IP <address>    Set server address
+--l               Set server address to localhost (127.0.0.1) 
+--HMIport <port>  Use <port> for RBC interface
+--p               Enable connection to HMI panel
+--d               Debug
+  "
+            exit
+            }
+          --test {
+            set startLoop no
+            }
+          --IP {
+            set reqIP yes
+            }
+          --HMIport {
+            set reqHMIport yes
+            }
+          --rto {
+            set rtoDisplay yes
+            }
+          --scale {
+            set reqScale yes
+            }
+          --l {
+            set IPaddress "127.0.0.1"
+            }
+          --font {
+            set reqFsize yes
           }
-        --test {
-          set startLoop no
-          }
-        --IP {
-          set reqIP yes
-          }
-        --rto {
-          set rtoDisplay yes
-          }
-        --scale {
-          set reqScale yes
-          }
-        --l {
-          set IPaddress "127.0.0.1"
-          }
-        --font {
-          set reqFsize yes
-        }
-        --p {
-          set panelEnabled yes
-          }
-        --d {
-          set debug yes
-          }
-        default {
-          puts "Unknown option: $arg"  
-          exit  
+          --p {
+            set panelEnabled yes
+            }
+          --d {
+            set debug yes
+            }
+          default {
+            puts "Unknown option: $arg"  
+            exit  
+            }
           }
         }
       }

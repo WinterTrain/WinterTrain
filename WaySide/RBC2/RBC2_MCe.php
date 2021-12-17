@@ -123,7 +123,6 @@ global $EC, $startTime, $tmsStatus, $TMS_STATUS_TXT, $triggerMCeUpdate, $simTrai
   $triggerMCeUpdate = false;
 }
 
-
 function MCeStartup($client) { // Initialise specific MCe client with static data
 global $EC, $simTrain, $triggerMCeUpdate;
   MCeIndication($client, "destroyDynFrame");
@@ -175,8 +174,8 @@ global $trackModel;
       case "BSB":
       case "BSE":
         if ($model->routeLockingType == RT_END_POINT) {
-          printf ("%-8.8s %2.2s   ", $name, $model->assignedTrain);
-          print $model->dumpRoute()."\n";
+          printf ("%-8.8s %2.2s    ", $name, $model->assignedTrain);
+          print ($model->routeLockingUp ? "U" : "D")." ".$model->dumpRoute()."\n";
         }
       break;
       default:

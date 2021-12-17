@@ -4,7 +4,7 @@
 
 function CmdLineParam() {
 global $argv, $debug, $background, $PT2_FILE, $TRAIN_DATA_FILE, $DIRECTORY, $ERRLOG_FILE, $MSGLOG_FILE, $BL_FILE, $radioInterface, $AbusInterface,
-      $allowSR, $allowSH, $allowFS, $allowATO;
+      $allowSR, $allowSH, $allowFS, $allowATO, $HMIport, $MCePort;
   if (in_array("-h",$argv)) {
     print "RBC2 - WinterTrain
     
@@ -34,6 +34,9 @@ Usage:
 -l <file>         use <file> as Message Log File instead of default
 -e <file>         use <file> as Error Log File instead of default
 -bl <file>        use <file> as Balise Dump File instead of default
+
+-HMIport <port>   listen to port <port> for HMI interface
+-MCeport <port>   listen to port <port> for MCe interface
 
 ";
     exit();
@@ -150,7 +153,33 @@ Usage:
         print "Error: option -bl: File name is missing \n";
         exit(1);
       }
-      break;    
+      break;   
+    case "-HMIport":
+      list(,$p) = each($argv);
+      if ($p) {
+        $HMIport = $p;
+        if (!is_numeric($HMIport)) {
+          print "Error: option -HMIport: <port> must be numeric\n";
+          exit(1);
+        }
+      } else {
+        print "Error: option -HMIport: <port> is missing \n";
+        exit(1);
+      }
+    break; 
+    case "-MCeport":
+      list(,$p) = each($argv);
+      if ($p) {
+        $MCePort = $p;
+        if (!is_numeric($MCePort)) {
+          print "Error: option -MCeport: <port> must be numeric\n";
+          exit(1);
+        }
+      } else {
+        print "Error: option -MCeport: <port> is missing \n";
+        exit(1);
+      }
+    break; 
     case "-b":
     case "--background" :
       $background = TRUE;

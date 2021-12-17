@@ -3,13 +3,11 @@
 pwr 1 // 0: Undef, 1: RightWheelPlus, 2: LeftWheelPlus, 3: NoPower 
 nomDir 2 // Nominel driving direction 0: Undef, 1: DOWN, 2: UP, 3: Stand Still 
 
-BG1 -30
-BG1 -10
-BG1 20
-BG1 30
-BG1 50
-BG2 30
-BG2 70
+
+BG3 0
+BG3 10
+BG3 20
+BG3 30
 BG3 40
 BG3 60
 BG3 80
@@ -54,6 +52,14 @@ BG3 460
 BG3 470
 BG3 480
 BG3 490
+BG3 500
+BG3 510
+BG3 520
+BG3 530
+BG3 540
+BG3 550
+BG3 560
+BG3 570
 
 
 // EOF
