@@ -1,0 +1,62 @@
+// Train movement simulation
+
+pwr 1 // 0: Undef, 1: RightWheelPlus, 2: LeftWheelPlus, 3: NoPower 
+nomDir 2 // Nominel driving direction 0: Undef, 1: DOWN, 2: UP, 3: Stand Still 
+
+
+BG3 0
+//BG3 2
+//BG3 4
+BG3 6
+BG3 8
+//BG3 12
+//BG3 14
+//BG3a 2
+BG3a 4
+BG3a 6
+BG6 2
+BG6 4
+//BG6 6
+//BG7 2
+BG7 4
+//BG7 6
+//BG7 8
+BG7 10
+//BG10 2
+//BG10 4
+BG10 6
+//BG10 8
+BG12 2
+//BG12 4
+//BG12 6
+//BG12 8
+BG12 10
+//BG12 12
+//BG12 14
+BG12 16
+BG12 18
+//BG12 20
+BG13 2
+//BG13 4
+//BG13 6
+BG13 8
+//BG16 2
+BG16 4
+//BG16 6
+BG19 2
+BG19 6
+//BG19 10
+//BG19 14
+BG19 18
+//BG19 22
+BG19 26
+BG19 30
+
+
+
+
+
+
+
+
+

@@ -26,8 +26,9 @@ global $trainData, $PT2, $HMI, $trackModel, $triggerHMIupdate, $tmsStatus, $allo
     switch ($element["element"]) {
       case "SU":
       case "SD":
+        $signalState = $model->routeLockingType == RT_VIA_REVERSE ? SIG_STOP : $model->signallingState;
         HMIindicationAll("signalState $name ".$model->vacancyState." ".$model->routeLockingState." ".$model->routeLockingType." ".
-          $model->lockingState." ".$model->blockingState." ".$model->signalState." ".$model->arsState." ".$model->occupationTrainID."\n");
+          $model->lockingState." ".$model->blockingState." ".$signalState." ".$model->arsState." ".$model->occupationTrainID."\n");
       break;
       case "PF":
       case "PT":

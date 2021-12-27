@@ -4,7 +4,8 @@
 
 
 function processCommandMCe($command, $from) { // ------------------------------------------ Process commands from MCe clients
-global $run, $reloadRBC, $inChargeMCe, $clientsData, $EC, $trackModel, $test, $triggerMCeUpdate, $triggerHMIupdate, $simTrain;
+global $run, $reloadRBC, $inChargeMCe, $clientsData, $EC, $trackModel, $test, $triggerMCeUpdate, $triggerHMIupdate, $simTrain,
+  $automaticPointThrowEnabled;
 
   $triggerMCeUpdate = true;
   $param = explode(" ",$command);
@@ -39,7 +40,8 @@ global $run, $reloadRBC, $inChargeMCe, $clientsData, $EC, $trackModel, $test, $t
       }
     break;
     case "CMD4":
-      if ($from == $inChargeMCe) { 
+      if ($from == $inChargeMCe) { // Toggle automatic point throw
+        $automaticPointThrowEnabled = !$automaticPointThrowEnabled;
       }
     break;
     case "exitRBC":
@@ -186,20 +188,24 @@ global $trackModel;
 }
 
 function dumpTrackModel() {
-global  $trackModel, $TVS_TXT_SH, $RLS_TXT_SH, $RLT_TXT_SH, $RDIR_TXT_SH, $PS_TXT_SH;
+global  $trackModel, $TVS_TXT_SH, $RLS_TXT_SH, $RLT_TXT_SH, $RDIR_TXT_SH, $PS_TXT_SH, $SIGNALLING_TXT_SH;
   print "\nRBC2 Track Model Dump ".date("Ymd H:i:s")."\n";
-  print "Name     Type TVS  RLS  RLT  DIR P Train\n";
+  print "Name     Type TVS  RLS  RLT  DIR P  Train Sig\n";
   foreach ($trackModel as $name => $model) {
-    printf("%-8.8s %-4.4s %-4.4s %-4.4s %-4.4s %2s  %1.1s %2.2s\n", $name, $model->elementType, $TVS_TXT_SH[$model->vacancyState], 
+    $lines[] = sprintf("%-8.8s %-4.4s %-4.4s %-4.4s %-4.4s %2s  %2.2s %5.5s %2.2s\n", $name, $model->elementType, $TVS_TXT_SH[$model->vacancyState], 
       $RLS_TXT_SH[$model->routeLockingState], $RLT_TXT_SH[$model->routeLockingType], $RDIR_TXT_SH[$model->routeLockingUp],
-        (($model->elementType == "PF" or $model->elementType == "PT") ? $PS_TXT_SH[$model->pointState] : ""),
+        (($model->elementType == "PF" or $model->elementType == "PT") ?
+          ($PS_TXT_SH[$model->pointState].($model->throwLockedByRoute ? "!" : " ")) : ""),
         (($model->elementType == "SU" or $model->elementType == "SD" or $model->elementType == "BSB" or $model->elementType == "BSE") ?
-          $model->assignedTrain : "" ));
-//    printf("%-8.8s %-4.4s %-4.4s %-4.4s %-4.4s %-2.2s %-8.8s \n", $name, $model->elementType, $model->vacancyState, 
-//      $model->routeLockingState, $model->routeLockingType, $model->routeLockingUp, $model->facingUp);
-      //$model->neighbourUp->elementName, $model->neighbourDown->elementName);
+          $model->assignedTrain : "" ),
+        (($model->elementType == "SU" or $model->elementType == "SD") ?
+          $SIGNALLING_TXT_SH[$model->signallingState] : ""));
+
   }
-  print "\n";
+  sort($lines, SORT_NATURAL);
+  foreach ($lines as $line) {
+    print "$line";
+  }
 }
 
 function prettyPrintTime($sec) {

@@ -14,6 +14,7 @@ $ATOallowed = 0;
 $posRestoreEnabled = true; // Allow position restore
 define("POSITION_TIMEOUT", 10);
 define("TRAIN_COM_TIMEOUT",5);
+define("EMG_REL_TIMEOUT", 10);
 
 define("SR_MAX_SPEED_DEFAULT", 70);
 define("SH_MAX_SPEED_DEFAULT", 50);
@@ -22,7 +23,7 @@ define("ATO_MAX_SPEED_DEFAULT", 50);
 
 
 // Automatic operation
-$automaticPointThrowEnabled = false; // Enable automatic point throwing during route setting
+$automaticPointThrowEnabled = true; // Enable automatic point throwing during route setting
 
 // HMI
 define("HMI_UPDATE", 5);    // Interval in sec. between regular HMI update

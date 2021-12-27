@@ -4,7 +4,7 @@
 package require Tk
 
 set MCeVersion 01P01
-set IPaddress 0.0.0.0
+set IPaddress 192.168.8.230
 set IPport 9901
 #set IPport 9701
 
@@ -438,7 +438,7 @@ grid [ttk::button .f.buttonRLTMS -text "Reload TMS" -command "sendCommand rlTMS"
 grid [ttk::button .f.buttonT1 -text "DumpTrackModel" -command cmd1] -column 2 -row 2 -sticky e
 grid [ttk::button .f.buttonT2 -text "DumpRoutes" -command cmd2] -column 3 -row 2 -sticky e
 grid [ttk::button .f.buttonT3 -text "DumpTrainData" -command cmd3] -column 4 -row 2 -sticky e
-grid [ttk::button .f.buttonT4 -text "CMD4" -command cmd4] -column 5 -row 2 -sticky w
+grid [ttk::button .f.buttonT4 -text "Toggle AutPT" -command cmd4] -column 5 -row 2 -sticky w
 
 #grid [tk::scrollbar .f.sbh -orient horizontal -command ".f.canvas xview"] -column 2 -columnspan 7 -row 4 -sticky we
 #grid [tk::scrollbar .f.sbv -orient vertical -command ".f.canvas yview"] -column 9 -row 3 -sticky ns

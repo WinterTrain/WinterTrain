@@ -2,6 +2,58 @@
 // WinterTrain, RBC2
 // Element Controller handlers
 
+function orderSignal ($elementName, $signalling) {
+global $PT2;
+  switch ($signalling) { // Mapping of signalling (SIG_) to EC order (O_) to be refined FIXME
+    case SIG_PROCEED:
+      orderElement($elementName, O_PROCEED);
+    break;
+    case SIG_PROCEED_PROCEED:
+      if ($PT2[$elementName]["type"] == "MS2") {
+        orderElement($elementName, O_PROCEED);
+      } else {
+        orderElement($elementName, O_PROCEED_PROCEED);
+      }
+    break;    
+    default:
+      orderElement($elementName, O_STOP);
+    break;
+  }
+}
+
+function orderElement($elementName, $order) {
+global $PT2;
+  $element = $PT2[$elementName];
+  switch ($element["element"]) {
+    case "SU":
+    case "SD":
+      switch ($element["type"]) {
+        case "MB":
+          return true;
+        break;
+        case "SE":
+        case "MS2":
+        case "MS3":
+          orderEC($element["EC"]["addr"], $element["EC"]["index"], $order);
+          return true;
+        break;
+      }
+    break;
+    case "PF":
+    case "PT":
+      switch ($element["EC"]["type"]) {
+        case 10: // point without feedback; no hold
+          orderEC($element["EC"]["addr"], $element["EC"]["index"], $order);
+          return true;
+        break;
+        default: // type of point machine not assigned or not implemented
+          errLog("Point throw: Point machine type {$element["EC"]["type"]} not implemented");
+          return false;
+      }
+    break;
+  }
+}
+
 function elementStatusEC($addr, $data) { // Analyse element status for one EC
 global $EC, $PT2, $trackModel, $triggerHMIupdate;
   if (isset($EC[$addr]) and $data[3] < count($EC[$addr]["index"])) { // Check EC configuration
@@ -17,7 +69,7 @@ global $EC, $PT2, $trackModel, $triggerHMIupdate;
     $triggerHMIupdate = true;
     
 // Analyse EC status for all elements of EC and apply consequences
-      foreach ($EC[$addr]["index"] as $index => $name) {
+    foreach ($EC[$addr]["index"] as $index => $name) {
       $element = $PT2[$name];
       $status = $index % 2 ? (int)$data[$index/2 +4] & 0x0F :  ((int)$data[$index/2 +4] & 0xF0) >> 4 ;
       switch ($element["element"]) {
@@ -29,44 +81,27 @@ global $EC, $PT2, $trackModel, $triggerHMIupdate;
                 switch ($status) {
                   case S_U_RIGHT:
                   case S_U_RIGHT_HOLDING:
-                    $trackModel[$name]->pointState = P_SUPERVISED_RIGHT;
-                    if ($trackModel[$name]->logicalLieRight) {
-                      if ($trackModel[$name]->routeLockingState != R_IDLE and $trackModel[$name]->routeLockingType == RT_RIGHT) {
-                        $trackModel[$name]->throwLockedByRoute = true;
-                        //  generate MA?? FIXME  Right place??
-                      }
-                    } else {
-                      print "Warning: Reported point position (right), differs from expected lie (left)\n";
-                    }
+                    $trackModel[$name]->supervisionUpdate(P_SUPERVISED_RIGHT);
                   break;
                   case S_U_LEFT:
                   case S_U_LEFT_HOLDING:
-                    $trackModel[$name]->pointState = P_SUPERVISED_LEFT;
-                    if (!$trackModel[$name]->logicalLieRight) {
-                      if ($trackModel[$name]->routeLockingState != R_IDLE and $trackModel[$name]->routeLockingType == RT_LEFT) {
-                        $trackModel[$name]->throwLockedByRoute = true;
-                        //  generate MA?? FIXME  Right place??
-                      }
-                    } else {
-                      print "Warning: Reported point position (left), differs from expected lie (right)\n";
-                    }
+                    $trackModel[$name]->supervisionUpdate(P_SUPERVISED_LEFT);
                   break;
                   default:
-                    $trackModel[$name]->pointState = P_UNSUPERVISED;
+                    $trackModel[$name]->supervisionUpdate(P_UNSUPERVISED);
                   break;
                 }
                 break;
               default:
-                $trackModel[$name]->pointState = P_UNSUPERVISED;
+                $trackModel[$name]->supervisionUpdate(P_UNSUPERVISED);
+                print "Point machine type not implemented\n";
             }
           }
         break;
         case "SD":
         case "SU":
-          $trackModel[$name]->pointState = $status; // Used FIXME
         break;
         case "LX":
-print "LX status not implemented\n";
         break;
       }
     }
@@ -158,13 +193,14 @@ global $PT2, $EC;
             addEC($addr);
           }
           configureEC($addr, $element["EC"]["type"], $element["EC"]["majorDevice"]);
+          // Configure minorDevice for type 11, point with position detector FIXME
           $element["EC"]["index"] = count($EC[$addr]["index"]);
           $EC[$addr]["index"][] = $name;
         }
         break;
         case "SU":
         case "SD":
-        if ($element["EC"]["type"] != 0) {
+        if ($element["type"] != "MB" and $element["EC"]["type"] != 0) {
           $addr = $element["EC"]["addr"];
           if (!isset($EC[$addr])) {
             addEC($addr);

@@ -7,7 +7,7 @@
 
 function  ProcessPT2() { //  PT2 (site specific application data) management and analysis
 global $DIRECTORY, $PT2_FILE, $PT2, $trackModel, $HMI, $balisesID, $baliseCountTotal, $totalElement,  $errorFound, $nInspection,
-  $baliseCountUnassigned;
+  $baliseCountUnassigned, $lightSignal;
 
   require("$DIRECTORY/$PT2_FILE");
   if (isset($PT1)) { // Rename PT1 to PT2 - DMT to be updated to generate "PT2"
@@ -19,6 +19,7 @@ global $DIRECTORY, $PT2_FILE, $PT2, $trackModel, $HMI, $balisesID, $baliseCountT
   $baliseCountUnassigned = 0;
   $baliseCountTotal = 0;
   $trackModel = array();
+  $lightSignal = array();
   
   foreach ($PT2 as $name => &$element) {  // -------------- Check each node and generate various objects, lists etc.
     $element["checked"] = false;
@@ -67,6 +68,9 @@ global $DIRECTORY, $PT2_FILE, $PT2, $trackModel, $HMI, $balisesID, $baliseCountT
       case "SU":
       case "SD":
         $trackModel[$name] = new Selement($name);
+        if ($element["type"] == "MS2" or $element["type"] == "MS3") { // Generate list of light signals
+          $lightSignal[] = $trackModel[$name];
+        }
       break;
       case "BSB":
       case "BSE":

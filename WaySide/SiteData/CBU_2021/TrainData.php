@@ -4,13 +4,13 @@ $trainData = [
 0 => [
   "ID" => 20,
   "name" => "Gods",
-  "lengthFront" => 41,
-  "lengthBehind" => 46,
+  "lengthFront" => 75,
+  "lengthBehind" => 15,
   "wheelFactor" => 5,
   "deployment" => "R", // R: real, S: Simulated, I: Inactive (not present)
   "simFile" => "",
   "SRallowed" => false, // Default allowed modes
-  "SHallowed" => false,
+  "SHallowed" => true,
   "FSallowed" => true,
   "ATOallowed" => true,
   ],
@@ -24,7 +24,7 @@ $trainData = [
   "deployment" => "R", // R: real, S: Simulated, I: Inactive (not present)
   "simFile" => "",
   "SRallowed" => false, // Default allowed modes
-  "SHallowed" => false,
+  "SHallowed" => true,
   "FSallowed" => true,
   "ATOallowed" => true,
   ],

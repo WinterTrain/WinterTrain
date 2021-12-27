@@ -25,6 +25,7 @@ global $trainData, $trainIndex, $DIRECTORY, $TRAIN_DATA_FILE, $SRallowed, $SHall
     $train["posTimeStamp"] = 0;
     $train["posRestored"] = true; // To prevent position restore until a real position report has been received.
     $train["nomDir"] = D_UDEF; // Nominel driving direction (UP/DOWN) determined by OBU
+    $train["prevNomDir"] = D_UDEF;
     $train["pwr"] = P_UDEF;
     $train["rtoMode"] = RTO_UDEF;
     $train["MAreceived"] = 0;
@@ -60,14 +61,14 @@ global $trainData, $trainIndex, $DIRECTORY, $TRAIN_DATA_FILE, $SRallowed, $SHall
     }
   }
   foreach($simTrain as $index => $sim) {
-    ProcessSimScript($index);
+    processSimScript($index);
   }
   $totalTrain = count($trainData);
   $trainData = array_merge($trainData); // reindex trainData to be continuous starting from 0
   print "Count of trains: $totalTrain\n"; // Print or log? FIXME
 }
 
-function ProcessSimScript($index) {
+function processSimScript($index) {
 global $simTrain, $DIRECTORY, $PT2;
   $sim = &$simTrain[$index];
   $sim["scriptIndex"] = 0;

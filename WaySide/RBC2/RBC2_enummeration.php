@@ -10,7 +10,7 @@ define("O_ROADPASS",41);
 define("O_ROADSTOP",42);
 define("O_STOP",31);
 define("O_PROCEED",32);
-define("O_PROCEEDPROCEED",33);
+define("O_PROCEED_PROCEED",33);
 define("O_CLOSE_BARRIER",21);
 define("O_OPEN_BARRIER",22);
 define("O_RIGHT",11);
@@ -42,9 +42,7 @@ define("V_CLEAR", 2);
 define("R_UNDEFINED", 0);
 define("R_IDLE", 1);
 define("R_LOCKED", 2);
-define("R_SUPERVISED", 3); // points locked in correct lie ??? FIXME
-define("R_UNSUPERVISED", 4); // points not locked ??? FIXME
-define("R_CAN_RELEASE", 5); // Waiting for previous element to be released  - needed? FIXME
+define("R_RELEASING", 3); // Waiting for emergency release
 
 // Route Locking Type
 define("RT_IDLE", 1);
@@ -62,6 +60,7 @@ define("SIG_NOT_LOCKED", 2);
 define("SIG_STOP", 3);
 define("SIG_PROCEED", 4);
 define("SIG_PROCEED_PROCEED", 5);
+define("SIG_CLOSED", 6);
 
 // Locking state in relation to element FIXME Used?
 define("L_NOT_LOCKED", 1);

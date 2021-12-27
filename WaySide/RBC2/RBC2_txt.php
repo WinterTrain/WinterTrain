@@ -4,7 +4,7 @@
 
 // -------------------- TrainData
 $TD_TXT_MODE = [0 => "Udef", 1 => "SR", 2 => "SH", 3 => "FS", 4 => "ATO", 5 => "N", ];
-$TD_TXT_DIR = [0 => "Udef", 1 => "Down", 2 => "Up", 3 => "Stop",];
+$TD_TXT_DIR = [D_UDEF => "Udef", D_DOWN => "Down", D_UP => "Up", D_STOP => "Stop",];
 $TD_TXT_MADIR = [MD_NODIR => "ND", MD_DOWN => "D", MD_UP => "U", MD_BOTH => "UD", ];
 $TD_TXT_PWR = [0 => "NoComm", 1 => "R", 2 => "L", 3 => "No PWR",];
 $TD_TXT_ACK = [0 => "NO_MA", 1 => "MA_ACK"];
@@ -27,9 +27,7 @@ $TVS_TXT_SH[V_CLEAR] = "CLR";
 $RLS_TXT_SH[R_UNDEFINED] = "UDEF";
 $RLS_TXT_SH[R_IDLE] = "IDLE";
 $RLS_TXT_SH[R_LOCKED] = "LCKD";
-$RLS_TXT_SH[R_SUPERVISED] = "SUPV";
-$RLS_TXT_SH[R_UNSUPERVISED] = "UNSP";
-$RLS_TXT_SH[R_CAN_RELEASE] = "RREL";
+$RLS_TXT_SH[R_RELEASING] = "REL";
 
 // Route Locking Type
 $RLT_TXT_SH[RT_IDLE] = "-";
@@ -47,6 +45,16 @@ $SIGNALLING_TXT[SIG_NOT_LOCKED] = "NotLocked";
 $SIGNALLING_TXT[SIG_STOP] = "STOP";
 $SIGNALLING_TXT[SIG_PROCEED] = "PROCEED";
 $SIGNALLING_TXT[SIG_PROCEED_PROCEED] = "PROCEED_PROCEED";
+$SIGNALLING_TXT[SIG_CLOSED] = "Closed.";
+
+// Signalling, short hand
+$SIGNALLING_TXT_SH[SIG_UDEF] = "U";
+$SIGNALLING_TXT_SH[SIG_ERROR] = "E";
+$SIGNALLING_TXT_SH[SIG_NOT_LOCKED] = "NL";
+$SIGNALLING_TXT_SH[SIG_STOP] = "S";
+$SIGNALLING_TXT_SH[SIG_PROCEED] = "P";
+$SIGNALLING_TXT_SH[SIG_PROCEED_PROCEED] = "PP";
+$SIGNALLING_TXT_SH[SIG_CLOSED] = "C";
 
 
 // Route Locking Diretion

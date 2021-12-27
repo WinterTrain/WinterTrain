@@ -615,20 +615,23 @@ global nColor fColor oColor cColor toColor tcColor tColor oppColor dColor arsCol
   }
   
   switch $signalState {
-    0 { # E_UNDEFINED
+    0 - 
+    1 { ;# SIG_UDEF, SIG_ERROR
       .f.canvas itemconfigure "$name&&aspect" -fill $fColor
     }
-    1 { # E_STOP
+    2 - 
+    3 -
+    6 { ;# SIG_NOT_LOCKED, SIG_STOP, SIG_CLOSED
       if {$routeLockingState == 1 || $routeLockingType == 4 } { # Signal not locked in route or as reverse signal
         .f.canvas itemconfigure "$name&&aspect" -fill $cColor
       } else {
         .f.canvas itemconfigure "$name&&aspect" -fill $dColor
       }
     }
-    2 { # E_PROCEED
+    4 { # SIG_PROCEED
       .f.canvas itemconfigure "$name&&aspect" -fill $oColor
     }
-    3 { # E_PROCEED_PROCEED
+    5 { # SIG_PROCEED_PROCEED
       .f.canvas itemconfigure "$name&&aspect" -fill $oppColor
     }
   }
@@ -830,6 +833,7 @@ if {$command == "_p"} {
   set command "_p"
   .f.buttonPoint configure -text "SPSK"
   .f.buttonRelease configure -text "Release"
+  .f.buttonERelease configure -text "Emg. Rel"
   .f.buttonLX configure -text "Ovk"
   .f.buttonARS configure -text "Ars"
   .f.buttonPointBlock configure -text "Block"
@@ -846,6 +850,7 @@ if {$command == "_pb"} {
   .f.buttonPointBlock configure -text "BLOCK"
   .f.buttonPoint configure -text "Spsk"
   .f.buttonRelease configure -text "Release"
+  .f.buttonERelease configure -text "Emg. Rel"
   .f.buttonLX configure -text "Ovk"
   .f.buttonARS configure -text "Ars"
   }
@@ -859,6 +864,23 @@ if {$command == "_r"} {
   } else {
   set command "_r"
   .f.buttonRelease configure -text "RELEASE"
+  .f.buttonERelease configure -text "Emg. Rel"
+  .f.buttonPoint configure -text "Spsk"
+  .f.buttonPointBlock configure -text "Block"
+  .f.buttonLX configure -text "Ovk"
+  .f.buttonARS configure -text "Ars"
+  }
+}
+
+proc buttonERelease {} {
+global command
+if {$command == "_er"} {
+  set command ""
+  .f.buttonERelease configure -text "Emg. Rel"
+  } else {
+  set command "_er"
+  .f.buttonRelease configure -text "Release"
+  .f.buttonERelease configure -text "EMG. REL"
   .f.buttonPoint configure -text "Spsk"
   .f.buttonPointBlock configure -text "Block"
   .f.buttonLX configure -text "Ovk"
@@ -877,6 +899,7 @@ if {$command == "_l"} {
   .f.buttonPoint configure -text "Spsk"
   .f.buttonPointBlock configure -text "Block"
   .f.buttonRelease configure -text "Release"
+  .f.buttonERelease configure -text "Emg. Rel"
   .f.buttonARS configure -text "Ars"
   }
 }
@@ -892,6 +915,7 @@ if {$command == "_ars"} {
   .f.buttonPointBlock configure -text "Block"
   .f.buttonPoint configure -text "Spsk"
   .f.buttonRelease configure -text "Release"
+  .f.buttonERelease configure -text "Emg. Rel"
   .f.buttonLX configure -text "Ovk"
   }
 }
@@ -912,6 +936,11 @@ global command aColor
         set command ""
         .f.buttonRelease configure -text "Release"
       sendCommand "rr $ID"
+      }
+      "_er" {
+        set command ""
+        .f.buttonERelease configure -text "Emg. Rel"
+      sendCommand "err $ID"
       }
       "" {
         set command $ID
@@ -944,6 +973,11 @@ global command aColor sColor
         set command ""
         .f.buttonRelease configure -text "Release"
       sendCommand "rr $ID"
+      }
+      "_er" {
+        set command ""
+        .f.buttonERelease configure -text "Emg. Rel"
+      sendCommand "err $ID"
       }
       "_s" {
         set command ""
@@ -1126,6 +1160,7 @@ global nTrainFrame rtoDisplay
   .f.buttonARS state disabled
   .f.buttonStop state disabled
   .f.buttonARSALL state disabled
+  .f.buttonERelease state disabled
   .f.sr_allowed state disabled
   .f.sh_allowed state disabled
   .f.fs_allowed state disabled
@@ -1170,6 +1205,7 @@ global aColor nTrainFrame rtoDisplay
   .f.buttonARS state !disabled
   .f.buttonStop state !disabled
   .f.buttonARSALL state !disabled
+  .f.buttonERelease state !disabled
   .f.sr_allowed state !disabled
   .f.sh_allowed state !disabled
   .f.fs_allowed state !disabled
@@ -1427,6 +1463,7 @@ grid [ttk::button .f.buttonLX -text "Ovk" -command buttonLX] -column 5 -row 2 -s
 grid [ttk::button .f.buttonARS -text "Ars" -command buttonARS] -column 6 -row 2 -sticky we
 grid [ttk::button .f.buttonStop -text "" -command eStop] -column 7 -row 2 -sticky w
 grid [ttk::button .f.buttonARSALL -text "Disable Ars" -command buttonARSALL] -column 8 -row 2 -sticky we
+grid [ttk::button .f.buttonERelease -text "Emg. Rel" -command buttonERelease] -column 12 -row 2 -sticky we
 
 # Track Layout
 grid [tk::canvas .f.canvas -scrollregion "0 0 $cWidth $cHeight" -yscrollcommand ".f.sbv set" -xscrollcommand ".f.sbh set"] -sticky nwes -column 1 -columnspan 18 -row 3

@@ -1,10 +1,10 @@
 <?php
 // ------------------------------------------------- Sources
 $PT2_SIGNALLING_LAYOUT_FILE = "/home/jabe/Desktop/Projekter/Git/WinterTrain/WaySide/SiteData/CBU_2021/signallingLayout.sch";
-$PT2_SIGNALLING_LAYOUT_FILE_DATE = "2021-12-03 19:42:07";
+$PT2_SIGNALLING_LAYOUT_FILE_DATE = "2021-12-27 22:26:36";
 $PT2_SCREEN_LAYOUT_FILE = "/home/jabe/Desktop/Projekter/Git/WinterTrain/WaySide/SiteData/CBU_2021/screenLayout.sch";
 $PT2_SCREEN_LAYOUT_FILE_DATE = "2021-11-16 13:27:11";
-$PT2_GENERATION_TIME = "2021-12-04 13:51:46";
+$PT2_GENERATION_TIME = "2021-12-27 22:26:44";
 $PT1_PROJECT_NAME = "WinterHut _2021";
 $PT1_DATE = "2021-11-13";
 $PT1_AUTHOR = "JB";
@@ -17,13 +17,13 @@ $PT1 = array (
     'element' => 'PHTD',
     'U' => 
     array (
-      'name' => 'BG37',
+      'name' => 'S16',
       'dist' => 1,
     ),
     'D' => 
     array (
-      'name' => 'S16',
-      'dist' => 1,
+      'name' => 'BG36',
+      'dist' => 23,
     ),
     'holdPoint' => 'P5',
   ),
@@ -63,7 +63,7 @@ $PT1 = array (
     'U' => 
     array (
       'name' => 'BS4',
-      'dist' => 1,
+      'dist' => 49,
     ),
     'D' => 
     array (
@@ -212,7 +212,7 @@ $PT1 = array (
     'D' => 
     array (
       'name' => 'BS2',
-      'dist' => 1,
+      'dist' => 49,
     ),
     'ID' => '00:00:00:00:02',
   ),
@@ -835,7 +835,7 @@ $PT1 = array (
     'U' => 
     array (
       'name' => 'BS3',
-      'dist' => 4,
+      'dist' => 53,
     ),
     'D' => 
     array (
@@ -865,7 +865,7 @@ $PT1 = array (
     'D' => 
     array (
       'name' => 'BG53',
-      'dist' => 49,
+      'dist' => 1,
     ),
     'HMI' => 
     array (
@@ -914,7 +914,7 @@ $PT1 = array (
     ),
     'D' => 
     array (
-      'name' => 'PHT1',
+      'name' => 'S16',
       'dist' => 56,
     ),
     'ID' => '00:00:00:00:08',
@@ -924,7 +924,7 @@ $PT1 = array (
     'element' => 'BL',
     'U' => 
     array (
-      'name' => 'S16',
+      'name' => 'PHT1',
       'dist' => 1,
     ),
     'D' => 
@@ -1591,13 +1591,13 @@ $PT1 = array (
     'element' => 'SD',
     'U' => 
     array (
-      'name' => 'PHT1',
+      'name' => 'BG37',
       'dist' => 1,
     ),
     'D' => 
     array (
-      'name' => 'BG36',
-      'dist' => 23,
+      'name' => 'PHT1',
+      'dist' => 1,
     ),
     'type' => 'MS3',
     'EC' => 
@@ -1653,7 +1653,7 @@ $PT1 = array (
     'D' => 
     array (
       'name' => 'BG50',
-      'dist' => 50,
+      'dist' => 1,
     ),
     'HMI' => 
     array (
@@ -1668,7 +1668,7 @@ $PT1 = array (
     'U' => 
     array (
       'name' => 'BG4',
-      'dist' => 49,
+      'dist' => 1,
     ),
     'HMI' => 
     array (

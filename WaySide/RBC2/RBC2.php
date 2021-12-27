@@ -34,6 +34,8 @@ $triggerMCeUpdate = false;
 $HMItimeout = 0;
 $MCetimeout = 0;
 $pumpTimeout = 0;
+$trainComTimeout = 0;
+$emgRelEP = array(); // List of EP running emergency route release timers
 
 // -------------------------------------- Operational varaibles
 $emergencyStop = false;
@@ -77,7 +79,11 @@ do {
       $secondTimeout = $now;
       $pollEC = true; // Trigger EC poll once per second
       checkECtimeout();
-      // check OBU communication timeout FIXME
+      checkEmgRelTimers();
+    }
+    if ($now - $trainComTimeout >= TRAIN_COM_TIMEOUT) {
+      $trainComTimeout = $now;
+      checkTrainTimeout();
     }
     if ($now - $pumpTimeout >= PUMP_TIMEOUT) {
       $pumpTimeout = $now;

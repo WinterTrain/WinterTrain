@@ -130,7 +130,7 @@ global $AbusInterface, $toAbusGw, $AbusI2CFh;
   }
   switch ($AbusInterface) {
     case "IP": // -------------------------------------------------------- AbusMasterGateway connected via Ethernet
-      $TXbuf = sprintf("G2%02X",$addr); // reply port 2 as constant FIXME
+      $TXbuf = sprintf("G2%02X",$addr); // define reply port 2 as constant FIXME
       for ($b = 2; $b < count($packet) + 2; $b++) {
         $TXbuf .= sprintf("%02X",$packet[$b]);
       }
