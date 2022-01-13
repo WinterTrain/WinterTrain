@@ -11,7 +11,8 @@
 // Proporties, see TrainConf.h
 
 const unsigned long C_SPEED = 2500000; // Conversion factor for speed
-const byte drive[6] = {0, 0, 20, 40, 60, 100}; // driveSel: 1-5
+const byte drive[6] = {0, 0, 20, 40, 60, 100}; // driveSel: 1-5 // To be relative to Vmax FIXME
+
 
 // Timing
 // Note: due to changed PWM freq. 1 sec ~ 64000 counts
@@ -21,6 +22,7 @@ const unsigned long POS_REP = 100000; // ~1.6 sec
 const unsigned long DISTANCE = 64000; // 1 sec
 const unsigned long MODE_TIMEOUT = 640000; // 10 sec
 const unsigned long DYN = 3200; // 0.05 sec
+const unsigned long CORINT = 64000;
 const int POL_SAMPLE_TIME = 3200;
 
 // Enummerations and codes
@@ -114,7 +116,7 @@ SAbaliseType SAbalises[N_SABALISES] = SA_BALISES;
 // Timing
 unsigned long lastMillis, deltaMillis, thisMillis, speedMillis;
 long timerDMIPoll, timerDMITimeout, timerPosRep, timerDistance, timerModeTimeout;
-long timerDyn;
+long timerDyn, timerCorInt;
 
 // DMI and RTO selector
 byte modeSel, dirSel, driveSel;
@@ -143,6 +145,8 @@ boolean atShuntBorder; // if the train is close to a shunt border; current balis
 boolean shuntBorderStop; // Train has reached shunting border. Stop if in shunting FIXME
 int borderDist; // Distance from current balise to shunt border (with sign), if the current balise is a shuntBorder balise FIXME
 boolean emergencyStop; // Prevent motor power if set
+byte driveCorrection; // Correction of MAspeed when approaching EOA
+
 
 // Buffers and triggers
 byte txDMI[4], baliseBuf[5], MAindication, MAindFlash;
@@ -253,6 +257,10 @@ void loop() {
   if (timerDyn <= 0) { // Dynamic movement
     timerDyn += DYN;
     vDyn();
+  }
+  if (timerCorInt <= 0) { // Drive correction "integration"
+    timerCorInt += CORINT;
+    corInt();
   }
 
   checkBalise();
@@ -431,8 +439,17 @@ byte MAspeed() {
     distance = knownBalises[MAindex].MAposEOA - knownBalises[MAindex].curDist;
     if (abs(distance) > BRAKING_DISTANCE) {
       driveLimit = knownBalises[MAindex].vMax;
+      driveCorrection = 0;
     } else {
       driveLimit = knownBalises[MAindex].vMax * abs(distance) / BRAKING_DISTANCE;
+      if (driveLimit > DRIVE_CORRECTION_LIMIT) {
+        driveCorrection = 0;
+      } else {
+        if (driveCorrection > DRIVE_CORRECTION_LIMIT) {
+          driveCorrection = DRIVE_CORRECTION_LIMIT;
+        }
+        driveLimit = driveLimit + driveCorrection;
+      }
     }
     return driveLimit;
   }
@@ -473,6 +490,7 @@ byte driveMode() { // Compute driving Order (i.e. speed)
 }
 
 byte dirMode() { // compute direction Order
+// Check allowed direction: MAdir ---------------------------------------------------------- FIXME
   switch (authorisedMode) {
     case N:
       dirOrder = NEUTRAL;
@@ -564,6 +582,10 @@ void traction() {
     default:
       vReq = 0;
   }
+}
+
+void corInt() {
+  driveCorrection++;
 }
 
 void vDyn() {
@@ -683,6 +705,7 @@ void rf12Transceive() {
           case MA_PACK:
             if (rf12_data[1] == OBU_ID) {
               authorisation = rf12_data[2] & 0x07; // authorized mode
+              // Get MAdir, bit 33 and 4
               switch (authorisation) {
                 case ESTOP:
                   emergencyStop = true;
@@ -888,6 +911,7 @@ void timing() {
     timerModeTimeout -= deltaMillis;
     timerPosRep -= deltaMillis;
     timerDyn -= deltaMillis;
+    timerCorInt -= deltaMillis;
   }
 }
 

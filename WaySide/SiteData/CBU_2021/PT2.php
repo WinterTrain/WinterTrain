@@ -1,10 +1,10 @@
 <?php
 // ------------------------------------------------- Sources
 $PT2_SIGNALLING_LAYOUT_FILE = "/home/jabe/Desktop/Projekter/Git/WinterTrain/WaySide/SiteData/CBU_2021/signallingLayout.sch";
-$PT2_SIGNALLING_LAYOUT_FILE_DATE = "2021-12-27 22:26:36";
+$PT2_SIGNALLING_LAYOUT_FILE_DATE = "2021-12-30 13:23:11";
 $PT2_SCREEN_LAYOUT_FILE = "/home/jabe/Desktop/Projekter/Git/WinterTrain/WaySide/SiteData/CBU_2021/screenLayout.sch";
 $PT2_SCREEN_LAYOUT_FILE_DATE = "2021-11-16 13:27:11";
-$PT2_GENERATION_TIME = "2021-12-27 22:26:44";
+$PT2_GENERATION_TIME = "2021-12-30 13:23:41";
 $PT1_PROJECT_NAME = "WinterHut _2021";
 $PT1_DATE = "2021-11-13";
 $PT1_AUTHOR = "JB";
@@ -212,7 +212,7 @@ $PT1 = array (
     'D' => 
     array (
       'name' => 'BS2',
-      'dist' => 49,
+      'dist' => 55,
     ),
     'ID' => '00:00:00:00:02',
   ),

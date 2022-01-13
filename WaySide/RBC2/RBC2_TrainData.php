@@ -18,7 +18,8 @@ global $trainData, $trainIndex, $DIRECTORY, $TRAIN_DATA_FILE, $SRallowed, $SHall
     if (!isset($train["SHmaxSpeed"])) $train["SHmaxSpeed"] = SH_MAX_SPEED_DEFAULT;
     if (!isset($train["FSmaxSpeed"])) $train["FSmaxSpeed"] = FS_MAX_SPEED_DEFAULT;
     if (!isset($train["ATOmaxSpeed"])) $train["ATOmaxSpeed"] = ATO_MAX_SPEED_DEFAULT;
-    $train["curPositionUnambiguous"] = false;
+    $train["curPositionValid"] = false; // True if determined position is reliable - that is: reported valid by OBU and unambiguous
+    $train["curPositionUnambiguous"] = true;
     $train["curOccupation"] = array();
     $train["speed"] = 0;
     $train["comTimeStamp"] = 0;
@@ -35,7 +36,7 @@ global $trainData, $trainIndex, $DIRECTORY, $TRAIN_DATA_FILE, $SRallowed, $SHall
     $train["MAdir"] = MD_NODIR; //  MD or D FIXME
     $train["MAdir"] = D_UDEF;
     $train["assignedRoute"] = "";
-    $train["trn"] = ""; // Train 
+    $train["trn"] = ""; // Train running number
     $train["trnStatus"] = TRN_UDEF;
     $train["etd"] = 0;
     $train["index"] = $index; // to know index in functions where only one train data set is handed over. Used? FIXME
@@ -51,6 +52,7 @@ global $trainData, $trainIndex, $DIRECTORY, $TRAIN_DATA_FILE, $SRallowed, $SHall
         $sim["ID"] = $train["ID"]; 
         $sim["name"] = $train["name"];
         $sim["simFile"] = $train["simFile"];
+        $sim["trainIndex"] = $index;
         $simTrain[] = $sim;        
       break;
       case "I":
@@ -64,7 +66,7 @@ global $trainData, $trainIndex, $DIRECTORY, $TRAIN_DATA_FILE, $SRallowed, $SHall
     processSimScript($index);
   }
   $totalTrain = count($trainData);
-  $trainData = array_merge($trainData); // reindex trainData to be continuous starting from 0
+  $trainData = array_merge($trainData); // reindex trainData to be continuous array starting from 0
   print "Count of trains: $totalTrain\n"; // Print or log? FIXME
 }
 
@@ -111,7 +113,6 @@ global $simTrain, $DIRECTORY, $PT2;
         }
       }
     }
-//    print_r($sim);
   }
 }
 

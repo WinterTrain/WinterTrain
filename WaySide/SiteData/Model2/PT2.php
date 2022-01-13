@@ -1,10 +1,10 @@
 <?php
 // ------------------------------------------------- Sources
 $PT2_SIGNALLING_LAYOUT_FILE = "/home/jabe/Desktop/Projekter/Git/WinterTrain/WaySide/SiteData/Model2/signallingLayout.sch";
-$PT2_SIGNALLING_LAYOUT_FILE_DATE = "2021-12-07 21:56:11";
+$PT2_SIGNALLING_LAYOUT_FILE_DATE = "2022-01-11 11:52:51";
 $PT2_SCREEN_LAYOUT_FILE = "/home/jabe/Desktop/Projekter/Git/WinterTrain/WaySide/SiteData/Model2/screenLayout.sch";
 $PT2_SCREEN_LAYOUT_FILE_DATE = "2021-11-16 13:27:11";
-$PT2_GENERATION_TIME = "2021-12-07 21:56:21";
+$PT2_GENERATION_TIME = "2022-01-11 11:53:21";
 $PT1_PROJECT_NAME = "WinterHut _2021";
 $PT1_DATE = "2021-11-13";
 $PT1_AUTHOR = "JB";
@@ -12,6 +12,21 @@ $HMI_PROJECT_NAME = "WinterHut_2021";
 
 // -------------------------------------------------- PT1
 $PT1 = array (
+  'PHT2' => 
+  array (
+    'element' => 'PHTU',
+    'U' => 
+    array (
+      'name' => 'S7',
+      'dist' => 1,
+    ),
+    'D' => 
+    array (
+      'name' => 'BG13',
+      'dist' => 1,
+    ),
+    'holdPoint' => 'P2',
+  ),
   'PHT1' => 
   array (
     'element' => 'PHTD',
@@ -1286,7 +1301,7 @@ $PT1 = array (
     ),
     'D' => 
     array (
-      'name' => 'BG13',
+      'name' => 'PHT2',
       'dist' => 1,
     ),
     'type' => 'MS3',
@@ -1308,7 +1323,7 @@ $PT1 = array (
     'element' => 'BL',
     'U' => 
     array (
-      'name' => 'S7',
+      'name' => 'PHT2',
       'dist' => 1,
     ),
     'D' => 

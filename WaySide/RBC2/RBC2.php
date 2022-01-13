@@ -20,7 +20,10 @@ include("RBC2_RBC.php");            // Core fuctionalty
 
 // Site specific application data handlers
 include("RBC2_PT2.php");            // Process PT2 data and create related objects
+include("RBC2_TrackModel.php");     // Core object model
 include("RBC2_TrainData.php");      // Process TrainData
+
+// Where to initialize variables?? Here or in each module?? FIXME
 
 //--------------------------------------- System variables
 $debug = 0x00; $background = false; $run = true; $reloadRBC = false; $pollEC = false;
@@ -36,6 +39,15 @@ $MCetimeout = 0;
 $pumpTimeout = 0;
 $trainComTimeout = 0;
 $emgRelEP = array(); // List of EP running emergency route release timers
+
+$hhtFoundCount = 0;
+$hhtFoundSum = 0;
+$hhtBaliseStatus = "";
+$hhtBaliseID = "--:--:--:--:--";
+$hhtBaliseName = "";;
+
+$baliseCountTotal = 0;
+$baliseCountUnassigned = 0;
 
 // -------------------------------------- Operational varaibles
 $emergencyStop = false;

@@ -10,7 +10,7 @@ global $DIRECTORY, $PT2_FILE, $PT2, $trackModel, $HMI, $balisesID, $baliseCountT
   $baliseCountUnassigned, $lightSignal;
 
   require("$DIRECTORY/$PT2_FILE");
-  if (isset($PT1)) { // Rename PT1 to PT2 - DMT to be updated to generate "PT2"
+  if (isset($PT1)) { // Rename PT1 to PT2 - DMT to be updated to generate "PT2" FIXME
     $PT2 = $PT1;
     unset($PT1);
   }
@@ -26,7 +26,7 @@ global $DIRECTORY, $PT2_FILE, $PT2, $trackModel, $HMI, $balisesID, $baliseCountT
     switch ($element["element"]) {
       case "BL":
         $balisesID[$element["ID"]] = $name;
-//        $element["dynName"] = false; // HHT FIXME
+        $element["dynName"] = false;
         if ($element["ID"] == "FF:FF:FF:FF:FF") $baliseCountUnassigned++; // Other unassigned/default IDs ?? e.g. 00:00:00:00:00 FIXME 
         $baliseCountTotal++;
         $trackModel[$name] = new BGelement($name);
@@ -91,11 +91,15 @@ global $DIRECTORY, $PT2_FILE, $PT2, $trackModel, $HMI, $balisesID, $baliseCountT
       case "SD":
       case "BL":
       case "TG":
-      case "PHTU":
-      case "PHTD":
       case "LX":
         $trackModel[$name]->neighbourUp = $trackModel[$element["U"]["name"]];
         $trackModel[$name]->neighbourDown = $trackModel[$element["D"]["name"]];
+      break;
+      case "PHTU":
+      case "PHTD":
+        $trackModel[$name]->neighbourUp = $trackModel[$element["U"]["name"]];
+        $trackModel[$name]->neighbourDown = $trackModel[$element["D"]["name"]];
+        $trackModel[$name]->pointToHold = $trackModel[$element["holdPoint"]];
       break;
       case "PF":
       case "PT":
@@ -148,7 +152,6 @@ global $DIRECTORY, $PT2_FILE, $PT2, $trackModel, $HMI, $balisesID, $baliseCountT
 // ------------------------------------- Check HMI data
   if (array_key_exists("", $HMI["baliseTrack"])) { unset($HMI["baliseTrack"][""]); } // Delete any remaining template entry
   foreach ($HMI["baliseTrack"] as $trackName => $baliseTrack ) {
-//    $baliseTrack["trackState"] = T_CLEAR; FIXME
     foreach ($baliseTrack["balises"] as $baliseName ) {
       if (!isset($PT2[$baliseName])) {
         $errorFound = true;

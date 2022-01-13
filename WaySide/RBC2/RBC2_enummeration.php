@@ -145,6 +145,7 @@ define("CMD_REJECTED_NOT_START_POINT", 3);
 define("CMD_REJECTED", 10);
 
 // ---------------------------------------- TMS enummeration
+// Must be aligned with TMS
 define("TRN_UDEF",0);
 define("TRN_NORMAL",1);
 define("TRN_COMPLETED",2);
@@ -156,11 +157,19 @@ define("TRN_CONFIRM",7);
 define("TRN_UNKNOWN",8);
 
 
-// FOllowing must be aligned with TMS
+// TMS engine status
 define("TMS_UDEF",0);
 define("TMS_NO_TT",1);
 define("TMS_OK",2);
 define("TMS_NO_TMS",3);
+
+// Route setting status
+define("RS_UDEF",0);                // state undefined
+define("RS_ROUTE_SET",1);           // route set
+define("RS_REJECTED",2);            // impossible route
+define("RS_BLOCKED",3);             // route temporary blocked by other route
+define("RS_INHIBITED",4);           // route cannot be set due to inhibitions
+define("RS_ARS_DISABLED",5);        // ARS disabled for route
 
 
 ?>

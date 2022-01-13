@@ -211,7 +211,7 @@ Usage:
 }
 
 function prepareMainProgram() {
-global $debug, $logFh, $errFh, $DIRECTORY, $ERRLOG_FILE, $MSGLOG_FILE, $PT2_FILE, $TRAIN_DATA_FILE;
+global $debug, $logFh, $errFh, $blFh, $DIRECTORY, $ERRLOG_FILE, $MSGLOG_FILE, $PT2_FILE, $TRAIN_DATA_FILE, $BL_FILE;
   if ($debug) {
     error_reporting(E_ALL);
   } else {
@@ -233,9 +233,11 @@ global $debug, $logFh, $errFh, $DIRECTORY, $ERRLOG_FILE, $MSGLOG_FILE, $PT2_FILE
     print "Error: Cannot read Train Data file: $DIRECTORY/$TRAIN_DATA_FILE\n";
     exit(1);
   }
-// FIXME check of writeable($BL_FILE) ??
+  if (!($blFh = @fopen("$DIRECTORY/$BL_FILE","w"))) {
+    print "Warning: Cannot write Balise List file: $DIRECTORY/$BL_FILE\n";
+    $blFh = fopen("/dev/null","w");
+  }
 }
-
 
 function initMainProgram() {
 global $logFh, $errFh, $debug, $DIRECTORY, $ERRLOG_FILE, $MSGLOG_FILE, $background;

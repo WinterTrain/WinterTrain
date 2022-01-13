@@ -66,15 +66,18 @@ global $trainData, $PT2, $HMI, $trackModel, $triggerHMIupdate, $tmsStatus, $allo
 }
 
 function updateTrainDataHMI() { // Update train indications for all HMI clients
-global $trainData, $TD_TXT_MODE, $TD_TXT_DIR, $TD_TXT_MADIR, $TD_TXT_PWR, $TD_TXT_ACK, $TD_TXT_RTOMODE, $TD_TXT_UNAMB;
+global $trainData, $TD_TXT_MODE, $TD_TXT_DIR, $TD_TXT_MADIR, $TD_TXT_PWR, $TD_TXT_ACK, $TD_TXT_RTOMODE, $TD_TXT_UNAMB, $TD_TXT_POS_VALID;
   foreach ($trainData as $index => &$train) {
     HMIindicationAll("SRmode ".$index." {".$train["SRallowed"]."}");
     HMIindicationAll("SHmode ".$index." {".$train["SHallowed"]."}");
     HMIindicationAll("FSmode ".$index." {".$train["FSallowed"]."}");
     HMIindicationAll("ATOmode ".$index." {".$train["ATOallowed"]."}");
-    
+    $posStatus = $train["curPositionValid"] ? "" :
+      ($train["curPositionUnambiguous"] ?
+        $TD_TXT_POS_VALID[false] :
+        $TD_TXT_UNAMB[false]);
     HMIindicationAll("trainDataD ".$index." {".$TD_TXT_MODE[$train["authMode"]]." (".$TD_TXT_MODE[$train["reqMode"]].")} {".$train["baliseName"].
-      "} {".$train["distance"]."} {".$TD_TXT_UNAMB[$train["curPositionUnambiguous"]]."} {".$train["speed"]."} {".$TD_TXT_DIR[$train["nomDir"]].
+      "} {".$train["distance"]."} {{$posStatus}} {".$train["speed"]."} {".$TD_TXT_DIR[$train["nomDir"]].
       "} {".$TD_TXT_PWR[$train["pwr"]]."} {".
       $TD_TXT_ACK[$train["MAreceived"]]."} ".$train["dataValid"]." {".$TD_TXT_RTOMODE[$train["rtoMode"]]."} {".
       $train["MAbaliseName"]."} {".$train["MAdist"]."} {".$TD_TXT_MADIR[$train["MAdir"]]."} {".$train["trn"]."} {".$train["trnStatus"]."} {".

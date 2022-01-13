@@ -53,13 +53,14 @@ proc SimFrame {index trainName trainID} { # Dynamic frames for Train Simulation
 global nSimFrame entryFontSize simNextPos simMA simMode
 
   incr nSimFrame
-  set simMA($index) "<no MA>"
+  set simMA($index) ""
   set simNextPos($index) "<no sim script>"
   set simMode($index) 5
     
   grid [ttk::frame .f.fStatus.fSim.t$index -padding "3 3 12 12" -relief solid -borderwidth 2] -column 1 -row [expr $nSimFrame + 4] -sticky nwes
   grid [ttk::label .f.fStatus.fSim.t$index.nameX -text "Train name: $trainName ($trainID)" ] -column 0 -columnspan 2 -row 0 -padx 5 -pady 5 -sticky we
-  grid [ttk::label .f.fStatus.fSim.t$index.maX -textvariable simMA($index) ] -column 2 -columnspan 10 -row 0 -padx 5 -pady 5 -sticky we
+  grid [ttk::label .f.fStatus.fSim.t$index.maX -text "MA:" ] -column 2 -row 0 -padx 5 -pady 5 -sticky we
+  grid [ttk::label .f.fStatus.fSim.t$index.ma -textvariable simMA($index) ] -column 3 -columnspan 10 -row 0 -padx 5 -pady 5 -sticky we
 
   grid [ttk::label .f.fStatus.fSim.t$index.simPosX -text "Pos Rep:" ] -column 0 -row 1 -padx 5 -pady 5 -sticky we
   grid [ttk::button .f.fStatus.fSim.t$index.posRepDrv -text "Driving" -command "posRepDrv $index"] -column 1 -row 1 -sticky we

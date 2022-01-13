@@ -31,6 +31,8 @@ define("HMI_UPDATE", 5);    // Interval in sec. between regular HMI update
 // MCe
 define("MCe_UPDATE", 10);    // Interval in sec. between regular MCe update
 
+// TMS
+define("TMS_TIMEOUT",6);
 
 // ------------------------------------------------------------------ EC timing
 define("PUMP_TIMEOUT",4);

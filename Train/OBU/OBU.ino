@@ -11,7 +11,7 @@
 // Proporties, see TrainConf.h
 
 const unsigned long C_SPEED = 2500000; // Conversion factor for speed
-const byte drive[6] = {0, 0, 20, 40, 60, 100}; // driveSel: 1-5  // To be relative to Vmax FIXME
+const byte drive[6] = {0, 0, 20, 40, 60, 100}; // driveSel: 1-5
 
 // Timing
 // Note: due to changed PWM freq. 1 sec ~ 64000 counts
@@ -475,7 +475,6 @@ byte driveMode() { // Compute driving Order (i.e. speed)
 }
 
 byte dirMode() { // compute direction Order
-// Check allowed direction: MAdir ---------------------------------------------------------- FIXME
   switch (authorisedMode) {
     case N:
       dirOrder = NEUTRAL;
@@ -680,11 +679,10 @@ void rf12Transceive() {
         //        digitalWrite(OBU_PIN_BLUE, LOW);
         break;
       case RBC_ID:
-        switch (rf12_data[0]) { // packet type  FIXME
+        switch (rf12_data[0]) { // packet type
           case MA_PACK:
             if (rf12_data[1] == OBU_ID) {
               authorisation = rf12_data[2] & 0x07; // authorized mode
-              // Get MAdir, bit 33 and 4
               switch (authorisation) {
                 case ESTOP:
                   emergencyStop = true;

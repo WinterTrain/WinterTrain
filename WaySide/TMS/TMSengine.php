@@ -177,8 +177,10 @@ global $SITE_DATA_FILE, $trainData, $PT1;
 
 function resetTrainState(&$train) {
     $train["trn"] = "";
-    $train["location"]["U"] = ""; // start signal of trains location for direction up
+    $train["location"]["U"] = ""; // start signal of trains current location for direction up
     $train["location"]["D"] = "";
+    $train["locationState"]["U"] = ""; // driving state of train at current location for direction up
+    $train["locationState"]["D"] = "";
     $train["routeState"]["U"] = RS_UDEF;
     $train["routeState"]["D"] = RS_UDEF;
     $train["locationTS"] = false;
@@ -187,19 +189,24 @@ function resetTrainState(&$train) {
     $train["ETD"] = 0;
 }
 
-function processTrainLocaiton($trainIndex, $nextElementName, $progress, $dir) {
+function processTrainLocaiton($trainIndex, $nextElementName, $state, $dir) {
+// $state is "A" if the train is at standstill occupying the element just before $nextElementName - that is has arrived
+// otherwise "F"
 global $tts, $trainData, $now;
   $train = &$trainData[$trainIndex];
   $trn = $train["trn"];
   $revDir = ($dir == "U" ? "D" : "U");
   if (array_key_exists($trn, $tts)) { // trn is known in time table
     $tt = $tts[$trn];
-    if ($nextElementName != $train["location"][$dir]) { // new location for this direction
-    // FIXME if specified set new location only when train is within stopping location
+    if ($nextElementName != $train["location"][$dir] or $state != $train["locationState"][$dir]) { // new situation/location for this direction
       debugPrint("Train: {$train["ID"]} New location ($dir): $nextElementName Prev. location {$train["location"][$dir]}");
       $train["location"][$dir] = $nextElementName;
-      $train["locationTS"] = $now; // if stopping locaiton of next signal is defined, set time stamp only when at stopping locationd FIXME
+      $train["locationState"][$dir] = $state;
+      // if stopping locaiton of next signal is defined / train has arrived, set time stamp only when at stopping locationd FIXME
+      if ($state == "A") $train["locationTS"] = $now; 
       $train["routeState"][$dir] = RS_NO_ROUTE;
+    } else {
+print "situation unchanged $dir\n";
     }
     switch ($train["routeState"][$dir]) {
       case  RS_NO_ROUTE:
@@ -234,7 +241,7 @@ global $tts, $trainData, $now;
                 sendETD($trainIndex,$train["ETD"]);
                 print "Train: {$train["ID"]} RS_WAIT_DEPARTURE $dir ".date("H:i:s")." ETD/time: ".date("H:i:s",$train["ETD"])."\n";
               } elseif (isset($route["delay"]) and is_numeric($route["delay"])) { //                await delay
-                if (true) { // if at stopping location => start delay timer
+                if ($state == "A") { // if at stopping location => start delay timer
                   $train["routeState"][$dir] = RS_WAIT;
                   $train["trnState"] = TRN_WAITING;   
                   $train["ETD"] = $now + $route["delay"];       
@@ -384,8 +391,11 @@ global $trainData, $tts;
       $train["trnState"] = TRN_ARS_DISABLED;
     break;
     case RS_BLOCKED:
-    case RS_REJECTED: // destinguish between impossible routes (= time table failure), routes temporary blocked by other routes and routes blocked by inhibitions
+    case RS_REJECTED:
+    // FIXME destinguish between impossible routes (= time table failure), routes temporary blocked by other routes and routes blocked by inhibitions
+    // FIXME If route temporary blocked, whait a while before trying again
     // FIXME check for alternative routes in route table. Set the route, set status to pending and set routeIndex
+    // FIXME retry setting temporary blocked route by time out
       $tt = $tts[$train["trn"]];
       $routeIndex = findRoute($tt, $train["location"][$dir], $train["routeIndex"]);
       if ($routeIndex !== false) {

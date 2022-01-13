@@ -11,6 +11,7 @@ $TD_TXT_ACK = [0 => "NO_MA", 1 => "MA_ACK"];
 $TD_TXT_RTOMODE = [RTO_UDEF => "Udef.", RTO_DMI => "DMI", RTO_REMOTE => "Remote take-over", RTO_PEND_REMOTE => "Pending take-over",
                 RTO_PEND_RELEASE => "Pending release"];
 $TD_TXT_UNAMB = [true => "", false => "Ambiguous"];
+$TD_TXT_POS_VALID = [true => "", false => "Void"];
 
 
 // ------------------- TMS

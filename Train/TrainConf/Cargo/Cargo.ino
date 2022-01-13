@@ -21,6 +21,7 @@
 #define STOP_MA 3 // Distance (wheel turn) below this will show red on DMI
 #define V_OFFSET 30
 #define MIN_DIST 2 // Distance (wheel turn) below this will be ignored
+#define DRIVE_CORRECTION_LIMIT 25 // Drive order below this limt will be corrected over time
 
 // Specific engineering ------------------------ Stop if in shunting
 // Balises commanding "stop if in shunting"
