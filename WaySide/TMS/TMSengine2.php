@@ -20,6 +20,7 @@ $MSGLOG = "Log/TMS.log";
 // ---------------------------------------- Timing
 define("HEARTBEAT_TIMEOUT",5);
 define("RECONNECT_TIMEOUT",3);
+define("RETRY_ROUTE_TIMEOUT",2); // Retry setting blocked route
 
 // ----------------------------------------Enummerations  FIXME move to common TMS and RBC enummeration??
 
@@ -31,13 +32,13 @@ define("TRN_ARS_DISABLED",4);
 define("TRN_BLOCKED",5);
 define("TRN_WAITING",6);
 define("TRN_CONFIRM",7);
-define("TRN_UNKNOWN",8);
+define("TRN_UNASSIGNED",8);
 
-// Route setting state
+// Route setting state machins
 define("RS_UDEF",0);                // state undefined
 define("RS_ROUTE_SET",1);           // route set
 define("RS_REJECTED",2);            // impossible route
-define("RS_BLOCKED",3);             // route temporary blocked by other route
+define("RS_BLOCKED",3);             // route temporary blocked by other route, try again later
 define("RS_INHIBITED",4);           // route cannot be set due to inhibitions
 define("RS_ARS_DISABLED",5);        // ARS disabled for route
 define("RS_PENDING",6);             // route is being set
@@ -49,14 +50,17 @@ define("RS_CONFIRM", 11);           // Signaller to set next route by hand
 define("RS_WAIT_DEPARTURE",12);     // await departure time
 define("RS_WAIT_TRAIN",13);         // await meeting train
 
-// Response code (from RBC) for route setting
-// udef
-// set
-// rejected as impossible
-//             blocked by other route
-//             inhibited by command
-//             ARS disabled
+// Response code (from RBC) for route setting. Must be aligned with RBC
+define("RSR_UDEF", 0);
+define("RSR_ROUTE_SET", 1);
+define("RSR_SET_EXTENDED", 2);    // Route set, but extended by existing route - Used?? FIXME
+define("RSR_REJECTED", 3);        // rejected as impossible
+define("RSR_BLOCKED", 4);         // blocked by other route
+define("RSR_INHIBITED", 5);       // inhibited by command
+define("RSR_ARS_DISABLED", 6);    // ARS disabled
+define("RSR_ROUTE_OCCUPIED", 7);  // occupied by train
 
+// TMS status
 define("TMS_UDEF",0);
 define("TMS_NO_TT",1);
 define("TMS_OK",2);
@@ -193,13 +197,15 @@ function resetTrainState(&$train) {
     $train["routeState"]["D"] = RS_UDEF;
     $train["locationTS"] = false;
     $train["routeIndex"] = false; // set to false in order to start search from beginning of route list
-    $train["trnState"] = TRN_UNKNOWN; 
+    $train["trnState"] = TRN_UNASSIGNED; 
     $train["ETD"] = 0;
+    $train["blockedTimer"] = 0;
+    $train["waitingDir"] = ""; // reset other param?? FIXME
 }
 
 function processTrainLocaiton($trainIndex, $nextElementName, $state, $dir) {
-// $state is "A" if the train is at standstill occupying the element just before $nextElementName - that is has arrived
-// otherwise "F"
+// $state is "S" if the train is at standstill occupying the element in rear of $nextElementName - i.e. at stopping location
+// otherwise "A" (approaching)
 global $tts, $trainData, $now;
   $train = &$trainData[$trainIndex];
   $trn = $train["trn"];
@@ -207,115 +213,111 @@ global $tts, $trainData, $now;
   if (array_key_exists($trn, $tts)) { // trn is known in time table
     $tt = $tts[$trn];
     if ($nextElementName != $train["location"][$dir] or $state != $train["locationState"][$dir]) { // new situation for this direction
-      debugPrint("Train: {$train["ID"]} New location ($dir): $nextElementName / $state Prev. location {$train["location"][$dir]} / {$train["locationState"][$dir]}");
+      debugPrint("Train: {$train["ID"]} New location ($dir): $nextElementName / $state ".
+        "Prev. location {$train["location"][$dir]} / {$train["locationState"][$dir]}");
       $train["location"][$dir] = $nextElementName;
       $train["locationState"][$dir] = $state;
-      if ($state == "A") { // Train is at stopping location
+      if ($state == "S") { // Train is at stopping location
         $train["locationTS"] = $now; 
       }
       $train["routeState"][$dir] = RS_NO_ROUTE;
-    } else {
-print "situation unchanged $dir\n";
-    }
-    switch ($train["routeState"][$dir]) {
-      case  RS_NO_ROUTE:
-        $routeIndex = findRoute($tt, $nextElementName, false);  // prevRouteIndex set to false in order to search from beginning of route list
-        if ($routeIndex !== false) {
-          $train["routeIndex"] = $routeIndex;
-          $route = $tt["routeTable"][$routeIndex];
-          switch ($route["condition"]) { 
-            case "E": // location is destination
-              $train["routeState"][$dir] = RS_COMPLETED;
-              $train["trnState"] = TRN_COMPLETED;
-            break;
-            case "N": // location is destination, assign new TRN
-              $train["routeState"][$dir] = RS_COMPLETED;
-              $train["trnState"] = TRN_COMPLETED;
-              if (isset($route["delay"]) and is_numeric($route["delay"])) {
+      $routeIndex = findRoute($tt, $nextElementName, false);  // prevRouteIndex set to false in order to search from beginning of route list
+      if ($routeIndex !== false) {
+        $train["routeIndex"] = $routeIndex;
+        $route = $tt["routeTable"][$routeIndex];
+        switch ($route["condition"]) {
+          case "E": // location is destination
+            $train["routeState"][$dir] = RS_COMPLETED;
+            $train["trnState"] = TRN_COMPLETED;
+          break;
+          case "N": // location is destination, assign new TRN
+            $train["routeState"][$dir] = RS_COMPLETED;
+            $train["trnState"] = TRN_COMPLETED;
+            if (isset($route["delay"]) and is_numeric($route["delay"])) {
+              $train["ETD"] = $now + $route["delay"];       
+              sendETD($trainIndex,$train["ETD"]);
+            } else { // set next Trn
+              resetTrainState($train);
+              $train["trn"] = $route["nextTrn"];
+              $train["trnState"] = TRN_NORMAL;
+              setTRN($trainIndex, $train["trn"]);
+            }
+          break;
+          case "": // set route
+          case "R":
+            if (isset($route["time"]) and $route["time"] != "") { //                              await departure time
+              $train["routeState"][$dir] = RS_WAIT_DEPARTURE;
+              $train["trnState"] = TRN_WAITING;
+              $train["ETD"] = departureTime($route["time"]);
+              sendETD($trainIndex,$train["ETD"]);
+              print "Train: {$train["ID"]} RS_WAIT_DEPARTURE $dir ".date("H:i:s")." ETD/time: ".date("H:i:s",$train["ETD"])."\n";
+            } elseif (isset($route["delay"]) and is_numeric($route["delay"])) { //                await delay
+              if ($state == "S") { // At stopping location => start delay timer
+                $train["routeState"][$dir] = RS_WAIT;
+                $train["trnState"] = TRN_WAITING;   
                 $train["ETD"] = $now + $route["delay"];       
                 sendETD($trainIndex,$train["ETD"]);
-              } else { // set next Trn
-                resetTrainState($train);
-                $train["trn"] = $route["nextTrn"];
-                $train["trnState"] = TRN_NORMAL;
-                setTRN($trainIndex, $train["trn"]);
+                print "Train: {$train["ID"]} RS_WAIT $dir".date("H:i:s")." ETD/delay: ".date("H:i:s",$train["ETD"])."\n";
               }
-            break;
-            case "": // set route
-            case "R":
-              if (isset($route["time"]) and $route["time"] != "") { //                              await departure time
-                $train["routeState"][$dir] = RS_WAIT_DEPARTURE;
-                $train["trnState"] = TRN_WAITING;
-                $train["ETD"] = departureTime($route["time"]);
-                sendETD($trainIndex,$train["ETD"]);
-                print "Train: {$train["ID"]} RS_WAIT_DEPARTURE $dir ".date("H:i:s")." ETD/time: ".date("H:i:s",$train["ETD"])."\n";
-              } elseif (isset($route["delay"]) and is_numeric($route["delay"])) { //                await delay
-                if ($state == "A") { // if at stopping location => start delay timer
-                  $train["routeState"][$dir] = RS_WAIT;
-                  $train["trnState"] = TRN_WAITING;   
-                  $train["ETD"] = $now + $route["delay"];       
-                  sendETD($trainIndex,$train["ETD"]);
-                  print "Train: {$train["ID"]} RS_WAIT $dir".date("H:i:s")." ETD/delay: ".date("H:i:s",$train["ETD"])."\n";
-                } // if not at stopping location, keep routeState RS_NO_ROUTE until delaytimer to be started
-              } else { //                                                                           set route unconditional
-                $train["routeState"][$dir] = RS_PENDING;
-                $train["trnState"] = TRN_NORMAL;
-                setRoute($trainIndex, $dir, $route["start"], $route["dest"]);
-              }
-            break;
-            case "W": // wait for another train
-              $train["awaiteTrn"] = $route["mTrn"];    // which trn to wait for
-              $train["awaiteSignal"] = $route["mSignal"]; // at which signal 
-              $train["routeState"][$dir] = RS_WAIT_TRAIN;
-              $train["trnState"] = TRN_WAITING;
-              $arrived = false; // check if meeting trail has arrived already
-              foreach ($trainData as $waitingTrain) {
-                if ($waitingTrain["trn"] != $trn) { // don't check this train
-                  if ($waitingTrain["routeState"] == RS_WAIT_TRAIN and 
-                    $train["awaitTrn"] == $waitingTrain["trn"] and
-                    ($train["awaitSignal"] == $waitingTrain["location"]["U"] or $train["awaitSignal"] == $waitingTrain["location"]["D"]) and
-                    $waitingTrain["awaitTrn"] == $trn and
-                    $waitingTrain["awaitSignal"] == $nextElementName) {
-                    $arrived = true;
-                    break; // only one train can wait for this train
-                  }
+            } else { //                                                                           set route unconditional
+              $train["routeState"][$dir] = RS_PENDING;
+              $train["trnState"] = TRN_NORMAL;
+              setRoute($trainIndex, $dir, $route["start"], $route["dest"]);
+            }
+          break;
+          case "W": // wait for another train
+            $train["awaiteTrn"] = $route["mTrn"];    // which trn to wait for
+            $train["awaiteSignal"] = $route["mSignal"]; // at which signal 
+            $train["routeState"][$dir] = RS_WAIT_TRAIN;
+            $train["trnState"] = TRN_WAITING;
+            $arrived = false; // check if meeting trail has arrived already
+            foreach ($trainData as $wIndex => $waitingTrain) {
+              if ($waitingTrain["trn"] != $trn) { // don't check this train
+                if ($waitingTrain["routeState"] == RS_WAIT_TRAIN and 
+                  $train["awaitTrn"] == $waitingTrain["trn"] and
+                  ($train["awaitSignal"] == $waitingTrain["location"]["U"] or $train["awaitSignal"] == $waitingTrain["location"]["D"]) and
+                  $waitingTrain["awaitTrn"] == $trn and
+                  $waitingTrain["awaitSignal"] == $nextElementName) {
+                  $arrived = true;
+                  $waitingTrainIndex = $wIndex;
+                  break; // only one train can wait for this train
                 }
               }
-              if ($arrived) { // Train to meet has arrived already
-print "Set route for trn {$train["mTrn"]} waiting at {$train["mSignal"]}\n";
+            }
+            if ($arrived) { // Train to meet has arrived already
+              $waitingTrain = &$trainData[$waitingTrainIndex];
+              $waitinTrainRoute = $tts[$waitingTrain["trn"]]["routeTable"][$waitingTrain["routeIndex"]];
+print "Set route for trn {$waitingTrain["trn"]} waiting at {$train["mSignal"]}\n";
+              $waitingTrain["routeState"][$waitingTrainDir] = RS_PENDING;
+              $waitingTrain["trnState"] = TRN_NORMAL;
+              setRoute($waitingTrainIndex, $waitingTrain["waitingDir"], $waitinTrainRoute["start"], $waitinTrainRoute["dest"]);
+
+
 
 print "Set route for trn $trn arrived at $nextElementName\n";
-              
-              } else { // Train to meet has not yet arrived
+              $train["routeState"][$dir] = RS_PENDING;
+              $train["trnState"] = TRN_NORMAL;
+              setRoute($trainIndex, $dir, $route["start"], $route["dest"]);
+            } else { // Train to meet has not yet arrived
+              $train["waitingDir"] = $dir;
 print "Trn: $trn waiting at $nextElementName for trn {$route["mTrn"]} to arrive at signal {$route["mSignal"]}\n";
-              }
-            break;
-            case "M": // Manual - operator to set next route
-              $train["routeState"][$dir] = RS_CONFIRM;
-              $train["trnState"] = TRN_CONFIRM;
-            break;
-          }
-        } else { // no route specified in tt for this location and direction
-          $train["routeState"][$dir] = RS_NO_ROUTE_SPECIFIED; 
-          if ($train["routeState"][$revDir] == RS_NO_ROUTE_SPECIFIED) { // no routes specified at all
-            $train["trnState"] = TRN_FAILED;
-          }
+            }
+          break;
+          case "M": // Manual - operator to set next route
+            $train["routeState"][$dir] = RS_CONFIRM;
+            $train["trnState"] = TRN_CONFIRM;
+          break;
+          default:
+            errLog("Error: Unknown condition {$route["condition"]} for trn $trn");
         }
-      break;
-      
-// PENDING, ARS and BLOCKED to be moved to timeout function FIXME
-      case RS_PENDING: // optional alarm if route setting takes too long
-      break;
-      case  RS_ARS_DISABLED:
-      case RS_BLOCKED: // --------------------------------------------------- FIXME check for alternative routes
-print "RS_BLOCKED at location\n";
-        $route = $tts[$train["trn"]]["routeTable"][$train["routeIndex"]];
-        $train["routeState"][$dir] = RS_PENDING;
-        setRoute($trainIndex, $dir, $route["start"], $route["dest"]);
-        if (!isset($route["dest"])) {
-          debugPrint("Case RS_BLOCKED, Destination not defined for trn: {$train["trn"]} RouteIndex: {$train["routeIndex"]}");
+      } else { // no route specified in tt for this location and direction
+        $train["routeState"][$dir] = RS_NO_ROUTE_SPECIFIED; 
+        if ($train["routeState"][$revDir] == RS_NO_ROUTE_SPECIFIED) { // no routes specified at all
+          $train["trnState"] = TRN_FAILED;
         }
-      break;
+      }    
+    } else {
+// print "situation unchanged $dir\n";
     }
     sendTRNstate($trainIndex, $train["trnState"]);
   } // else unknown trn, ignore location report
@@ -360,9 +362,11 @@ global $now;
 function processTimeout() {
 global $trainData, $tts, $now;
   foreach ($trainData as $trainIndex => &$train) {
-    $dir = ($train["routeState"]["U"] == RS_NO_ROUTE_SPECIFIED ? "D" : "U"); 
+    $dir = ($train["routeState"]["U"] == RS_NO_ROUTE_SPECIFIED ? "D" : "U");  // FIXME  right way to do??? or both dir??
     switch ($train["routeState"][$dir]) {
-      case RS_NO_ROUTE_SPECIFIED:
+      case RS_NO_ROUTE_SPECIFIED: // Do nothing
+      case RS_WAIT_TRAIN:
+      case RS_ARS_DISABLED:
       break;
       case RS_WAIT: // if time elapsed set route
       case RS_WAIT_DEPARTURE: // if departure time, set route
@@ -374,8 +378,6 @@ global $trainData, $tts, $now;
           sendETD($trainIndex,0); // clear indication at HMI
         }
       break;
-      case RS_WAIT_TRAIN:     // FIXME   
-      break;
       case RS_COMPLETED:
         $route = $tts[$train["trn"]]["routeTable"][$train["routeIndex"]];
         if ($route["condition"] == "N" and $now > $train["ETD"]) {
@@ -385,13 +387,18 @@ global $trainData, $tts, $now;
           setTRN($trainIndex, $train["trn"]);
         }
       break;
-// FIXME:
+// FIXME
       case RS_PENDING: // optional alarm if route setting takes too long
       break;
-      case  RS_ARS_DISABLED:
-      break;
       case RS_BLOCKED:
+        if ($train["blockedTimer"] + RETRY_ROUTE_TIMEOUT > $now) {
+          $train["routeState"][$dir] = RS_PENDING;
+          $train["trnState"] = TRN_NORMAL;
+          setRoute($trainIndex, $dir, $route["start"], $route["dest"]); // FIXME  which dir, trainIndex and routeIndex???
+        }
       break;
+      default:
+      // FIXME
     }
   }
 }
@@ -400,36 +407,44 @@ function processRouteStatus($trainIndex, $dir, $routeSettingStatus) {
 global $trainData, $tts;
   $train = &$trainData[$trainIndex];
   switch($routeSettingStatus) {
-    case RS_ROUTE_SET:
+    case RSR_ROUTE_SET:
       $train["routeState"][$dir] = RS_ROUTE_SET;
       $train["trnState"] = TRN_NORMAL;
     break;
-    case RS_ARS_DISABLED:
+    case RSR_ARS_DISABLED:
       $train["routeState"][$dir] = RS_ARS_DISABLED;
       $train["trnState"] = TRN_ARS_DISABLED;
     break;
-    case RS_BLOCKED:
-    case RS_REJECTED:
-    // FIXME destinguish between impossible routes (= time table failure), routes temporary blocked by other routes and routes blocked by inhibitions
-    // FIXME If route temporary blocked, whait a while before trying again
-    // FIXME check for alternative routes in route table. Set the route, set status to pending and set routeIndex
-    // FIXME retry setting temporary blocked route by time out
+    case RSR_REJECTED: // Time table failure
+      $train["routeState"][$dir] = RS_NO_ROUTE;
+      $train["trnState"] = TRN_FAILED;
+      errLog("TRN {$train["trn"]}: Route entry {$train["routeIndex"]} rejected as impossible");
+    break;
+    case RSR_INHIBITED: // Route inhibited, inform operator
+      $train["routeState"][$dir] = RS_CONFIRM;
+      $train["trnState"] = TRN_CONFIRM;
+    break;
+    case RSR_BLOCKED: // Route occupied ortemporary blocked by other routes
+      // Check for alternative routes in route table or whait a while before trying again.
       $tt = $tts[$train["trn"]];
       $routeIndex = findRoute($tt, $train["location"][$dir], $train["routeIndex"]);
-      if ($routeIndex !== false) {
+      if ($routeIndex !== false) { // Try next route ------------------------------------- delay needed in sequence of alternatives??? FIXME
         $train["routeState"][$dir] = RS_PENDING;
         $train["trnState"] = TRN_NORMAL;
         $route = $tt["routeTable"][$routeIndex];
+        print "trying next tt route\n";
         setRoute($trainIndex, $dir, $route["start"], $route["dest"]);
-      } else {
+      } else { // No alternative, retry later
+        $train["blockedTimer"] = $now;
         $train["routeState"][$dir] = RS_BLOCKED;
         $train["trnState"] = TRN_BLOCKED;
       }
     break;
+    default:
+      errLog("processRouteStatus - default ($routeSettingStatus)");
   }
   sendTRNstate($trainIndex, $train["trnState"]);
 }
-
 
 function findRoute($tt, $nextSignal, $prevRouteIndex) {
   foreach ($tt["routeTable"] as $routeIndex => $route) {
@@ -460,7 +475,7 @@ global $tts, $trainData, $run;
           }
         } else { // clear TRN for train
           resetTrainState($trainData[$param[1]]);
-          $trainData[$param[1]]["trnState"] = TRN_UNKNOWN; 
+          $trainData[$param[1]]["trnState"] = TRN_UNASSIGNED; 
           sendETD($param[1],0); // clear indication at HMI
         }
         sendTRNstate($param[1], $trainData[$param[1]]["trnState"]);
@@ -545,7 +560,6 @@ global $RBCILfh;
 }
 
 //----------------------------------------------------------------------------------------- Utility
-//----------------------------------------------------------------
 
 function toSigned($b1, $b2) {
   $dec = $b2 * 256 + $b1;
@@ -553,10 +567,9 @@ function toSigned($b1, $b2) {
   return $dec > $_dec ? -$_dec : $dec;
 }
 
-function versionInfo() {
+function versionInfo() { // Used?? FIXME
 global $VERSION, $PT1_VERSION;
   fwrite(STDERR,"TMS Engine, version: $VERSION\n");
-//  fwrite(STDERR,"PT1 data, version: $PT1_VERSION\n");
 }
 
 function CmdLineParam() {

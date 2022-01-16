@@ -57,7 +57,8 @@ global $run, $reloadRBC, $inChargeMCe, $clientsData, $EC, $trackModel, $test, $t
       if ($from == $inChargeMCe) {
         notifyTMS("exitTMS");
       }
-    break;    case "ECstatus":
+    break;
+    case "ECstatus":
       foreach($EC as $addr => $ec) {
         requestECstatus($addr);
       }

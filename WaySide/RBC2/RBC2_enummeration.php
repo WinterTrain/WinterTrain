@@ -154,22 +154,24 @@ define("TRN_DISABLED",4);
 define("TRN_BLOCKED",5);
 define("TRN_WAITING",6);
 define("TRN_CONFIRM",7);
-define("TRN_UNKNOWN",8);
+define("TRN_UNASSIGNED",8);
 
-
-// TMS engine status
+// TMS engine status. Must me aligend with TMS
 define("TMS_UDEF",0);
 define("TMS_NO_TT",1);
 define("TMS_OK",2);
 define("TMS_NO_TMS",3);
 
-// Route setting status
-define("RS_UDEF",0);                // state undefined
-define("RS_ROUTE_SET",1);           // route set
-define("RS_REJECTED",2);            // impossible route
-define("RS_BLOCKED",3);             // route temporary blocked by other route
-define("RS_INHIBITED",4);           // route cannot be set due to inhibitions
-define("RS_ARS_DISABLED",5);        // ARS disabled for route
+// Response code (from RBC) for TMS route setting. Must be aligned with TMS
+define("RSR_UDEF", 0);
+define("RSR_ROUTE_SET", 1);
+define("RSR_SET_EXTENDED", 2);    // Route set, but extended by existing route - Used?? FIXME
+define("RSR_REJECTED", 3);        // rejected as impossible
+define("RSR_BLOCKED", 4);         // blocked by other route
+define("RSR_INHIBITED", 5);       // inhibited by command
+define("RSR_ARS_DISABLED", 6);    // ARS disabled
+define("RSR_ROUTE_OCCUPIED", 7);  // occupied by train
+
 
 
 ?>

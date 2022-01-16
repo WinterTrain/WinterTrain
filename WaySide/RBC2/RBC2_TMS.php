@@ -3,7 +3,8 @@
 // TMS handlers
 
 function processCommandTMS($command) { // Process Commands from TMS engine
-global $now, $tmsHB, $tmsStatus, $trainData, $trackModel, $arsEnabled;
+global $now, $tmsHB, $tmsStatus, $trainData, $trackModel, $arsEnabled, $triggerHMIupdate;
+  $triggerHMIupdate = true; // Necessary?? FIXME
   $param = explode(" ",$command);
   switch ($param[0]) {
     case "TMS_HB":
@@ -19,17 +20,30 @@ global $now, $tmsHB, $tmsStatus, $trainData, $trackModel, $arsEnabled;
 print "TMS: trying route {$param[3]} -> {$param[4]}\n";
       if ($arsEnabled and $trackModel[$param[3]]->arsState == ARS_ENABLED) {
         if ($trackModel[$param[4]]->routeLockingState == R_IDLE) {
-          if ($trackModel[$param[3]]->cmdSetRouteTo($param[4]) != "") {
-            notifyTMS("routeStatus {$param[1]} {$param[2]} ".RS_ROUTE_SET);
-          } else {
-          // FIXME be more specific on rejection reason: temporary blocked, impossible, inhibited
-            notifyTMS("routeStatus {$param[1]} {$param[2]} ".RS_REJECTED); // Route setting rejected          
+          $EP = $trackModel[$param[3]]->cmdSetRouteTo($param[4]);
+          switch ($EP) {
+            case "__R":
+              notifyTMS("routeStatus {$param[1]} {$param[2]} ".RSR_REJECTED); // Route impossible       
+            break;
+            case "__B":
+            case "__O":
+              notifyTMS("routeStatus {$param[1]} {$param[2]} ".RSR_BLOCKED); // Route temporary blocked or occupied        
+            break;
+            case "__I":
+              notifyTMS("routeStatus {$param[1]} {$param[2]} ".RSR_INHIBITED); // Route setting rejected          
+            break;
+            default:
+              if ($EP == $param[4]) {
+                notifyTMS("routeStatus {$param[1]} {$param[2]} ".RSR_ROUTE_SET);
+              } else {
+                notifyTMS("routeStatus {$param[1]} {$param[2]} ".RSR_ROUTE_SET_EXTENDED);
+              }
           }
         } else {
-          notifyTMS("routeStatus {$param[1]} {$param[2]} ".RS_BLOCKED); // EP alreadu locked
+          notifyTMS("routeStatus {$param[1]} {$param[2]} ".RSR_BLOCKED); // EP alreadu locked
         }
       } else {
-        notifyTMS("routeStatus {$param[1]} {$param[2]} ".RS_ARS_DISABLED);
+        notifyTMS("routeStatus {$param[1]} {$param[2]} ".RSR_ARS_DISABLED);
       }
     break;
     case "setTRN":
@@ -51,7 +65,7 @@ print "TMSloc: $trainIndex $startPoint $runningState $dir\n";
 
 function TMSStartup() {
 global $inChargeTMS, $trainData, $RBC_VERSION;
- fwrite($inChargeTMS,"Hello this is RBCIL version $RBC_VERSION\n");
+  notifyTMS("Hello this is RBC version $RBC_VERSION");
   foreach ($trainData as $index => $train) {
     notifyTMS("setTRN {$index} {$train["trn"]}");
   }

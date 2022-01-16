@@ -221,7 +221,7 @@ global $trainData, $trackModel;
   if ($SPup != "") {
     trainLocationTMS($index, $SPup, 
       (($train["nomDir"] == D_STOP and $trackModel[$SPup]->neighbourDown->vacancyState == V_OCCUPIED 
-        and $trackModel[$SPup]->neighbourDown->occupationTrainID == $train["ID"]) ? "A" : "F"),
+        and $trackModel[$SPup]->neighbourDown->occupationTrainID == $train["ID"]) ? "S" : "A"),
       "U");
     if ($trackModel[$SPup]->elementType == "BSB" or $trackModel[$SPup]->elementType == "BSE")
       $SPup = ""; // Buffer stop as SP is only used by TMS, so delete before retunr
@@ -229,7 +229,7 @@ global $trainData, $trackModel;
   if ($SPdown != "") {
     trainLocationTMS($index, $SPdown,
       (($train["nomDir"] == D_STOP and $trackModel[$SPdown]->neighbourUp->vacancyState == V_OCCUPIED 
-        and $trackModel[$SPdown]->neighbourUp->occupationTrainID == $train["ID"]) ? "A" : "F"),
+        and $trackModel[$SPdown]->neighbourUp->occupationTrainID == $train["ID"]) ? "S" : "A"),
       "D");
     if ($trackModel[$SPdown]->elementType == "BSB" or $trackModel[$SPdown]->elementType == "BSE")
       $SPdown = "";// Buffer stop as SP is only used by TMS, so delete before return
@@ -597,10 +597,21 @@ global $inChargeHMI, $clientsData, $trackModel, $triggerHMIupdate,
 // Routes
       case "tr": // Set route
         $EP = $trackModel[$param[1]]->cmdSetRouteTo($param[2]);
-        if ($EP != "") {
-          HMIindication($from, "displayResponse {OK}");
-        } else {
-          HMIindication($from, "displayResponse {Rejected - no route possible}");
+        switch ($EP) {
+          case "__R":
+            HMIindication($from, "displayResponse {Rejected - no route possible}");
+          break;
+          case "__B":
+            HMIindication($from, "displayResponse {Rejected - element(s) already locked}");
+          break;
+          case "__I":
+            HMIindication($from, "displayResponse {Rejected - element(s) inhibited}");
+          break;
+          case "__O":
+            HMIindication($from, "displayResponse {Rejected - track occupied}");
+          break;
+          default:
+            HMIindication($from, "displayResponse {OK}");
         }
       break;
       case "rr": // Release route (without timer) given that route not occupied or assigned train is at stand still

@@ -18,7 +18,7 @@ abstract class genericElement { // ---------------------------------------------
   public $lockingState = L_NOT_LOCKED; // Not used, but still part of HMI interface
   
   public function cmdSetRouteTo($endPoint) { // Only relevant for signal FIXME
-    return false;
+    return "__R";
   }
   
   public function cmdReleaseRoute() { // Only relevant for EP FIXME
@@ -111,16 +111,15 @@ abstract class genericElement { // ---------------------------------------------
   global $recCount;
     $recCount +=1;
     if ($recCount > 1000) die("Recursion A This: {$this->elementName} EP: $endPoint ".($directionUp ? "U" : "D")."  **************\n"); // FIXME
-    if ($this->routeLockingState != R_IDLE or $this->vacancyState != V_CLEAR) return "";
+    if ($this->routeLockingState != R_IDLE) return "__B";
+    if ($this->vacancyState != V_CLEAR) return "__O";
     $EP = $directionUp ? $this->neighbourUp->setRouteTo(true, $endPoint, $this) : $this->neighbourDown->setRouteTo(false, $endPoint, $this);
-    if ($EP != "") {
+    if (substr($EP, 0, 2) != "__") { // route set
       $this->routeLockingState = R_LOCKED;
       $this->routeLockingType = RT_VIA;
       $this->routeLockingUp = $directionUp;
-      return $EP;
-    } else {
-      return "";
     }
+    return $EP;
   }
 
   public function searchSP($searchUp) { // Search for possible route Start Point
@@ -491,51 +490,48 @@ print "C_RELEASE {$this->elementName}\n";
   global $automaticPointThrowEnabled, $recCount;
     $recCount +=1;
     if ($recCount > 1000) die("Recursion C {$this->elementName} EP: $endPoint ".($directionUp ? "U" : "D"." **********n")); // FIXME
-    if ($this->routeLockingState != R_IDLE or $this->vacancyState != V_CLEAR) return "";
+    if ($this->routeLockingState != R_IDLE) return "__B";
+    if ($this->vacancyState != V_CLEAR) return "__O";
     $this->routeLockingUp = $directionUp;
     if ($directionUp == $this->facingUp) { // Point is facing in route direction
       if ($this->logicalLieRight) { // Follow logical lie right
         $EP = $this->neighbourRight->setRouteTo($directionUp, $endPoint, $this);
-        if ($EP != "") {
+        if (substr($EP, 0, 2) != "__") { // Route set
           $this->routeLockingState = R_LOCKED;
           $this->routeLockingType = RT_RIGHT;
           if ($this->pointState == P_SUPERVISED_RIGHT) $this->throwLockedByRoute = true;
-          return $EP;
         } else {
-          if ($this->throwLockedByCmd) return ""; // Point throw is locked by cmd so no reason to try
+          if ($this->throwLockedByCmd) return "__I"; // Point throw is locked by cmd so no reason to try
           $EP = $this->neighbourLeft->setRouteTo($directionUp, $endPoint, $this);
-          if ($EP != "") {
+          if (substr($EP, 0, 2) != "__") { // Route set
             $this->routeLockingState = R_LOCKED;
             $this->routeLockingType = RT_LEFT;
             if ($automaticPointThrowEnabled) $this->throwPoint(C_LEFT); // Throw left
-            return $EP;
           }
-          return "";
         }
+        return $EP;
       } else {// Follow logical lie left
         $EP = $this->neighbourLeft->setRouteTo($directionUp, $endPoint, $this);
-        if ($EP != "") {
+        if (substr($EP, 0, 2) != "__") {
           $this->routeLockingState = R_LOCKED;
           $this->routeLockingType = RT_LEFT;
           if ($this->pointState == P_SUPERVISED_LEFT) $this->throwLockedByRoute = true;
-          return $EP;
         } else {
-          if ($this->throwLockedByCmd) return ""; // Point throw is locked by cmd so no reason to try
+          if ($this->throwLockedByCmd) return "__I"; // Point throw is locked by cmd so no reason to try
           $EP = $this->neighbourRight->setRouteTo($directionUp, $endPoint, $this);
-          if ($EP != "") {
+          if (substr($EP, 0, 2) != "__") {
             $this->routeLockingState = R_LOCKED;
             $this->routeLockingType = RT_RIGHT;
             if ($automaticPointThrowEnabled) $this->throwPoint(C_RIGHT); // Throw right
-            return $EP;
           }
-          return ""; 
         }
+        return $EP;
       }
     } else { // Point is trailing in route direction
       if ($caller === $this->neighbourRight) { // route search reached point via right branch
-        if (!$this->logicalLieRight and $this->throwLockedByCmd) return false; // Point throw is locked by cmd so no reason to try
+        if (!$this->logicalLieRight and $this->throwLockedByCmd) return "__I"; // Point throw is locked by cmd so no reason to try
         $EP = $this->neighbourTip->setRouteTo($directionUp, $endPoint, $this);
-        if ($EP != "") {
+        if (substr($EP, 0, 2) != "__") {
           $this->routeLockingState = R_LOCKED;
           $this->routeLockingType = RT_RIGHT;
           if ($this->logicalLieRight and $this->pointState == P_SUPERVISED_RIGHT) {
@@ -543,13 +539,12 @@ print "C_RELEASE {$this->elementName}\n";
           } else {
             if ($automaticPointThrowEnabled) $this->throwPoint(C_RIGHT); // Throw right
           }
-          return $EP;
         }
-        return "";
+        return $EP;
       } else { // route search via left branch
-        if ($this->logicalLieRight and $this->throwLockedByCmd) return false; // Point throw is locked by cmd so no reason to try
+        if ($this->logicalLieRight and $this->throwLockedByCmd) return "__I"; // Point throw is locked by cmd so no reason to try
         $EP = $this->neighbourTip->setRouteTo($directionUp, $endPoint, $this);
-        if ($EP != "") {
+        if (substr($EP, 0, 2) != "__") {
           $this->routeLockingState = R_LOCKED;
           $this->routeLockingType = RT_LEFT;
           if (!$this->logicalLieRight and $this->pointState == P_SUPERVISED_LEFT) {
@@ -557,9 +552,8 @@ print "C_RELEASE {$this->elementName}\n";
           } else {
             if ($automaticPointThrowEnabled) $this->throwPoint(C_LEFT); // Throw left
           }
-          return $EP;
         }
-        return "";
+        return $EP;
       }
     }    
   }
@@ -786,13 +780,20 @@ class Selement extends genericElement { // -------------------------------------
   }
     
   public function cmdSetRouteTo($endPoint) {
-  // Set route from called signal to $endPoint. Return value is realised EP or ""
+  // Set route from called signal to $endPoint. Return value is:
+  // <realised EP> when set. Might be different from $endPoint if extended by existing route
+  // "__R" for impossible route
+  // "__B" for route blocked by other routes
+  // "__I" for route blocked by inhibitions
+  // "__O" for route occupied
+
   global $trainData, $trainIndex, $trackModel, $recCount;
     $recCount = 0; // FIXME
-    if ($this->routeLockingState != R_IDLE and $this->routeLockingType != RT_END_POINT) return "";
-    if ($this->blockingState == B_BLOCKED_START_VIA or $this->vacancyState != V_CLEAR) return "";
+    if ($this->routeLockingState != R_IDLE and $this->routeLockingType != RT_END_POINT) return "__B";
+    if ($this->blockingState == B_BLOCKED_START_VIA) return "__I";
+    if ($this->vacancyState != V_CLEAR) return "__O";
     $EP = $this->facingUp ? $this->neighbourUp->setRouteTo(true, $endPoint, $this) : $this->neighbourDown->setRouteTo(false, $endPoint, $this);
-    if ($EP != "") {
+    if (substr($EP, 0, 2) != "__") { // Route set
       if ($this->routeLockingType == RT_END_POINT) { // Already End Point
         $this->routeLockingState = R_LOCKED; // FIXME  state could already be != IDLE
         $this->routeLockingType = RT_VIA;
@@ -807,9 +808,8 @@ class Selement extends genericElement { // -------------------------------------
       }
       $this->routeLockingUp = $this->facingUp;;
       $trackModel[$EP]->updateSignalling();
-      return $EP;
     }
-    return "";
+    return $EP;
   }
   
   public function cmdReleaseRoute() { // Unconditional route release, signal
@@ -965,7 +965,7 @@ class Selement extends genericElement { // -------------------------------------
     if ($recCount > 1000) die("Recursion E {$this->elementName} EP: $endPoint ".($directionUp ? "U" : "D")." *****************\n"); // - FIXME
     if ($directionUp == $this->facingUp) { // Signal is facing in route direction
       if ($endPoint == $this->elementName) { // End point found
-        if ($this->routeLockingState != R_IDLE and $this->routeLockingType != RT_START_POINT) return "";
+        if ($this->routeLockingState != R_IDLE and $this->routeLockingType != RT_START_POINT) return "__B";
         if ($this->routeLockingType == RT_START_POINT) { // Already START POINT
           $this->routeLockingState = R_LOCKED; // FIXME Check if state != IDLE
           $this->routeLockingType = RT_VIA;
@@ -973,7 +973,7 @@ class Selement extends genericElement { // -------------------------------------
           $EP = $this->searchEP($directionUp); 
         } else {                                         // Not locked
           if ($directionUp ? $this->neighbourUp->routeLockingState == R_LOCKED : $this->neighbourDown->routeLockingState == R_LOCKED) {
-            return ""; // Preventing this new EP to be related to any old route behind the signal
+            return "__B"; // Preventing this new EP to be related to any old route behind the signal
           }
           $this->routeLockingState = R_LOCKED;
           $this->routeLockingType = RT_END_POINT;
@@ -982,31 +982,32 @@ class Selement extends genericElement { // -------------------------------------
         }
         $this->routeLockingUp = $directionUp;
         return $EP;
-      } else {
-        if ($this->routeLockingState != R_IDLE or $this->blockingState == B_BLOCKED_START_VIA or $this->vacancyState != V_CLEAR) return "";
+      } else { // Not EP
+        if ($this->routeLockingState != R_IDLE) return "__B";
+        if ($this->blockingState == B_BLOCKED_START_VIA) return "__I";
+        if ($this->vacancyState != V_CLEAR) return "__O";
         $EP = $this->facingUp ?
           $this->neighbourUp->setRouteTo(true, $endPoint, $this) :
           $this->neighbourDown->setRouteTo(false, $endPoint, $this);
-        if ($EP != "") {
+        if (substr($EP, 0, 2) != "__") {
           $this->routeLockingState = R_LOCKED;
           $this->routeLockingType = RT_VIA;
           $this->routeLockingUp = $directionUp;
           $this->signallingState = SIG_STOP;
-          return $EP;
         } 
-        return ""; 
+        return $EP;
       }
     } else { // Signal is reverse in route direction
-      if ($endPoint == $this->elementName) return ""; // End point found, but with wrong orientation
-      if ($this->routeLockingState != R_IDLE or $this->vacancyState != V_CLEAR) return "";
+      if ($endPoint == $this->elementName) return "__R"; // End point found, but with wrong orientation
+      if ($this->routeLockingState != R_IDLE) return "__B";
+      if ($this->vacancyState != V_CLEAR) return "__O";
       $EP = $directionUp ? $this->neighbourUp->setRouteTo(true, $endPoint, $this) : $this->neighbourDown->setRouteTo(false, $endPoint, $this);
-      if ($EP != "") {
+      if (substr($EP, 0, 2) != "__") {
         $this->routeLockingState = R_LOCKED;
         $this->routeLockingType = RT_VIA_REVERSE;
         $this->routeLockingUp = $directionUp;
-        return $EP;
       } 
-      return "";
+      return $EP;
     }
   }
 
@@ -1163,7 +1164,8 @@ class Selement extends genericElement { // -------------------------------------
 class BSelement extends genericElement { // ----------------------------------------------------------------------- Buffer Stop
 
   protected function setRouteTo($directionUp, $endPoint, $caller) {
-    if ($this->routeLockingState != R_IDLE or $this->vacancyState != V_CLEAR) return false;
+    if ($this->routeLockingState != R_IDLE) return "__B";
+    if ($this->vacancyState != V_CLEAR) return "__O";
     if ($endPoint == $this->elementName) { // End point found
       $this->routeLockingState = R_LOCKED;
       $this->routeLockingType = RT_END_POINT;
@@ -1171,7 +1173,7 @@ class BSelement extends genericElement { // ------------------------------------
       $this->signallingState = SIG_STOP;
       return $this->elementName;
     }
-    return "";
+    return "__R";
   }
 
   public function cmdReleaseRoute() { // Unconditional route release, Buffer Stop

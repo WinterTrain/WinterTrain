@@ -37,7 +37,7 @@ global $trainData, $trainIndex, $DIRECTORY, $TRAIN_DATA_FILE, $SRallowed, $SHall
     $train["MAdir"] = D_UDEF;
     $train["assignedRoute"] = "";
     $train["trn"] = ""; // Train running number
-    $train["trnStatus"] = TRN_UDEF;
+    $train["trnStatus"] = TRN_UNASSIGNED;
     $train["etd"] = 0;
     $train["index"] = $index; // to know index in functions where only one train data set is handed over. Used? FIXME
     $trainIndex[$train["ID"]] = $index;
