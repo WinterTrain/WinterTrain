@@ -378,7 +378,6 @@ global $TD_TXT_MODE, $TD_TXT_ACK, $TD_TXT_DIR, $TD_TXT_PWR, $TD_TXT_RTOMODE, $tr
     }
     $train["rtoMode"] = $rtoMode;
     $train["speed"] = $speed;
-    $train["curPositionValid"] = false;
     if ($baliseID == "01:00:00:00:01") { // ------------------------------------------------------------------- OBU indicates void position
 //      $train["posTimeStamp"] = $now;
       if ($posRestoreEnabled) {
@@ -395,8 +394,10 @@ global $TD_TXT_MODE, $TD_TXT_ACK, $TD_TXT_DIR, $TD_TXT_PWR, $TD_TXT_RTOMODE, $tr
             $train["baliseName"] = "<void balise>";
             $train["distance"] = 0;
             $train["baliseID"] = $baliseID;
+            $train["curPositionValid"] = false;
           }
         } else {
+          $train["curPositionValid"] = false;
           errLog("Train ({$train["ID"]}): position void, but already restored. Awaiting new real position.");
           // Dont keep repeating this in the log FIXME
         }
@@ -408,7 +409,7 @@ global $TD_TXT_MODE, $TD_TXT_ACK, $TD_TXT_DIR, $TD_TXT_PWR, $TD_TXT_RTOMODE, $tr
       $train["baliseName"] = $balisesID[$baliseID];
       $train["posRestored"] = false;
       determineOccupation($index);
-      if ($train["curPositionUnambiguous"]) $train["curPositionValid"] = true; 
+      $train["curPositionValid"] = $train["curPositionUnambiguous"];
     } else { // ----------------------------------------------------------------------------------------------- OBU indicates unknown balise
       // Unknown balise, track occupation cannot be updated -  position report ignored
       if ($baliseID != "01:00:00:00:01") { // If different from OBU default balise

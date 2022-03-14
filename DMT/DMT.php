@@ -463,6 +463,7 @@ global $PT1, $elementCount, $projectName, $projectDate, $projectAuthor, $doRepla
   foreach($PT1 as $name => &$element) {
     switch($element["element"]) {
     case "BL":
+      $element["ID"] = strtoupper($element["ID"]);
       if ($element["ID"] == "00:00:00:00:00" or $element["ID"] == "") {
         print "Warning: Empty or default Balise ID assigned to element $name\n";
       }
@@ -481,15 +482,24 @@ global $PT1, $elementCount, $projectName, $projectDate, $projectAuthor, $doRepla
     break;
     case "SU":
     case "SD":
-      if ($element["type"] != "MB" and ($element["EC"]["addr"] == 0 or ! is_int($element["EC"]["addr"]))) {
-        print "Warning: No EC address assigned to real signal $name. Use element type \"MB\" (marker board)\n";
+      if ($element["type"] != "MB") {
+        if (!is_int($element["EC"]["addr"]) or $element["EC"]["addr"] == 0) {
+          print "Warning: No EC address assigned to real signal $name. Use element type \"MB\" (marker board)\n";
+        }
+        if (!is_int($element["EC"]["majorDevice"]) or $element["EC"]["majorDevice"] < 1 or $element["EC"]["majorDevice"] > 32 ) {
+          print "Warning: No valid major device number assigned to physical signal $name\n";
+        }
       }
     break;
     case "PF":
     case "PT":
-      if (($element["supervisionState"] == "P" or $element["supervisionState"] == "F") and 
-        ($element["EC"]["addr"] == 0 or ! is_int($element["EC"]["addr"]))) {
-        print "Warning: No EC address assigned to  point $name having supervision state {$element["supervisionState"]} \n";
+      if ($element["supervisionState"] == "P" or $element["supervisionState"] == "F") {
+        if ($element["EC"]["addr"] == 0 or ! is_int($element["EC"]["addr"])) {
+          print "Warning: No EC address assigned to  point $name having supervision state {$element["supervisionState"]} \n";
+        }
+        if (!is_int($element["EC"]["majorDevice"]) or $element["EC"]["majorDevice"] < 1 or $element["EC"]["majorDevice"] > 32 ) {
+          print "Warning: No valid major device number assigned to  point $name having supervision state {$element["supervisionState"]} \n";
+        }
       }
     break;
     case "PHTU":

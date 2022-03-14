@@ -313,7 +313,7 @@ print "C_RELEASE {$this->elementName}\n";
               $this, $reportIndex + 1);
           $occupationLeft = $this->neighbourLeft->
             checkOccupationUp($trainIndex, $trainPositionUp - $elementLengthLeft, $trainPositionDown - $elementLengthLeft,
-              $this, $reportIndex +1);
+              $this, $reportIndex + 1);
           $overlapRight = array_intersect($trainData[$trainIndex]["curOccupation"], $occupationRight);
           $overlapLeft = array_intersect($trainData[$trainIndex]["curOccupation"], $occupationLeft);
           if ($overlapRight) {
@@ -495,37 +495,47 @@ print "C_RELEASE {$this->elementName}\n";
     $this->routeLockingUp = $directionUp;
     if ($directionUp == $this->facingUp) { // Point is facing in route direction
       if ($this->logicalLieRight) { // Follow logical lie right
-        $EP = $this->neighbourRight->setRouteTo($directionUp, $endPoint, $this);
-        if (substr($EP, 0, 2) != "__") { // Route set
+        $EPr = $this->neighbourRight->setRouteTo($directionUp, $endPoint, $this);
+        if (substr($EPr, 0, 2) != "__") { // Route set
           $this->routeLockingState = R_LOCKED;
           $this->routeLockingType = RT_RIGHT;
-          if ($this->pointState == P_SUPERVISED_RIGHT) $this->throwLockedByRoute = true;
+          $this->throwLockedByRoute =  $this->pointState == P_SUPERVISED_RIGHT;
+          return $EPr;
         } else {
           if ($this->throwLockedByCmd) return "__I"; // Point throw is locked by cmd so no reason to try
-          $EP = $this->neighbourLeft->setRouteTo($directionUp, $endPoint, $this);
-          if (substr($EP, 0, 2) != "__") { // Route set
+          $EPl = $this->neighbourLeft->setRouteTo($directionUp, $endPoint, $this);
+          if (substr($EPl, 0, 2) != "__") { // Route set
             $this->routeLockingState = R_LOCKED;
             $this->routeLockingType = RT_LEFT;
             if ($automaticPointThrowEnabled) $this->throwPoint(C_LEFT); // Throw left
+            return $EPl;
           }
+          if ($EPr == "__B" or $EPl == "__B") return "__B";
+          if ($EPr == "__I" or $EPl == "__I") return "__I";
+          if ($EPr == "__O" or $EPl == "__O") return "__O";
+          return "__R";
         }
-        return $EP;
       } else {// Follow logical lie left
-        $EP = $this->neighbourLeft->setRouteTo($directionUp, $endPoint, $this);
-        if (substr($EP, 0, 2) != "__") {
+        $EPl = $this->neighbourLeft->setRouteTo($directionUp, $endPoint, $this);
+        if (substr($EPl, 0, 2) != "__") {
           $this->routeLockingState = R_LOCKED;
           $this->routeLockingType = RT_LEFT;
-          if ($this->pointState == P_SUPERVISED_LEFT) $this->throwLockedByRoute = true;
+          $this->throwLockedByRoute =  $this->pointState == P_SUPERVISED_LEFT;
+          return $EPl;
         } else {
           if ($this->throwLockedByCmd) return "__I"; // Point throw is locked by cmd so no reason to try
-          $EP = $this->neighbourRight->setRouteTo($directionUp, $endPoint, $this);
-          if (substr($EP, 0, 2) != "__") {
+          $EPr = $this->neighbourRight->setRouteTo($directionUp, $endPoint, $this);
+          if (substr($EPr, 0, 2) != "__") {
             $this->routeLockingState = R_LOCKED;
             $this->routeLockingType = RT_RIGHT;
             if ($automaticPointThrowEnabled) $this->throwPoint(C_RIGHT); // Throw right
+            return $EPr;
           }
+          if ($EPr == "__B" or $EPl == "__B") return "__B";
+          if ($EPr == "__I" or $EPl == "__I") return "__I";
+          if ($EPr == "__O" or $EPl == "__O") return "__O";
+          return "__R";
         }
-        return $EP;
       }
     } else { // Point is trailing in route direction
       if ($caller === $this->neighbourRight) { // route search reached point via right branch
@@ -782,10 +792,10 @@ class Selement extends genericElement { // -------------------------------------
   public function cmdSetRouteTo($endPoint) {
   // Set route from called signal to $endPoint. Return value is:
   // <realised EP> when set. Might be different from $endPoint if extended by existing route
-  // "__R" for impossible route
   // "__B" for route blocked by other routes
   // "__I" for route blocked by inhibitions
   // "__O" for route occupied
+  // "__R" for impossible route
 
   global $trainData, $trainIndex, $trackModel, $recCount;
     $recCount = 0; // FIXME

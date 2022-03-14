@@ -22,6 +22,7 @@ print "<html>
   <th>Delay</th>
   <th>Route</th>
   <th>Condition</th>
+  <th>Meeting TRN</th>
 ";
 
 $nextTrn = "";
@@ -34,6 +35,7 @@ print "
   <td>".(isset($route["delay"]) ? $route["delay"] : ""). "</td>
   <td>{$route["start"]}".(isset($route["dest"]) ? " => {$route["dest"]}" : "")."</td>
   <td>".(isset($route["condition"]) ? $route["condition"] : ""). "</td>
+  <td>".(isset($route["mTrn"]) ? $route["mTrn"]." @ " : "").(isset($route["mSignal"]) ? $route["mSignal"] : "")."</td>
 ";
   if (isset($route["condition"]) and $route["condition"] == "N") {
     print "<td> NextTrn: <a href='showTimeTable.php?trn={$route["nextTrn"]}'>{$route["nextTrn"]}</a>";
@@ -57,6 +59,8 @@ print "<p>Conditions:
     <dd>Signal is destination.</dd>
   <dt>N</dt>
     <dd>Signal is destination, Assign new TRN to train.</dd>
+  <dt>W</dt>
+    <dd>Wait for meeting train</dd>
   <dt>M</dt>
     <dd> Route from Signal to be set manually.</dd>
 </ul>

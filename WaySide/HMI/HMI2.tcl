@@ -250,7 +250,7 @@ global nTrainFrame  trainMA entryFontSize rtoMode toMode toDrive toDir trnSetVal
   .f.fTrain.t$index.trnSet state disabled
 
   grid [ttk::label .f.fTrain.t$index.etdX -text "Departure:"] -column 0 -columnspan 2  -row 2 -padx 5 -pady 2 -sticky we
-  grid [ttk::label .f.fTrain.t$index.etd -textvariable trainETD($index)] -column 2 -columnspan 2 -row 2 -padx 5 -pady 2 -sticky we
+  grid [ttk::label .f.fTrain.t$index.etd -textvariable trainETD($index)] -column 2 -columnspan 5 -row 2 -padx 5 -pady 2 -sticky we
   
   grid [ttk::label .f.fTrain.t$index.modeX -text "Mode:"] -column 0 -columnspan 2 -row 3 -padx 5 -pady 2 -sticky we
   grid [ttk::label .f.fTrain.t$index.mode -text "--" -textvariable trainMode($index)] -column 2 -columnspan 2 -row 3 -padx 5 -pady 2 -sticky we

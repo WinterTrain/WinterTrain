@@ -81,7 +81,7 @@ global $trainData, $TD_TXT_MODE, $TD_TXT_DIR, $TD_TXT_MADIR, $TD_TXT_PWR, $TD_TX
       "} {".$TD_TXT_PWR[$train["pwr"]]."} {".
       $TD_TXT_ACK[$train["MAreceived"]]."} ".$train["dataValid"]." {".$TD_TXT_RTOMODE[$train["rtoMode"]]."} {".
       $train["MAbaliseName"]."} {".$train["MAdist"]."} {".$TD_TXT_MADIR[$train["MAdir"]]."} {".$train["trn"]."} {".$train["trnStatus"]."} {".
-      ($train["etd"] != 0 ? date("H:i:s",$train["etd"]) : "")."}");
+      $train["etd"]."}");
   }
 }
 

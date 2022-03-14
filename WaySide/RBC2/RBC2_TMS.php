@@ -5,7 +5,7 @@
 function processCommandTMS($command) { // Process Commands from TMS engine
 global $now, $tmsHB, $tmsStatus, $trainData, $trackModel, $arsEnabled, $triggerHMIupdate;
   $triggerHMIupdate = true; // Necessary?? FIXME
-  $param = explode(" ",$command);
+  $param = explode("|",$command);
   switch ($param[0]) {
     case "TMS_HB":
       $tmsHB = $now + TMS_TIMEOUT;
@@ -16,34 +16,34 @@ global $now, $tmsHB, $tmsStatus, $trainData, $trackModel, $arsEnabled, $triggerH
     case "trnStatus":
       $trainData[$param[1]]["trnStatus"] = $param[2];
     break;
-    case "setRoute": // trainIndex, dir, start, destination
-print "TMS: trying route {$param[3]} -> {$param[4]}\n";
-      if ($arsEnabled and $trackModel[$param[3]]->arsState == ARS_ENABLED) {
-        if ($trackModel[$param[4]]->routeLockingState == R_IDLE) {
-          $EP = $trackModel[$param[3]]->cmdSetRouteTo($param[4]);
+    case "setRoute": // trainIndex, start, destination
+//print "RBC: TMS request route {$param[2]} -> {$param[3]} for trainIndex {$param[1]} \n";
+      if ($arsEnabled and $trackModel[$param[2]]->arsState == ARS_ENABLED) {
+        if ($trackModel[$param[3]]->routeLockingState == R_IDLE) {
+          $EP = $trackModel[$param[2]]->cmdSetRouteTo($param[3]);
           switch ($EP) {
             case "__R":
-              notifyTMS("routeStatus {$param[1]} {$param[2]} ".RSR_REJECTED); // Route impossible       
+              notifyTMS("routeStatus {$param[1]} ".RSR_REJECTED); // Route impossible       
             break;
             case "__B":
             case "__O":
-              notifyTMS("routeStatus {$param[1]} {$param[2]} ".RSR_BLOCKED); // Route temporary blocked or occupied        
+              notifyTMS("routeStatus {$param[1]} ".RSR_BLOCKED); // Route temporary blocked or occupied        
             break;
             case "__I":
-              notifyTMS("routeStatus {$param[1]} {$param[2]} ".RSR_INHIBITED); // Route setting rejected          
+              notifyTMS("routeStatus {$param[1]} ".RSR_INHIBITED); // Route temporary          
             break;
             default:
-              if ($EP == $param[4]) {
-                notifyTMS("routeStatus {$param[1]} {$param[2]} ".RSR_ROUTE_SET);
+              if ($EP == $param[3]) {
+                notifyTMS("routeStatus {$param[1]} ".RSR_ROUTE_SET);
               } else {
-                notifyTMS("routeStatus {$param[1]} {$param[2]} ".RSR_ROUTE_SET_EXTENDED);
+                notifyTMS("routeStatus {$param[1]} ".RSR_ROUTE_SET_EXTENDED);
               }
           }
         } else {
-          notifyTMS("routeStatus {$param[1]} {$param[2]} ".RSR_BLOCKED); // EP alreadu locked
+          notifyTMS("routeStatus {$param[1]} ".RSR_BLOCKED); // EP alreadu locked
         }
       } else {
-        notifyTMS("routeStatus {$param[1]} {$param[2]} ".RSR_ARS_DISABLED);
+        notifyTMS("routeStatus {$param[1]} ".RSR_ARS_DISABLED);
       }
     break;
     case "setTRN":
@@ -59,7 +59,7 @@ print "TMS: trying route {$param[3]} -> {$param[4]}\n";
 }
 
 function trainLocationTMS($trainIndex, $startPoint, $runningState, $dir) {
-print "TMSloc: $trainIndex $startPoint $runningState $dir\n";
+//print "TMSloc: $trainIndex $startPoint $runningState $dir\n";
   notifyTMS("trainLoc $trainIndex $startPoint $runningState $dir");
 }
 
