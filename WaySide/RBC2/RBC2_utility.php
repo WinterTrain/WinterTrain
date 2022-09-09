@@ -241,7 +241,6 @@ global $debug, $logFh, $errFh, $blFh, $DIRECTORY, $ERRLOG_FILE, $MSGLOG_FILE, $P
 
 function initMainProgram() {
 global $logFh, $errFh, $debug, $DIRECTORY, $ERRLOG_FILE, $MSGLOG_FILE, $background;
-
 // logFh and errFh are closed before fork to background, so need to be reopened here:
   if (!($errFh = @fopen("$DIRECTORY/$ERRLOG_FILE","a"))) {
     print "Warning: Cannot open Error log file: $DIRECTORY/$ERRLOG_FILE\n";
@@ -260,7 +259,6 @@ global $logFh, $errFh, $debug, $DIRECTORY, $ERRLOG_FILE, $MSGLOG_FILE, $backgrou
 
 function forkToBackground() {
 global $background, $errFh, $logFh;
-
   fclose($errFh);
   fclose($logFh);
   if ($background) {

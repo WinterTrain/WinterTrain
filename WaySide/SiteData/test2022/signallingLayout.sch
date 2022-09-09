@@ -4,9 +4,9 @@ C 48600 40400 1 0 0 SL_Frame-0.sym
 T 48800 41600 5 14 1 1 0 0 1
 ProjectName=Mikkels tegning
 T 49700 41100 5 14 1 1 0 0 1
-Date=15 01 2022
+Date=08-09-2022
 T 49700 40700 5 14 1 1 0 0 1
-Author=Mikkel
+Author=Mikkel/Jan
 T 49400 40400 5 10 0 0 0 0 1
 device=FRAME
 T 48600 40400 5 10 1 1 0 0 1
@@ -170,9 +170,9 @@ dLeft=30
 T 35095 44293 5 10 0 0 0 0 1
 EC_type=10
 T 35095 44493 5 10 0 0 0 0 1
-EC_addr=201
+EC_addr=202
 T 35095 44105 5 10 0 0 0 0 1
-EC_major=3
+EC_major=1
 T 35095 43720 5 10 0 0 0 0 1
 supervisionState=P
 }
@@ -189,9 +189,9 @@ dRight=30
 T 48995 46095 5 10 1 1 0 0 1
 dLeft=30
 T 48095 44493 5 10 0 0 0 0 1
-EC_addr=201
+EC_addr=202
 T 48095 44105 5 10 0 0 0 0 1
-EC_major=1
+EC_major=3
 T 48095 44293 5 10 0 0 0 0 1
 EC_type=10
 T 48095 43720 5 10 0 0 0 0 1
@@ -212,7 +212,7 @@ dLeft=30
 T 42595 44493 5 10 0 0 0 0 1
 EC_type=10
 T 42595 44693 5 10 0 0 0 0 1
-EC_addr=201
+EC_addr=202
 T 42595 44305 5 10 0 0 0 0 1
 EC_major=2
 T 42595 43920 5 10 0 0 0 0 1

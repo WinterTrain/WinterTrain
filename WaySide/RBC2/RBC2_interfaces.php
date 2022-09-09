@@ -192,7 +192,6 @@ global $AbusInterface, $toAbusGw, $AbusI2CFh;
 
 function sendToRadioLink($packet) { // Send radio packet via USB radio
 global $radioLinkFh;
-
   fwrite($radioLinkFh, "$packet\n");
 }
 
@@ -201,8 +200,6 @@ function receivedFromRadioLink($data) {  // Distribute radio packet received via
   if ($res[0] == "OK") {
     switch ($res[2]) {
     case 10: // Packet type Position report
-      // Unpack Abus packet ??? FIXME
-      // syntax: processPositionReport($trainID, $requestedMode, $MAreceived, $monDir, $pwr, $balise, $distance,  $speed, $rtoMode);
       processPositionReport($res[1] & RF12_ID_MASK, $res[11] & 0x07, ($res[11] & 0x80) >> 7, ($res[11] & 0x18) >> 3,
         ($res[11] & 0x60) >> 5, sprintf("%02X:%02X:%02X:%02X:%02X",$res[3],$res[4],$res[5],$res[6],$res[7]), 
         toSigned($res[8], $res[9]), $res[10], $res[12]);

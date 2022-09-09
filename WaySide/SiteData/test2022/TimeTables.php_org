@@ -1,0 +1,255 @@
+<?php
+
+$timeTables = [
+
+"21" => [
+  "protection" => "R",
+  "start" => "Spisebord",
+  "destination" => "Reol",
+  "description" => "Krydsning, Op",
+  "group" => "",
+  "businessStart" => "14:00",
+  "businessEnd" => "23:59",
+  "locationTable" => [
+    ["time" => "", "location" => "S1", "progress" => "A",
+      "actionTable" =>  [["dest" => "S4", "action" => "", "delay" => ""],
+                         ["dest" => "S5", "action" => "", "delay" => ""]]],
+                                                    
+    ["time" => "", "location" => "S4", "progress" => "S",
+      "actionTable" =>  [["dest" => "S7", "action" => "W", "xTrn" => "32", "xSig" => "S3", "delay" => "10"]]],
+      
+    ["time" => "", "location" => "S5", "progress" => "S",
+      "actionTable" =>  [["dest" => "S7", "action" => "W", "xTrn" => "32", "xSig" => "S2", "delay" => "10"]]],
+      
+    ["time" => "", "location" => "S7","progress" => "A",
+      "actionTable" =>  [["dest" => "BS2", "action" => "", "delay" => ""],
+                         ["dest" => "BS3", "action" => "", "delay" => ""]]],
+                                                    
+    ["time" => "", "location" => "BS2","progress" => "S",
+      "actionTable" => [["dest" => "", "action" => "N", "xTrn" => "32", "delay" => "10"]]],
+      
+    ["time" => "", "location" => "BS3","progress" => "S",
+      "actionTable" => [["dest" => "", "action" => "N", "xTrn" => "32", "delay" => "20"]]],
+  ],
+  "remarks" => "",
+],
+
+"32" => [
+  "protection" => "R",
+  "start" => "Reol",
+  "destination" => "Spisebord",
+  "description" => "Krydsning, Ned",
+  "businessStart" => "14:00",
+  "businessEnd" => "23:59",
+  "group" => "",
+  "locationTable" => [
+    ["time" => "", "location" => "S8", "progress" => "A",
+      "actionTable" => [["dest" => "S6", "action" => "", "delay" => ""]]],
+    
+    ["time" => "", "location" => "S9", "progress" => "A",
+      "actionTable" => [["dest" => "S6", "action" => "", "delay" => ""]]],
+    
+    ["time" => "", "location" => "S6", "progress" => "A",
+      "actionTable" => [["dest" => "S2", "action" => "", "delay" => ""],
+                   ["dest" => "S3", "action" => "", "delay" => ""]]],
+    
+    ["time" => "", "location" => "S2", "progress" => "S",
+      "actionTable" => [["dest" => "BS1", "action" => "W", "xTrn" => "21", "xSig" => "S5", "delay" => "10"]]],
+    
+    ["time" => "", "location" => "S3", "progress" => "S",
+      "actionTable" => [["dest" => "BS1", "action" => "W", "xTrn" => "21", "xSig" => "S4", "delay" => "10"]]],
+
+    ["time" => "", "location" => "BS1", "progress" => "S",
+      "actionTable" => [["dest" => "", "action" => "N", "xTrn" => "21", "delay" => "30"]]],
+  ],
+  "remarks" => "",
+],
+
+"11" => [
+  "protection" => "E",
+  "start" => "Spisebord",
+  "destination" => "Reol",
+  "description" => "Op",
+  "group" => "",
+  "businessStart" => "14:00",
+  "businessEnd" => "23:59",
+  "locationTable" => [
+    ["time" => "", "location" => "S1", "progress" => "A",
+      "actionTable" => [["dest" => "S4", "action" => "", "delay" => ""],
+                        ["dest" => "S5", "action" => "", "delay" => ""]]],
+    
+    ["time" => "", "location" => "S4",  "progress" => "A",
+      "actionTable" => [["dest" => "S7", "action" => "", "delay" => "10"]]],
+    
+    ["time" => "", "location" => "S5",  "progress" => "A",
+      "actionTable" => [["dest" => "S7", "action" => "", "delay" => "10"]]],
+    
+    ["time" => "", "location" => "S7",  "progress" => "A",
+      "actionTable" => [["dest" => "BS2", "action" => "", "delay" => ""],
+                        ["dest" => "BS3", "action" => "", "delay" => ""]]],
+    
+    ["time" => "", "location" => "BS2",  "progress" => "S",
+      "actionTable" => [["dest" => "", "action" => "N", "xTrn" => "12", "delay" => "20"]]],
+    
+    ["time" => "", "location" => "BS3",  "progress" => "S",
+      "actionTable" => [["dest" => "", "action" => "N", "xTrn" => "12", "delay" => "20"]]],
+  ],
+  "remarks" => "",
+],
+
+"12" => [
+  "protection" => "E",
+  "start" => "Reol",
+  "destination" => "Spisebord",
+  "description" => "Ned",
+  "businessStart" => "14:00",
+  "businessEnd" => "23:59",
+  "group" => "",
+  "locationTable" => [
+    ["time" => "", "location" => "S8", "progress" => "A",
+      "actionTable" => [["dest" => "S6", "action" => "", "delay" => ""]]],
+    
+    ["time" => "", "location" => "S9", "progress" => "A",
+      "actionTable" => [["dest" => "S6", "action" => "", "delay" => ""]]],
+    
+    ["time" => "", "location" => "S6", "progress" => "A",
+      "actionTable" => [["dest" => "S2", "action" => "", "delay" => ""],
+                   ["dest" => "S3", "action" => "", "delay" => ""]]],
+    
+    ["time" => "", "location" => "S3", "progress" => "A",
+      "actionTable" => [["dest" => "BS1", "action" => "", "delay" => "10"]]],
+    
+    ["time" => "", "location" => "S2", "progress" => "A",
+      "actionTable" => [["dest" => "BS1", "action" => "", "delay" => "10"]]],
+    
+    ["time" => "", "location" => "BS1", "progress" => "S",
+      "actionTable" => [["dest" => "", "action" => "N", "xTrn" => "11", "delay" => "20"]]],
+  ],
+  "remarks" => "",
+],
+"101" => [
+  "protection" => "E",
+  "start" => "Gulvet, S4",
+  "destination" => "Gulvet, S2",
+  "description" => "Vending, reol BS2",
+  "group" => "",
+  "locationTable" => [
+    ["time" => "", "location" => "S4", "progress" => "A",
+      "actionTable" => [["dest" => "BS2", "action" => "", "delay" => ""]]],
+
+    ["time" => "", "location" => "BS2", "progress" => "S",
+      "actionTable" => [["dest" => "BS2", "action" => "D", "delay" => ""]]],
+
+    ["time" => "", "location" => "S8", "progress" => "",
+      "actionTable" => [["dest" => "S2", "action" => "", "delay" => "10"]]],
+
+    ["time" => "", "location" => "S2", "progress" => "S", 
+      "actionTable" => [["dest" => "", "action" => "E", "delay" => ""]]],
+  ],
+  "remarks" => "",
+],
+
+"102" => [
+  "protection" => "E",
+  "start" => "Gulvet, S5",
+  "destination" => "Gulvet, S3",
+  "description" => "Vending, reol BS3",
+  "group" => "",
+  "locationTable" => [
+    ["time" => "", "location" => "S5", "progress" => "A",
+     "actionTable" => [["dest" => "BS3", "action" => "", "delay" => ""]]],
+    
+    ["time" => "", "location" => "BS3", "progress" => "S",
+      "actionTable" => [["dest" => "BS3", "action" => "D", "delay" => ""]]],
+
+    ["time" => "", "location" => "S9", "progress" => "",
+     "actionTable" => [["dest" => "S3", "action" => "", "delay" => "10"]]],
+    
+    ["time" => "", "location" => "S3", "progress" => "S",
+     "actionTable" => [["dest" => "", "action" => "E", "delay" => ""]]],
+  ],
+  "remarks" => "",
+],
+
+
+"111" => [
+  "protection" => "E",
+  "start" => "Gulvet, S4",
+  "destination" => "Gulvet, S2",
+  "description" => "Vending, reol BS2",
+  "group" => "",
+  "locationTable" => [
+    ["time" => "", "location" => "S4", "progress" => "", "station" => "Gulvet",
+      "actionTable" => [["dest" => "BS2", "action" => "", "delay" => "4"],
+                        ["dest" => "BS3", "action" => "", "delay" => "5"]]],
+
+    ["time" => "", "location" => "S5", "progress" => "", "station" => "Gulvet",
+      "actionTable" => [["dest" => "BS3", "action" => "", "delay" => "4"],
+                        ["dest" => "BS2", "action" => "", "delay" => "5"]]],
+
+    ["time" => "", "location" => "BS2", "progress" => "S",
+      "actionTable" => [["dest" => "", "action" => "D", "delay" => ""]]],
+
+    ["time" => "", "location" => "BS3", "progress" => "S",
+      "actionTable" => [["dest" => "", "action" => "D", "delay" => ""]]],
+
+    ["time" => "", "location" => "S8", "progress" => "", "station" => "Reolen",
+      "actionTable" => [["dest" => "S2", "action" => "W", "xTrn" => "112", "xSig" => "S9", "delay" => ""]]],
+
+    ["time" => "", "location" => "S9", "progress" => "",
+      "actionTable" => [["dest" => "S3", "action" => "W", "xTrn" => "112", "xSig" => "S8", "delay" => ""]]],
+
+    ["time" => "", "location" => "S2", "progress" => "S",  "station" => "Gulvet",
+      "actionTable" => [["dest" => "", "action" => "N", "xTrn" => "111", "delay" => "20"]]],
+
+    ["time" => "", "location" => "S3", "progress" => "S", 
+      "actionTable" => [["dest" => "", "action" => "N", "xTrn" => "111", "delay" => "20"]]],
+  ],
+  "remarks" => "",
+],
+
+"112" => [
+  "protection" => "E",
+  "start" => "Gulvet, S5",
+  "destination" => "Gulvet, S3",
+  "description" => "Vending, reol BS3",
+  "group" => "",
+  "locationTable" => [
+    ["time" => "", "location" => "S5", "progress" => "",
+     "actionTable" => [["dest" => "BS3", "action" => "", "delay" => ""],
+                       ["dest" => "BS2", "action" => "", "delay" => ""]]],
+    
+    ["time" => "", "location" => "S4", "progress" => "",
+     "actionTable" => [["dest" => "BS2", "action" => "", "delay" => ""],
+                       ["dest" => "BS3", "action" => "", "delay" => ""]]],
+    
+    ["time" => "", "location" => "BS3", "progress" => "S",
+      "actionTable" => [["dest" => "", "action" => "D", "delay" => ""]]],
+
+    ["time" => "", "location" => "BS2", "progress" => "S",
+      "actionTable" => [["dest" => "", "action" => "D", "delay" => ""]]],
+
+    ["time" => "", "location" => "S9", "progress" => "",
+     "actionTable" => [["dest" => "S3", "action" => "W", "xTrn" => "111", "xSig" => "S8", "delay" => ""]]],
+    
+    ["time" => "", "location" => "S8", "progress" => "",
+     "actionTable" => [["dest" => "S2", "action" => "W", "xTrn" => "111", "xSig" => "S9", "delay" => ""]]],
+    
+    ["time" => "", "location" => "S3", "progress" => "S",
+     "actionTable" => [["dest" => "", "action" => "N", "xTrn" => "112", "delay" => "20"]]],
+
+    ["time" => "", "location" => "S2", "progress" => "S",
+     "actionTable" => [["dest" => "", "action" => "N", "xTrn" => "112", "delay" => "20"]]],
+  ],
+  "remarks" => "",
+],
+
+
+/*
+// ----------------------------- Template
+
+*/
+
+];
+
+?>

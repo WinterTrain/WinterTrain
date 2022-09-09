@@ -224,7 +224,7 @@ global $trainData, $trackModel;
         and $trackModel[$SPup]->neighbourDown->occupationTrainID == $train["ID"]) ? "S" : "A"),
       "U");
     if ($trackModel[$SPup]->elementType == "BSB" or $trackModel[$SPup]->elementType == "BSE")
-      $SPup = ""; // Buffer stop as SP is only used by TMS, so delete before retunr
+      $SPup = ""; // Buffer stop as SP is only used by TMS, so delete before return
   }
   if ($SPdown != "") {
     trainLocationTMS($index, $SPdown,
@@ -425,7 +425,6 @@ global $TD_TXT_MODE, $TD_TXT_ACK, $TD_TXT_DIR, $TD_TXT_PWR, $TD_TXT_RTOMODE, $tr
 
 function determineOccupation($index) {
 global $trainData, $trackModel, $PT2;
-
   $train = &$trainData[$index];
   $baliseName = $train["baliseName"];
   $trainPositionUp = $train["distance"] + ($train["front"] == D_UP ? $train["lengthFront"] : $train["lengthBehind"]);
@@ -503,7 +502,6 @@ function releaseRouteEndPoint($index) {
 // Check if train is at stand still in rear of route EP, then release route
 // "in rear of" might be specified by a distance from EP instead of the before neighbour. ------------------------------------- FIXME
 global $trainData, $trackModel;
-
   $train = &$trainData[$index];
   if ($train["assignedRoute"] != "") {
     $EPelement = &$trackModel[$train["assignedRoute"]];

@@ -1,13 +1,13 @@
 <?php
 // ------------------------------------------------- Sources
 $PT2_SIGNALLING_LAYOUT_FILE = "/home/jabe/Desktop/Projekter/Git/WinterTrain/WaySide/SiteData/test2022/signallingLayout.sch";
-$PT2_SIGNALLING_LAYOUT_FILE_DATE = "2022-01-20 16:00:24";
+$PT2_SIGNALLING_LAYOUT_FILE_DATE = "2022-09-08 18:00:49";
 $PT2_SCREEN_LAYOUT_FILE = "/home/jabe/Desktop/Projekter/Git/WinterTrain/WaySide/SiteData/test2022/screenLayout.sch";
 $PT2_SCREEN_LAYOUT_FILE_DATE = "2022-01-20 16:01:55";
-$PT2_GENERATION_TIME = "2022-01-20 16:02:30";
+$PT2_GENERATION_TIME = "2022-09-08 18:02:07";
 $PT1_PROJECT_NAME = "Mikkels tegning";
-$PT1_DATE = "15 01 2022";
-$PT1_AUTHOR = "Mikkel";
+$PT1_DATE = "08-09-2022";
+$PT1_AUTHOR = "Mikkel/Jan";
 $HMI_PROJECT_NAME = "?";
 
 // -------------------------------------------------- PT1
@@ -396,7 +396,7 @@ $PT1 = array (
     'supervisionState' => 'P',
     'EC' => 
     array (
-      'addr' => 201,
+      'addr' => 202,
       'type' => 10,
       'majorDevice' => 2,
       'minorDevice' => 0,
@@ -430,9 +430,9 @@ $PT1 = array (
     'supervisionState' => 'P',
     'EC' => 
     array (
-      'addr' => 201,
+      'addr' => 202,
       'type' => 10,
-      'majorDevice' => 1,
+      'majorDevice' => 3,
       'minorDevice' => 0,
     ),
     'HMI' => 
@@ -464,9 +464,9 @@ $PT1 = array (
     'supervisionState' => 'P',
     'EC' => 
     array (
-      'addr' => 201,
+      'addr' => 202,
       'type' => 10,
-      'majorDevice' => 3,
+      'majorDevice' => 1,
       'minorDevice' => 0,
     ),
     'HMI' => 

@@ -2,11 +2,12 @@
 // WinterTrain, RBC2
 // HHT handlers
 
-function hhtRequest($data) { // 
-global $balisesID, $hhtFoundCount, $hhtFoundSum, $PT2, $hhtBaliseID, $hhtBaliseName;
+function processHhtRequest($data) { // 
+global $balisesID, $hhtFoundCount, $hhtFoundSum, $PT2, $hhtBaliseID, $hhtBaliseName, $triggerMCeUpdate;
 // Check sender ID: $data[1] & $RF12_ID_MASK  FIXME
   switch ($data[3]) { // Request code
     case 1: // Balise lookup
+      $triggerMCeUpdate = true;
       $balise = sprintf("%'02X:%'02X:%'02X:%'02X:%'02X",$data[4],$data[5],$data[6],$data[7],$data[8]);
       $hhtBaliseID = $balise;
       if (isset($balisesID[$balise])) {
@@ -16,7 +17,6 @@ global $balisesID, $hhtFoundCount, $hhtFoundSum, $PT2, $hhtBaliseID, $hhtBaliseN
         sendHHTresponse(2, $balise, "(unknown)");
         $hhtBaliseName = "(Unknown)";
       }
-      updateMCe();
     break;
     case 2: // Distance lookup
       $curBalise = sprintf("%'02X:%'02X:%'02X:%'02X:%'02X",$data[4],$data[5],$data[6],$data[7],$data[8]);
@@ -62,7 +62,6 @@ global $PT2, $hhtFoundCount, $hhtFoundSum;
     $hhtFoundSum = $sum;
     $hhtFoundCount++;
     return;
-
   } else {
     switch ($PT2[$element1]["element"]) {
       case "BSB":
@@ -108,7 +107,7 @@ global $PT2, $hhtFoundCount, $hhtFoundSum;
         return;
       break;
       default:
-        print "Ups 1: {$PT2[$element1]["element"]}\n";
+        errLog("Ups 1: {$PT2[$element1]["element"]}");
         exit(1);
       break;
     }
@@ -116,30 +115,27 @@ global $PT2, $hhtFoundCount, $hhtFoundSum;
 }
 
 function sendHHTresponse($responseCode, $balise, $elementName, $distance = 0) { 
-global $radioLinkAddr, $radioLink, $radioInterface;
+global $radioInterface;
   switch ($radioInterface) { 
     case "USB":
-    
-    // use sendToRadioLink($packet);   FIXME
-    
-
-      fwrite($radioLink,"51,$responseCode,");
+      $packet = "51,$responseCode,";
       $baliseArray = explode(":", $balise);
-      for ($b = 0; $b < 5; $b++) fwrite($radioLink, hexdec($baliseArray[$b]).",");
+      for ($b = 0; $b < 5; $b++) $packet .= hexdec($baliseArray[$b]).",";
       switch ($responseCode) {
         case 1: // Balise known
           $elementName .= "          "; // Ensure minimum 10 char
-          for ($b = 0; $b < 10; $b++) fwrite($radioLink, ord($elementName[$b]).",");
+          for ($b = 0; $b < 10; $b++) $packet .= ord($elementName[$b]).",";
         break;
         case 3: // Distance
         case 4:
-          fwrite($radioLink, intdiv($distance, 256).",".($distance % 256).",");
+          $packet .= intdiv($distance, 256).",".($distance % 256).",";
         break;  
       }
-      fwrite($radioLink, "0s\n");
+      $packet .= "0s\n";
+      sendToRadioLink($packet);
     break;
     case "ABUS":
-      print "Warning: HHT response via EC Link not implemented\n";
+      errLog("Warning: HHT response via EC Link not implemented");
     break;
   }
 }
