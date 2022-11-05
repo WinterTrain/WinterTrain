@@ -3,7 +3,7 @@
 // RBC core functionalty; route setting and releasing, MA generation, position determination
 
 function generateModeAuthority($index) { // -------------------------------------- Generate mode authority for specific train
-global $trainData, $trackModel, $allowSR, $allowSH, $allowFS, $allowATO, $emergencyStop;
+  global $trainData, $trackModel, $allowSR, $allowSH, $allowFS, $allowATO, $emergencyStop;
   $train = &$trainData[$index];
   switch ($train["reqMode"]) {
     case M_N:
@@ -48,12 +48,12 @@ global $trainData, $trackModel, $allowSR, $allowSH, $allowFS, $allowATO, $emerge
         $train["authMode"] = M_FS;
         $train["maxSpeed"] = $train["FSmaxSpeed"];
         if ($train["curPositionValid"]) {
-          // search for possible SP in both directions - to be used also by TMS
-          list($SPup,$SPdown) = searchSP($index);
+          list($SPup,$SPdown) = searchSP($index); // search for possible SP in both directions and inform TMS
           if ($train["assignedRoute"] == "") {
             // if one of the SPs is set for this train by TMS, prioritize that---------------------------------------------- FIXME
             if ($SPup != "" and $trackModel[$SPup]->routeLockingState == R_LOCKED
-              and $trackModel[$SPup]->routeLockingType == RT_START_POINT) { // Locked SP found in direction UP, search for EP and assign.
+              and ($trackModel[$SPup]->routeLockingType == RT_START_POINT or
+                   $trackModel[$SPup]->routeLockingType == RT_VIA)) { // Locked SP found in direction UP, search for EP and assign.
               $routeEP = $trackModel[$SPup]->searchEP(true);
               if ($trackModel[$routeEP]->assignedTrain == "") {
                 $train["assignedRoute"] = $routeEP;
@@ -66,7 +66,8 @@ global $trainData, $trackModel, $allowSR, $allowSH, $allowFS, $allowATO, $emerge
                 voidMovementAuthority($index);              
               }
             } elseif ($SPdown != "" and $trackModel[$SPdown]->routeLockingState == R_LOCKED
-              and $trackModel[$SPdown]->routeLockingType == RT_START_POINT) { // Locked SP found in direction DOWN, search for EP and assign.
+              and ($trackModel[$SPdown]->routeLockingType == RT_START_POINT or
+                   $trackModel[$SPdown]->routeLockingType == RT_VIA)) { // Locked SP found in direction DOWN, search for EP and assign.
               $routeEP = $trackModel[$SPdown]->searchEP(false);
               if ($trackModel[$routeEP]->assignedTrain == "") {
                 $train["assignedRoute"] = $routeEP;
@@ -79,13 +80,15 @@ global $trainData, $trackModel, $allowSR, $allowSH, $allowFS, $allowATO, $emerge
                 voidMovementAuthority($index);              
               }
             } else { // No SO route available for FS
-//            print "No SP route available for train {$train["ID"]} in FS\n";
+//print "No SP route available for train {$train["ID"]} in FS\n";
               voidMovementAuthority($index);
             }
-          } else { // Route already assigned to this train
+          } else { // A route is already assigned to this train
+//print "Route {$train["assignedRoute"]} already assigned to train {$train["ID"]}\n";
             generateMovementAuthority($index);
           }
         } else { // Position ambiguous, reject MA request
+print "Posiiton of train {$train["ID"]} is ambiguous\n";
           voidMovementAuthority($index);
         }          
       } else { // FS not allowed
@@ -98,12 +101,13 @@ global $trainData, $trackModel, $allowSR, $allowSH, $allowFS, $allowATO, $emerge
         $train["authMode"] = M_ATO;
         $train["maxSpeed"] = $train["ATOmaxSpeed"];
         if ($train["curPositionValid"]) { 
-          // search for possible SP in both directions - to be used also by TMS
-          list($SPup,$SPdown) = searchSP($index);
+          list($SPup,$SPdown) = searchSP($index); // search for possible SP in both directions and inform TMS
           if ($train["assignedRoute"] == "") {
             // if one of the SPs is set for this train (ID) by TMS,  prioritize that FIXME
             if ($SPup != "" and $trackModel[$SPup]->routeLockingState == R_LOCKED
-              and $trackModel[$SPup]->routeLockingType == RT_START_POINT) { // Locked SP found in direction up, search for EP and assign.
+              and ($trackModel[$SPup]->routeLockingType == RT_START_POINT or
+                   $trackModel[$SPup]->routeLockingType == RT_VIA)) { // Locked SP found in direction up, search for EP and assign.
+              // FIXME could also be locked as VIA
               $routeEP = $trackModel[$SPup]->searchEP(true);
               if ($trackModel[$routeEP]->assignedTrain == "") {
                 $train["assignedRoute"] = $routeEP;
@@ -116,7 +120,8 @@ global $trainData, $trackModel, $allowSR, $allowSH, $allowFS, $allowATO, $emerge
                 voidMovementAuthority($index);              
               }
             } elseif ($SPdown != "" and $trackModel[$SPdown]->routeLockingState == R_LOCKED
-              and $trackModel[$SPdown]->routeLockingType == RT_START_POINT) { // Locked SP found in direction down, search for EP and assign.
+              and ($trackModel[$SPdown]->routeLockingType == RT_START_POINT or
+                   $trackModel[$SPdown]->routeLockingType == RT_VIA)) { // Locked SP found in direction down, search for EP and assign.
               $routeEP = $trackModel[$SPdown]->searchEP(false);
               if ($trackModel[$routeEP]->assignedTrain == "") {
                 $train["assignedRoute"] = $routeEP;
@@ -132,7 +137,8 @@ global $trainData, $trackModel, $allowSR, $allowSH, $allowFS, $allowATO, $emerge
 //              print "No SP route available for train {$train["ID"]} in ATO\n";
               voidMovementAuthority($index);
             }
-          } else { // Route already assigned to this train
+          } else { // A route already assigned to this train
+//print "Route {$train["assignedRoute"]} already assigned to train {$train["ID"]}\n";
             generateMovementAuthority($index);
           }
         } else { // Position ambiguous, reject MA request
@@ -147,8 +153,9 @@ global $trainData, $trackModel, $allowSR, $allowSH, $allowFS, $allowATO, $emerge
   sendMA($index);
 }
 
-function searchSP($index) { // Search SP in both directions
-global $trainData, $trackModel;
+function searchSP($index) { // Search for Start Point in both directions
+  global $trainData, $trackModel;
+  // Determine border elements of occupation i.e. high and low index of occupation array
   $train = &$trainData[$index];
   $extentUp = -1000;
   foreach ($train["curOccupation"] as $i => $pos) { 
@@ -158,16 +165,16 @@ global $trainData, $trackModel;
   foreach ($train["curOccupation"] as $i => $pos) {
     if ($i < $extentDown) $extentDown = $i;
   }
-  
   $occupiedElementUp = $trackModel[$train["curOccupation"][$extentUp]];
   $occupiedElementDown = $trackModel[$train["curOccupation"][$extentDown]];
+  
   // Check for SP in direction Up
   switch ($occupiedElementUp->elementType) {
     case "BSB":
       $SPup = $occupiedElementUp->neighbourUp->searchSP(true);
     break;
     case "BSE":
-      $SPup = "";
+      $SPup = $occupiedElementUp->elementName; // Buffer stop occupied by the train is regarded as SP in order for TMS direction change to work
     break;
     case "PF":
       switch ($occupiedElementUp->pointState) {
@@ -192,7 +199,7 @@ global $trainData, $trackModel;
   // Check for SP in direction Down
   switch ($occupiedElementDown->elementType) {
     case "BSB":
-      $SPdown = "";
+      $SPdown = $occupiedElementDown->elementName; // Buffer stop occupied by the train is regarded as SP in order for TMS direction change to work
     break;
     case "BSE":
       $SPdown = $occupiedElementDown->neighbourDOwn->searchSP(false);
@@ -217,10 +224,11 @@ global $trainData, $trackModel;
       $SPdown = $occupiedElementDown->neighbourDown->searchSP(false);
     break;
   }
+
   // ---------------------------------------------------------------------------- Notify TMS about train position
   if ($SPup != "") {
     trainLocationTMS($index, $SPup, 
-      (($train["nomDir"] == D_STOP and $trackModel[$SPup]->neighbourDown->vacancyState == V_OCCUPIED 
+      (($train["driveDir"] == D_STOP and $trackModel[$SPup]->neighbourDown->vacancyState == V_OCCUPIED 
         and $trackModel[$SPup]->neighbourDown->occupationTrainID == $train["ID"]) ? "S" : "A"),
       "U");
     if ($trackModel[$SPup]->elementType == "BSB" or $trackModel[$SPup]->elementType == "BSE")
@@ -228,7 +236,7 @@ global $trainData, $trackModel;
   }
   if ($SPdown != "") {
     trainLocationTMS($index, $SPdown,
-      (($train["nomDir"] == D_STOP and $trackModel[$SPdown]->neighbourUp->vacancyState == V_OCCUPIED 
+      (($train["driveDir"] == D_STOP and $trackModel[$SPdown]->neighbourUp->vacancyState == V_OCCUPIED 
         and $trackModel[$SPdown]->neighbourUp->occupationTrainID == $train["ID"]) ? "S" : "A"),
       "D");
     if ($trackModel[$SPdown]->elementType == "BSB" or $trackModel[$SPdown]->elementType == "BSE")
@@ -242,16 +250,17 @@ function voidMovementAuthority($index) {
   $train = &$trainData[$index];
   $train["maxSpeed"] = 0;
   $train["MAdir"] = MD_NODIR;
-//  $train["MAbalise"] = "00:00:00:00:00"; // FIXME due to flaw in OBU a balise known to the OBU must be used for void MA
-//  $train["MAdist"] = 0; // -"-
+  $train["MAbalise"] = "00:00:00:00:00"; // FIXME due to flaw in OBU a balise known to the OBU must be used for void MA
   $train["MAbaliseName"] = "(00:00:00:00:00)";
 }
 
 function generateMovementAuthority($index) {
   global $trainData, $trackModel, $TD_TXT_MADIR, $balisesID, $SIGNALLING_TXT;
   $train = &$trainData[$index];
+//print "\nGenerateMA Train {$train["ID"]}, Route {$train["assignedRoute"]}/";
   if ($train["assignedRoute"] != "") {
     $signalling = $trackModel[$train["assignedRoute"]]->updateSignalling();
+//print " sig updated ";
     switch ($signalling) {
       case SIG_UDEF:
       case SIG_ERROR:
@@ -268,6 +277,7 @@ function generateMovementAuthority($index) {
         $train["MAbalise"] = $train["baliseID"];
         $train["MAbaliseName"] = $balisesID[$train["baliseID"]];
         $EOAdist = $trackModel[$train["assignedRoute"]]->computeEOAdist($index);
+//        print "EOA comp ";
         if ($EOAdist !== false) {
           if ($trackModel[$train["assignedRoute"]]->facingUp) {
             $train["MAdist"] = $EOAdist - ($train["front"] == D_UP ? $train["lengthFront"] : $train["lengthBehind"]);
@@ -323,7 +333,7 @@ function sendMA($index) {
 }
 
 function sendPosRestore($trainID, $balise, $distance) {
-global $radioInterface;
+  global $radioInterface;
   switch ($radioInterface) { 
     case "USB":
       $data = "33,$trainID,";
@@ -340,7 +350,7 @@ global $radioInterface;
 }
 
 function sendRTO($trainID, $cmd, $mode, $drive, $dir) { 
-global $radioInterface;
+  global $radioInterface;
   switch ($radioInterface) { 
     case "USB":
       $data = "32,$trainID,$cmd,".($mode | ($dir << 3) | ($drive << 5)).",0s";
@@ -352,11 +362,10 @@ global $radioInterface;
   }
 }
 
-function processPositionReport($trainID, $requestedMode, $MAreceived, $nomDir, // ------------------ Process Point Position Report from OBU
-  $pwr, $baliseID, $distance,  $speed, $rtoMode) {
-global $TD_TXT_MODE, $TD_TXT_ACK, $TD_TXT_DIR, $TD_TXT_PWR, $TD_TXT_RTOMODE, $trainData, $trainIndex, $now, $PT2, $balisesID,
-  $posRestoreEnabled, $triggerHMIupdate;
-
+function processPositionReport( // ------------------ Process Point Position Report from OBU
+  $trainID, $requestedMode, $MAreceived, $driveDir, $pwr, $frontUp, $baliseID, $distance,  $speed, $rtoMode) {
+  global $TD_TXT_MODE, $TD_TXT_ACK, $TD_TXT_DIR, $TD_TXT_PWR, $TD_TXT_RTOMODE, $trainData, $trainIndex, $now, $PT2, $balisesID,
+    $posRestoreEnabled, $triggerHMIupdate, $baliseStat;
   $triggerHMIupdate = true; // posRep will likely result in new states
   if (isset($trainIndex[$trainID])) { // Train is known
     $index = $trainIndex[$trainID];
@@ -364,18 +373,12 @@ global $TD_TXT_MODE, $TD_TXT_ACK, $TD_TXT_DIR, $TD_TXT_PWR, $TD_TXT_RTOMODE, $tr
     if ($train["deployment"] == "R" ) $train["dataValid"] = "OK";
     $train["comTimeStamp"] = $now;
     $train["reqMode"] = $requestedMode;
-    $train["prevNomDir"] = $train["nomDir"];
-    $train["nomDir"] = $nomDir; // Nominel driving direction UP, DOWN or STOP, determined by OBU
+    $train["prevDriveDir"] = $train["driveDir"];
+    $train["driveDir"] = $driveDir; // Nominel driving direction UP, DOWN or STOP, determined by OBU
+    $train["front"] = ($frontUp ? D_UP : D_DOWN); // Orientation of front of train (UP or DOWN), determined by OBU
     $train["pwr"] = $pwr;
+//print "Train $trainID Power: $pwr, Orientation: {$train["front"]}\n";
     $train["MAreceived"] = $MAreceived;
-    if ($train["pwr"] == P_R) { // Determin orientation of train front
-      $train["front"] = D_UP;
-    } elseif ($train["pwr"] == P_L) {
-      $train["front"] = D_DOWN;
-    } else { // orientation undefined by OBU - what to do? ----------------------------------------------------------- FIXME
-      $train["front"] = D_UP;
-      errLog("Warning: Unknown orientation ({$train["pwr"]}) of train $trainID, assuming front Up");
-    }
     $train["rtoMode"] = $rtoMode;
     $train["speed"] = $speed;
     if ($baliseID == "01:00:00:00:01") { // ------------------------------------------------------------------- OBU indicates void position
@@ -383,11 +386,13 @@ global $TD_TXT_MODE, $TD_TXT_ACK, $TD_TXT_DIR, $TD_TXT_PWR, $TD_TXT_RTOMODE, $tr
       if ($posRestoreEnabled) {
         if (!$train["posRestored"]) {
           if ($now - $train["posTimeStamp"] <= POSITION_TIMEOUT) { // Pos can be restored
+    // FIXME If driving direction is known, restored position can be compensated for movement
+            $train["restoreCount"] +=1;
             errLog("Train ({$train["ID"]}): Void position restored to: {$train["baliseID"]} {$train["distance"]} Stamped: ".
                 date("Ymd H:i:s", $train["posTimeStamp"]));
             sendPosRestore($train["ID"], $train["baliseID"], (int)($train["distance"] / $train["wheelFactor"]));
             // New posRep from OBU is awaited before position is determined (to verify restore)
-            $train["posRestored"] = true; // to prevent continuous restore
+  // FIXME          $train["posRestored"] = true; // to prevent continuous restore
           } else { // Old pos outdated
             errLog("Train ({$train["ID"]}): RBC position ({$train["baliseID"]}) not restored - outdated. Stamped: ".
               date("Ymd H:i:s", $train["posTimeStamp"]));
@@ -404,9 +409,15 @@ global $TD_TXT_MODE, $TD_TXT_ACK, $TD_TXT_DIR, $TD_TXT_PWR, $TD_TXT_RTOMODE, $tr
       }
     } elseif (isset($balisesID[$baliseID])) { // -------------------------------------------------------------- OBU indicates known position
       $train["posTimeStamp"] = $now;
-      $train["distance"] = $distance * $train["wheelFactor"];
+      $train["distance"] = (int)($distance * $train["wheelFactor"]);
       $train["baliseID"] = $baliseID;
       $train["baliseName"] = $balisesID[$baliseID];
+
+if ($train["baliseName"] != $train["prevBaliseName"]) {
+  $baliseStat[$train["baliseName"]][$trainID] +=1;
+  $train["prevBaliseName"] = $train["baliseName"];
+}
+
       $train["posRestored"] = false;
       determineOccupation($index);
       $train["curPositionValid"] = $train["curPositionUnambiguous"];
@@ -424,7 +435,7 @@ global $TD_TXT_MODE, $TD_TXT_ACK, $TD_TXT_DIR, $TD_TXT_PWR, $TD_TXT_RTOMODE, $tr
 }
 
 function determineOccupation($index) {
-global $trainData, $trackModel, $PT2;
+  global $trainData, $trackModel, $PT2;
   $train = &$trainData[$index];
   $baliseName = $train["baliseName"];
   $trainPositionUp = $train["distance"] + ($train["front"] == D_UP ? $train["lengthFront"] : $train["lengthBehind"]);
@@ -450,7 +461,7 @@ global $trainData, $trackModel, $PT2;
     $occupy = array_diff($occupation, $train["curOccupation"]);
     $release = array_diff($train["curOccupation"], $occupation);
     $train["curOccupation"] = $occupation; 
-    switch ($train["nomDir"]) {
+    switch ($train["driveDir"]) {
       case D_UP:
         ksort($occupy, SORT_NUMERIC); 
         ksort($release, SORT_NUMERIC);
@@ -475,7 +486,7 @@ global $trainData, $trackModel, $PT2;
         foreach ($occupy as $elementName) {
           $trackModel[$elementName]->occupyElementTrack($train["ID"], D_STOP);
         }
-        switch ($train["prevNomDir"]) {
+        switch ($train["prevDriveDir"]) {
           case D_UP:
             foreach ($release as $elementName) {
               $trackModel[$elementName]->releaseElementTrack(D_UP);
@@ -490,7 +501,7 @@ global $trainData, $trackModel, $PT2;
         releaseRouteEndPoint($index);          
       break;
       default:
-        errLog("Error: Default nomDir {$train["nomDir"]} in function determineOccupation");
+        errLog("Error: Default driveDir {$train["driveDir"]} in function determineOccupation");
     }
    } else {// Keep previous occupation if new is ambiguous
      errLog("Warning: Position of trainID {$train["ID"]} at balise >$baliseName< distance {$train["distance"]} is ambiguous");
@@ -501,7 +512,7 @@ global $trainData, $trackModel, $PT2;
 function releaseRouteEndPoint($index) {
 // Check if train is at stand still in rear of route EP, then release route
 // "in rear of" might be specified by a distance from EP instead of the before neighbour. ------------------------------------- FIXME
-global $trainData, $trackModel;
+  global $trainData, $trackModel;
   $train = &$trainData[$index];
   if ($train["assignedRoute"] != "") {
     $EPelement = &$trackModel[$train["assignedRoute"]];
@@ -512,7 +523,7 @@ global $trainData, $trackModel;
       case "SD":
         if ($EPelement->routeLockingState != R_IDLE and $EPelement->routeLockingType == RT_END_POINT) {
           $appElement = ($EPelement->facingUp ? $EPelement->neighbourDown : $EPelement->neighbourUp);
-          if ($appElement->vacancyState == V_OCCUPIED and $appElement->occupationTrainID == $train["ID"] and $train["nomDir"] == D_STOP) {
+          if ($appElement->vacancyState == V_OCCUPIED and $appElement->occupationTrainID == $train["ID"] and $train["driveDir"] == D_STOP) {
             debugPrint("Route {$train["assignedRoute"]} unassigned from train {$train["ID"]} due to EP release at {$EPelement->elementName}");
             $EPelement->assignedTrain = "";
             $train["assignedRoute"] = "";
@@ -526,7 +537,7 @@ global $trainData, $trackModel;
 } 
 
 function checkTrainTimeout() {
-global $trainData, $now, $triggerHMIupdate;
+  global $trainData, $now, $triggerHMIupdate;
   foreach ($trainData as $index => &$train) {
     if ($now - $train["comTimeStamp"] > TRAIN_COM_TIMEOUT) {
       $train["dataValid"] = "VOID";
@@ -536,7 +547,7 @@ global $trainData, $now, $triggerHMIupdate;
 }
     
 function pumpSignal() { // Resend EC order to open light signals
-global $lightSignal;
+  global $lightSignal;
   foreach ($lightSignal as $element) {
     if (($element->routeLockingType == RT_START_POINT or $element->routeLockingType == RT_VIA) 
       and ($element->signallingState == SIG_PROCEED or $element->signallingState == SIG_PROCEED_PROCEED)) 
@@ -544,21 +555,37 @@ global $lightSignal;
   }
 }
 
-function checkEmgRelTimers() {
-global $emgRelEP, $triggerHMIupdate, $now;
-  foreach ($emgRelEP as $key => $element) {
+function checkTimers() {
+  global $emgRelEPTimers, $PMretryTimers, $triggerHMIupdate, $now, $trackModel;
+  foreach ($emgRelEPTimers as $key => $element) { // --------------- Emergency route release
     if ($now - $element->emgRelTimer >= EMG_REL_TIMEOUT) {
       $element->cmdReleaseRoute();
       $triggerHMIupdate = true;
-      unset($emgRelEP[$key]);
+      unset($emgRelEPTimers[$key]);
+    }
+  }
+  foreach ($PMretryTimers as $key => $elementName) { // ---------------- Point Throw retry
+    $element = &$trackModel[$elementName];
+    if ($now - $element->retryTimer >= PM_RETRY_TIMEOUT) {
+      if ($element->pointState != ($element->logicalLieRight ? P_SUPERVISED_RIGHT : P_SUPERVISED_LEFT)) {
+        $element->throwPoint($element->logicalLieRight ? C_RIGHT : C_LEFT);
+        $element->retryTimer = $now;
+        $element->retryCount += 1;
+print "PM throw retry {$element->elementName}\n";
+        if ($element->retryCount > PM_MAX_RETRY) {
+          print "Warning: {$element->elementName} Max point throw retry reached\n";
+          unset($PMretryTimers[$key]);
+        }
+      } else { // point state OK
+        unset($PMretryTimers[$key]);      
+      }
     }
   }
 }
 
 function processCommandRBC($command, $from) { // ------------------------------------------- Process commands from HMI clients
-global $inChargeHMI, $clientsData, $trackModel, $triggerHMIupdate, 
-  $allowSR, $allowSH, $allowFS, $allowATO, $trainData, $trainIndex, $arsEnabled, $SIGNALLING_TXT, $now, $emgRelEP;
-  
+  global $inChargeHMI, $clientsData, $trackModel, $triggerHMIupdate, 
+    $allowSR, $allowSH, $allowFS, $allowATO, $trainData, $trainIndex, $arsEnabled, $SIGNALLING_TXT, $now, $emgRelEPTimers;
   $triggerHMIupdate = true; // RBC command will likely result in new states, so trigger HMI update
   $param = explode(" ",$command);
   if ($param[0] == "Rq") {// Request operation
@@ -613,11 +640,12 @@ global $inChargeHMI, $clientsData, $trackModel, $triggerHMIupdate,
             HMIindication($from, "displayResponse {OK}");
         }
       break;
-      case "rr": // Release route (without timer) given that route not occupied or assigned train is at stand still
+      case "rr": // Release route (without timer) given that route is not occupied or assigned train is at stand still
         $element = $trackModel[$param[1]];
         if ($element->routeLockingType == RT_END_POINT) {
           if ($element->assignedTrain == "") {
             if ($element->routeIsClear()) {
+              $element->cmdCloseRoute();
               $element->cmdReleaseRoute();    
               HMIindication($from, "displayResponse {OK}");
             } else {
@@ -625,14 +653,13 @@ global $inChargeHMI, $clientsData, $trackModel, $triggerHMIupdate,
             }
           } else {
             $train = &$trainData[$trainIndex[$element->assignedTrain]];
-            if ($train["nomDir"] == D_STOP) { // Assigned train is at stand still
+            if ($train["driveDir"] == D_STOP) { // Assigned train is at stand still
               debugPrint("Route {$train["assignedRoute"]} unassigned from train {$train["ID"]} due to cmd rr");
               $train["assignedRoute"] = "";              
               $train["maxSpeed"] = 0;
               $train["MAdir"] = MD_NODIR;
               $train["MAbaliseName"] = "(00:00:00:00:00)";
-//              $train["MAbalise"] = "00:00:00:00:00"; // FIXME due to a flaw in OBU, a balise known to OBU must be used in void MA
-//              $train["MAdist"] = 0;           // -"-
+              $train["MAbalise"] = "00:00:00:00:00"; // FIXME due to a flaw in OBU, a balise known to OBU must be used in void MA
               $element->assignedTrain = "";
               $element->cmdCloseRoute();
               $element->cmdReleaseRoute();
@@ -654,15 +681,14 @@ global $inChargeHMI, $clientsData, $trackModel, $triggerHMIupdate,
             $train["assignedRoute"] = "";
             $train["maxSpeed"] = 0;
             $train["MAdir"] = MD_NODIR;
-//            $train["MAbalise"] = "00:00:00:00:00"; // FIXME due to a flaw in OBU, a balise known to OBU must be used in void MA
-//            $train["MAdist"] = 0; // -"-
+            $train["MAbalise"] = "00:00:00:00:00"; // FIXME due to a flaw in OBU, a balise known to OBU must be used in void MA
             $train["MAbaliseName"] = "(00:00:00:00:00)";
             sendMA($trainIndex[$element->assignedTrain]);
             $element->assignedTrain = "";
           }
           $element->cmdCloseRoute();
           $element->emgRelTimer = $now;
-          $emgRelEP[] = $element;
+          $emgRelEPTimers[] = $element;
           HMIindication($from, "displayResponse {OK}");
         } else {
           HMIindication($from, "displayResponse {Ignored, not EP of route}");        
@@ -724,8 +750,7 @@ global $inChargeHMI, $clientsData, $trackModel, $triggerHMIupdate,
 }
 
 function toggleEmergencyStop() {
-global $trainData, $emergencyStop;
-
+  global $trainData, $emergencyStop;
   $emergencyStop = !$emergencyStop;
   foreach ($trainData as $index => $train) {
     generateModeAuthority($index);
@@ -733,9 +758,9 @@ global $trainData, $emergencyStop;
 }
 
 function initRBC() {
-global $trainData;
-
+  global $trainData;
   foreach ($trainData as $index => $train) {
+    voidMovementAuthority($index);
     generateModeAuthority($index);
   }
 }

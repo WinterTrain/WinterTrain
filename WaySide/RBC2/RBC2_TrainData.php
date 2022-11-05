@@ -3,14 +3,14 @@
 // TrainData handlers
 
 function ProcessTrainData() { //-------------------------------------------------  Analyse Train Data and optional simulation scripts
-global $trainData, $trainIndex, $DIRECTORY, $TRAIN_DATA_FILE, $SRallowed, $SHallowed, $FSallowed, $ATOallowed, $simTrain;
-
+  global $trainData, $trainIndex, $DIRECTORY, $TRAIN_DATA_FILE, $SRallowed, $SHallowed, $FSallowed, $ATOallowed, $simTrain;
   $simTrain = array();
   require("$DIRECTORY/$TRAIN_DATA_FILE");
   foreach($trainData as $index => &$train) { // FIXME check completeness of train data
     $train["reqMode"] = M_UDEF;
     $train["authMode"] = M_N;
     $train["baliseName"] = "(00:00:00:00:00)"; // PT1 name of LRBG
+    $train["prevBaliseName"] = "";
     $train["baliseID"] = "00:00:00:00:00"; // LRBG
     $train["distance"] = 0;
     $train["maxSpeed"] = 0; // Resulting allowed speed
@@ -25,9 +25,11 @@ global $trainData, $trainIndex, $DIRECTORY, $TRAIN_DATA_FILE, $SRallowed, $SHall
     $train["comTimeStamp"] = 0;
     $train["posTimeStamp"] = 0;
     $train["posRestored"] = true; // To prevent position restore until a real position report has been received.
-    $train["nomDir"] = D_UDEF; // Nominel driving direction (UP/DOWN) determined by OBU
-    $train["prevNomDir"] = D_UDEF;
-    $train["pwr"] = P_UDEF;
+    $train["restoreCount"] = 0;
+    $train["driveDir"] = 1; // Nominel driving direction (UP/DOWN) determined by OBU
+    $train["prevDriveDir"] = 1;
+    $train["pwr"] = 0;
+    $train["front"] = D_UP;
     $train["rtoMode"] = RTO_UDEF;
     $train["MAreceived"] = 0;
     $train["MAbalise"] = "00:00:00:00:00";
@@ -41,7 +43,6 @@ global $trainData, $trainIndex, $DIRECTORY, $TRAIN_DATA_FILE, $SRallowed, $SHall
     $train["etd"] = 0;
     $train["index"] = $index; // to know index in functions where only one train data set is handed over. Used? FIXME
     $trainIndex[$train["ID"]] = $index;
-        
     switch($train["deployment"]) {
       case "R":
         $train["dataValid"] = "VOID";
@@ -71,7 +72,7 @@ global $trainData, $trainIndex, $DIRECTORY, $TRAIN_DATA_FILE, $SRallowed, $SHall
 }
 
 function processSimScript($index) {
-global $simTrain, $DIRECTORY, $PT2;
+  global $simTrain, $DIRECTORY, $PT2;
   $sim = &$simTrain[$index];
   $sim["scriptIndex"] = 0;
   $sim["script"][0]["lineNo"] = "<no script>";
@@ -79,7 +80,7 @@ global $simTrain, $DIRECTORY, $PT2;
   $sim["script"][0]["baliseID"] = "00:00:00:00:00";
   $sim["script"][0]["dist"] = 0;
   $sim["pwr"] = P_UDEF;
-  $sim["nomDir"] = D_UDEF;
+  $sim["driveDir"] = D_UDEF;
   if(is_readable("$DIRECTORY/{$sim["simFile"]}")) {
     $fh = fopen("$DIRECTORY/{$sim["simFile"]}", "r");
     $lineNo = 0;
@@ -95,8 +96,8 @@ global $simTrain, $DIRECTORY, $PT2;
           case "PWR":
             $sim["pwr"] = $p2;
           break;
-          case "nomDir": // Nominel driving direction UP or DOWN
-            $sim["nomDir"] = $p2;
+          case "driveDir": // Nominel driving direction UP or DOWN
+            $sim["driveDir"] = $p2;
           break;
           default: // Train movement
             $sim["script"][$scriptIndex]["baliseName"] = $p1;

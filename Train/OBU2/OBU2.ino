@@ -24,6 +24,7 @@ const unsigned long MODE_TIMEOUT = 640000; // 10 sec
 const unsigned long DYN = 3200; // 0.05 sec
 const unsigned long CORINT = 64000;
 const int POL_SAMPLE_TIME = 3200;
+const byte MAX_MOVE_SUPERVISION = 100; // Max Dyn cycles before non-moving train is stopped
 
 // Enummerations and codes
 // Nominel direction
@@ -129,7 +130,7 @@ byte authorisedMode = N; // as authorised by RBC (if necessary)
 byte authorisation; // from RBC
 byte v, vReq, vMotor; // Actual speed, requested drive, command to motor
 byte vMax = VMAX_SH; // Max speed in SH
-byte nomDir; // nominel direction (UP, DOWN or STOP) of train front end (forward)
+byte nomDir; // nominel direction (UP, DOWN) of train front end (forward)
 byte nomDirOrder ; // nominel driving direction as ordered by driver or ATO (UP, STOP, DOWN)
 byte nomDriveDir, oldNomDriveDir; // Actual nominel driving direction, reflecting motor operation (UP, DOWN or STAND_STILL)
 byte driveDir; // Actual driving direction, reflecting motor (FORWARD, REVERSE or NEUTRAL)
@@ -141,12 +142,15 @@ boolean positionUnknown = true; // Position is unknown until first balise is rea
 int tripMeter; //
 byte MAindex; // index to knownBalises of current MA
 byte driveLimit;
+boolean MAupAllowed = false; // Allowed direction from MA, only applicable for mode FS and ATO
+boolean MAdownAllowed = false;
 boolean atShuntBorder; // if the train is close to a shunt border; current balise is a ShuntBorder balise FIXME
 boolean shuntBorderStop; // Train has reached shunting border. Stop if in shunting FIXME
 int borderDist; // Distance from current balise to shunt border (with sign), if the current balise is a shuntBorder balise FIXME
 boolean emergencyStop; // Prevent motor power if set
 byte driveCorrection; // Correction of MAspeed when approaching EOA
-
+byte moveSup; // Movement supervision
+boolean safetyStop; // disable motor of non-moving train
 
 // Buffers and triggers
 byte txDMI[4], baliseBuf[5], MAindication, MAindFlash;
@@ -165,16 +169,19 @@ baliseType knownBalises[MAX_BALISES];
 void setup() {
   TCCR0B = (TCCR0B & 0b11111000) | 0x01; // Set PWM freq for pin 5 to 62.5 kHz This is affecting delay() and millis() as 1 sec ~ 64000 counts
   rf12_initialize(OBU_ID, RF12_868MHZ, GROUP);
-  wdt_enable(WDTO_4S);
+  wdt_enable(WDTO_1S);
   Serial.begin(9600); // for TAG reader
   pinMode(OBU_PIN_MOTOR, OUTPUT);
   pinMode(OBU_PIN_DIR_CONTROL, OUTPUT);
+//  pinMode(OBU_PIN_RED, OUTPUT); // ---------------------------------------------- gryf
+//  digitalWrite(OBU_PIN_RED, HIGH); // gryf
+
 #ifdef BEAT
   pinMode(OBU_PIN_RED, OUTPUT);  // FIXME
 #endif
 #ifdef OBU_PIN_BLUE
   pinMode(OBU_PIN_BLUE, OUTPUT);
-  digitalWrite(OBU_PIN_BLUE, LOW);
+  digitalWrite(OBU_PIN_BLUE, HIGH);
 #endif
 #ifdef OBU_PIN_OVERRIDE
   pinMode(OBU_PIN_OVERRIDE, INPUT_PULLUP); // FIXME pull-up???
@@ -186,14 +193,18 @@ void setup() {
 #ifdef BEAT
   digitalWrite(OBU_PIN_RED, HIGH);
 #endif
-#ifdef OBU_PIN_BLUE
-  digitalWrite(OBU_PIN_BLUE, HIGH);
+#ifdef OBU_PIN_BLUE // ?? FIXME
+  //  digitalWrite(OBU_PIN_BLUE, HIGH); // FIXME
 #endif
 #ifdef OVERRIDE_SR
+#ifdef OBU_PIN_OVERRIDE
   overrideSR = !digitalRead(OBU_PIN_OVERRIDE);
 #endif
+#endif
 #ifdef OVERRIDE_SH
+#ifdef OBU_PIN_OVERRIDE
   overrideSH = !digitalRead(OBU_PIN_OVERRIDE);
+#endif
 #endif
   if (DETECT_NOM_DIR == AUTO_DETECT) {
     x = 0;
@@ -238,11 +249,6 @@ void loop() {
     blnk = !blnk;
   }
 
-  //  if (timerDMITimeout <= 0) {// ------------------------------ DMI lost FIXME
-  //    timerDMITimeout = DMI_TIMEOUT;
-  //    modeSel = 0; dirSel = 0; driveSel = 0;
-  //  }
-
   if (!DMIlost and timerModeTimeout <= 0) {// ------------------------------ DMI lost for long time
     DMIlost = true;
     authorisedMode = N;
@@ -267,8 +273,8 @@ void loop() {
   rf12Transceive();
   shuntBorder();
   opMode();
-  dirMode();
   driveMode();
+  dirMode();
   traction();
   headLight();
   indication();
@@ -283,8 +289,8 @@ void odometry() { // position and speed
   byte w;
   static byte oldW;
   w = digitalRead(OBU_PIN_WHEEL);
-  //  digitalWrite(OBU_PIN_BLUE, authorisedMode == SR ? w : HIGH);
   if (w and !oldW) {
+    moveSup = 0; // Train is moving, reset movement supervision timer
     switch (nomDriveDir) {
       case UP:
         for (byte b = 0; b < MAX_BALISES; b++) knownBalises[b].curDist++;
@@ -457,14 +463,22 @@ byte MAspeed() {
   return driveLimit;
 }
 
-byte MAdir() { // Which direction (FORWARD or REVERSE) is allowed
-  if (knownBalises[MAindex].MAvalid and abs(distance) > MIN_DIST) {  // Check allowed direction in MA   FIXME
-    return distance > 0 ?
-           (nomDir == UP ? FORWARD : REVERSE) :
-           (nomDir == UP ? REVERSE : FORWARD);
-  } else {
-    return NEUTRAL;
+byte MAdir() { // Which direction (FORWARD or REVERSE) is allowed according to MA
+  if (knownBalises[MAindex].MAvalid) {
+    if (abs(distance) > MIN_DIST) {
+      if (distance > 0 and MAupAllowed) {
+        return (nomDir == UP ? FORWARD : REVERSE);
+      }
+      if (distance < 0 and MAdownAllowed) {
+        return (nomDir == UP ? REVERSE : FORWARD);
+      }
+    } else { // at destination
+      knownBalises[MAindex].MAvalid = false; // Clear MA
+      MAupAllowed = false;
+      MAdownAllowed = false;
+    }
   }
+  return NEUTRAL;
 }
 
 byte driveMode() { // Compute driving Order (i.e. speed)
@@ -490,7 +504,6 @@ byte driveMode() { // Compute driving Order (i.e. speed)
 }
 
 byte dirMode() { // compute direction Order
-// Check allowed direction: MAdir ---------------------------------------------------------- FIXME
   switch (authorisedMode) {
     case N:
       dirOrder = NEUTRAL;
@@ -529,7 +542,7 @@ byte dirMode() { // compute direction Order
       dirOrder = dirSel == MAdir() ? dirSel : NEUTRAL;
       if (dirSel == NEUTRAL) {
         knownBalises[MAindex].MAreceived = false;
-        knownBalises[MAindex].MAvalid = false; // clear current MA
+        knownBalises[MAindex].MAvalid = false; // clear current MA as dirSel = Neutral is similar to end of mission
       }
       break;
     case ATO:
@@ -596,12 +609,22 @@ void vDyn() {
       vMotor++;
     }
   }
+  if (vMotor > 0) { // Train is supposed to move
+    if ( moveSup > MAX_MOVE_SUPERVISION) { // stop motor if train has not moved for some time
+      safetyStop = true;
+    } else {
+      moveSup++;
+    }
+  } else {
+    safetyStop = false;
+    moveSup = 0;
+  }
   if (vMotor == 0) {
     nomDriveDir = STAND_STILL;
     driveDir = NEUTRAL;
     v = 0;
   }
-  analogWrite(OBU_PIN_MOTOR, !emergencyStop and vMotor > 0 ? vMotor + V_OFFSET : 0);
+  analogWrite(OBU_PIN_MOTOR, !emergencyStop and !safetyStop and vMotor > 0 ? vMotor + V_OFFSET : 0);
 }
 
 void checkBalise() {
@@ -632,7 +655,7 @@ void checkBalise() {
     }
     sendPosition();
     // if in mode SH generate fake MA based on read balise and shunting border table FIXME
-    
+
     // check if balise is a shunt border balise FIXME
     for (i = 0; i < N_SABALISES; i++) {
       hit = true;
@@ -663,13 +686,13 @@ void sendPosition() {
   posRep.v = vReq;
   if (reqMode == FS or reqMode == ATO) {
     posRep.stat = reqMode | nomDriveDir << 3 |
-                  digitalRead(OBU_PIN_TRACK_UP) << 5 |
-                  digitalRead(OBU_PIN_TRACK_DOWN) << 6 |
+                  (!digitalRead(OBU_PIN_TRACK_UP) or !digitalRead(OBU_PIN_TRACK_DOWN)) << 5 | // Power available
+                  (nomDir == UP) << 6 |                                                             // Orientation
                   knownBalises[curBalise].MAreceived << 7;
   } else {
     posRep.stat = reqMode | nomDriveDir << 3 |
-                  digitalRead(OBU_PIN_TRACK_UP) << 5 |
-                  digitalRead(OBU_PIN_TRACK_DOWN) << 6 |
+                  (!digitalRead(OBU_PIN_TRACK_UP) or !digitalRead(OBU_PIN_TRACK_DOWN)) << 5 | // Power available
+                  (nomDir == UP) << 6 |                                                             // Orientation
                   (reqMode == authorisedMode) << 7;
   }
   posRep.rtoMode = rtoMode;
@@ -680,7 +703,11 @@ void sendPosition() {
 void rf12Transceive() {
   static boolean hit; static int d; byte index;
 
-  if (rf12_recvDone() and rf12_crc == 0) {
+//  digitalWrite(OBU_PIN_RED, LOW);
+  boolean receiveStat = rf12_recvDone();
+//  digitalWrite(OBU_PIN_RED, HIGH);
+
+  if (receiveStat and rf12_crc == 0) {
     switch (rf12_hdr & ID_MASK) { // sender
       case DMI_ID: // DMI command
         // if rd12_data[0] == 20
@@ -704,8 +731,7 @@ void rf12Transceive() {
         switch (rf12_data[0]) { // packet type
           case MA_PACK:
             if (rf12_data[1] == OBU_ID) {
-              authorisation = rf12_data[2] & 0x07; // authorized mode
-              // Get MAdir, bit 33 and 4
+              authorisation = rf12_data[2] & 0x07; // Authorized mode
               switch (authorisation) {
                 case ESTOP:
                   emergencyStop = true;
@@ -713,6 +739,12 @@ void rf12Transceive() {
                 case FS:
                 case ATO:
                   emergencyStop = false;
+                  if (rf12_data[2] & 0x10) { // Authorized direction
+                    MAupAllowed = true;
+                  }
+                  if (rf12_data[2] & 0x08) { // Authorized direction
+                    MAdownAllowed = true;
+                  }
                   if (rf12_data[3] | rf12_data[4] | rf12_data[5] | rf12_data[6] | rf12_data[7]) { // Balise ID  0:0:0:0:0 indicates a void MA
                     d =  word(rf12_data[9], rf12_data[8]);
                     for (index = 0; index < MAX_BALISES; index++) {
@@ -732,11 +764,14 @@ void rf12Transceive() {
                       knownBalises[MAindex].MAvalid = true;
                       knownBalises[MAindex].vMax = ( rf12_data[10] <= MAX_DRIVE ? rf12_data[10] : MAX_DRIVE);
                     } // else MA with unknown balise is ignored
-                  } // else clear MA --------------------------------------------------- FIXME
+                  } else {// clear MA
+                    knownBalises[MAindex].MAvalid = false; // FIXME clear all knovn balises ??
+                  }
                   break;
                 case SR:
                 case SH:
                   emergencyStop = false;
+                  knownBalises[MAindex].MAvalid = false; // Clear any MA, FIXME clear all knovn balises ??
                   vMax = ( rf12_data[10] <= MAX_DRIVE ? rf12_data[10] : MAX_DRIVE);
                   break;
               }
@@ -790,6 +825,8 @@ void rf12Transceive() {
         break;
     }
   }
+//    digitalWrite(OBU_PIN_RED, LOW);
+
   if (txDMIW and rf12_canSend()) {
     rf12_sendStart(BROADCAST, &txDMI, sizeof(txDMI));
     rf12_sendWait(0);
@@ -799,6 +836,8 @@ void rf12Transceive() {
     rf12_sendWait(0);
     txPosRep = false;
   }
+//    digitalWrite(OBU_PIN_RED, HIGH);
+
 }
 
 boolean readBalise() {

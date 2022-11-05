@@ -3,9 +3,8 @@
 // MCe handlers
 
 function processCommandMCe($command, $from) { // ------------------------------------------ Process commands from MCe clients
-global $run, $reloadRBC, $inChargeMCe, $clientsData, $EC, $trackModel, $test, $triggerMCeUpdate, $triggerHMIupdate, $simTrain,
-  $automaticPointThrowEnabled, $DIRECTORY, $PT2_FILE, $BL_FILE, $PT2, $baliseCountUnassigned, $balisesID;
-
+  global $run, $reloadRBC, $inChargeMCe, $clientsData, $EC, $trackModel, $test, $triggerMCeUpdate, $triggerHMIupdate, $simTrain,
+    $automaticPointThrowEnabled, $DIRECTORY, $PT2_FILE, $BL_FILE, $PT2, $baliseCountUnassigned, $balisesID;
   $triggerMCeUpdate = true;
   $param = explode(" ",$command);
   switch ($param[0]) {
@@ -116,8 +115,8 @@ global $run, $reloadRBC, $inChargeMCe, $clientsData, $EC, $trackModel, $test, $t
     case "posRepDrv":
       $triggerHMIupdate = true;
       $sim = $simTrain[$param[1]]; // FIXME check existance ?
-      // syntax: processPositionReport($trainID, $requestedMode, $MAreceived, $nomDir, $pwr, $balise, $distance,  $speed, $rtoMode);
-      processPositionReport($sim["ID"], $param[2], 1, $sim["nomDir"], $sim["pwr"], $sim["script"][$sim["scriptIndex"]]["baliseID"], 
+      // syntax: processPositionReport($trainID, $requestedMode, $MAreceived, $driveDir, $pwr, $frontUp, $balise, $distance,  $speed, $rtoMode);
+      processPositionReport($sim["ID"], $param[2], 1, $sim["driveDir"], $sim["pwr"], $sim["script"][$sim["scriptIndex"]]["baliseID"], 
         $sim["script"][$sim["scriptIndex"]]["dist"], 1, RTO_DMI);
       if ($simTrain[$param[1]]["scriptIndex"] < sizeof($simTrain[$param[1]]["script"]) - 1) {
         $simTrain[$param[1]]["scriptIndex"] +=1;
@@ -126,16 +125,16 @@ global $run, $reloadRBC, $inChargeMCe, $clientsData, $EC, $trackModel, $test, $t
     case "posRepSt":
       $triggerHMIupdate = true;
       $sim = $simTrain[$param[1]]; // FIXME check existance ?
-      // syntax: processPositionReport($trainID, $requestedMode, $MAreceived, $nomDir, $pwr, $balise, $distance,  $speed, $rtoMode);
-      processPositionReport($sim["ID"], $param[2], 0, D_STOP, $sim["pwr"], $sim["script"][$sim["scriptIndex"]]["baliseID"], 
+      // syntax: processPositionReport($trainID, $requestedMode, $MAreceived, $driveDir, $pwr,  $frontUp,$balise, $distance,  $speed, $rtoMode);
+      processPositionReport($sim["ID"], $param[2], 0, D_STOP, $sim["pwr"], 1, $sim["script"][$sim["scriptIndex"]]["baliseID"], 
         $sim["script"][$sim["scriptIndex"]]["dist"], 0, RTO_DMI);
 
     break;
     case "posRepUdef":
       $triggerHMIupdate = true;
       $sim = $simTrain[$param[1]]; // FIXME check existance ?
-      // syntax: processPositionReport($trainID, $requestedMode, $MAreceived, $nomDir, $pwr, $balise, $distance,  $speed, $rtoMode);
-      processPositionReport($sim["ID"], $param[2], 0, D_STOP, $sim["pwr"], "01:00:00:00:01", 0,  0, RTO_DMI);
+      // syntax: processPositionReport($trainID, $requestedMode, $MAreceived, $driveDir, $pwr,  $frontUp,$balise, $distance,  $speed, $rtoMode);
+      processPositionReport($sim["ID"], $param[2], 0, D_STOP, $sim["pwr"], 1, "01:00:00:00:01", 0,  0, RTO_DMI);
 
     break;
     case "reloadSim":
@@ -157,8 +156,8 @@ global $run, $reloadRBC, $inChargeMCe, $clientsData, $EC, $trackModel, $test, $t
 }
 
 function UpdateIndicationMCe() { // Update indications for all MCe clients
-global $EC, $startTime, $tmsStatus, $TMS_STATUS_TXT, $TD_TXT_MADIR, $triggerMCeUpdate, $simTrain, $trainData, $hhtBaliseID, $hhtBaliseName, $hhtBaliseStatus, $baliseCountTotal, $baliseCountUnassigned;
-
+  global $EC, $startTime, $tmsStatus, $TMS_STATUS_TXT, $TD_TXT_MADIR, $triggerMCeUpdate, $simTrain, $trainData, $hhtBaliseID, $hhtBaliseName,
+    $hhtBaliseStatus, $baliseCountTotal, $baliseCountUnassigned;
   MCeIndicationAll("set ::serverUptime {".trim(`/usr/bin/uptime`)."}");
   MCeIndicationAll("set ::RBCuptime {".prettyPrintTime(time() - $startTime)."}");
   MCeIndicationAll("set ::tmsStatus {{$TMS_STATUS_TXT[$tmsStatus]}}"); 
@@ -184,7 +183,7 @@ global $EC, $startTime, $tmsStatus, $TMS_STATUS_TXT, $TD_TXT_MADIR, $triggerMCeU
 }
 
 function MCeStartup($client) { // Initialise specific MCe client with static data
-global $EC, $simTrain, $triggerMCeUpdate;
+  global $EC, $simTrain, $triggerMCeUpdate;
   MCeIndication($client, "destroyDynFrame");
   foreach ($EC as  $addr => $ec) {
     MCeIndication($client, "ECframe $addr");
@@ -201,7 +200,7 @@ function MCeIndication($to, $msg) {// Send indication to specific MCe client
 }
 
 function MCeIndicationAll($msg) {// Send indication to all MCe client
-global $clients, $clientsData;
+  global $clients, $clientsData;
   foreach ($clients as $client) {
     if ($clientsData[(int)$client]["type"] == "MCe") {
       MCeIndication($client, $msg);
@@ -210,7 +209,7 @@ global $clients, $clientsData;
 }
 
 function dumpTrainData() {
-global $trainData;
+  global $trainData;
   print "\nRBC2 Train Data Dump ".date("Ymd H:i:s")."\n";
   print "ID Route    MAbalise         Dist Occupation\n";
   foreach ($trainData as $index => $train) {
@@ -224,7 +223,7 @@ global $trainData;
 }
 
 function dumpRoutes() {
-global $trackModel;
+  global $trackModel;
   print "\nRBC2 Route Dump ".date("Ymd H:i:s")."\n";
   print "EP       Train Route\n";
   foreach ($trackModel as $name => $model) {
@@ -246,23 +245,40 @@ global $trackModel;
 }
 
 function dumpTrackModel() {
-global  $trackModel, $TVS_TXT_SH, $RLS_TXT_SH, $RLT_TXT_SH, $RDIR_TXT_SH, $PS_TXT_SH, $SIGNALLING_TXT_SH;
+  global  $trackModel, $TVS_TXT_SH, $RLS_TXT_SH, $RLT_TXT_SH, $RDIR_TXT_SH, $PS_TXT_SH, $SIGNALLING_TXT_SH;
   print "\nRBC2 Track Model Dump ".date("Ymd H:i:s")."\n";
-  print "Name     Type TVS  RLS  RLT  DIR P  Train Sig\n";
+  print "Name     Type TVS  RLS  RLT  DIR P  Train Sig Occup\n";
   foreach ($trackModel as $name => $model) {
-    $lines[] = sprintf("%-8.8s %-4.4s %-4.4s %-4.4s %-4.4s %2s  %2.2s %5.5s %2.2s\n", $name, $model->elementType, $TVS_TXT_SH[$model->vacancyState], 
+    $lines[] = sprintf("%-8.8s %-4.4s %-4.4s %-4.4s %-4.4s %2s  %2.2s %5.5s %2.2s %s\n", $name, $model->elementType, $TVS_TXT_SH[$model->vacancyState],
       $RLS_TXT_SH[$model->routeLockingState], $RLT_TXT_SH[$model->routeLockingType], $RDIR_TXT_SH[$model->routeLockingUp],
         (($model->elementType == "PF" or $model->elementType == "PT") ?
           ($PS_TXT_SH[$model->pointState].($model->throwLockedByRoute ? "!" : " ")) : ""),
         (($model->elementType == "SU" or $model->elementType == "SD" or $model->elementType == "BSB" or $model->elementType == "BSE") ?
           $model->assignedTrain : "" ),
         (($model->elementType == "SU" or $model->elementType == "SD") ?
-          $SIGNALLING_TXT_SH[$model->signallingState] : ""));
+          $SIGNALLING_TXT_SH[$model->signallingState] : ""), $model->occupationTrainID);
 
   }
   sort($lines, SORT_NATURAL);
   foreach ($lines as $line) {
     print "$line";
+  }
+  print "\n";
+  dumpBaliseStat();
+}
+
+function dumpBaliseStat() {
+  global $baliseStat;
+  print "BaliseStat
+Name    20  22  24
+";
+  
+  foreach ($baliseStat as $name => $countTrain) {
+    printf("%-5s  ", $name);
+    foreach ($countTrain as $count) {
+      printf("%3d ", $count);
+    }
+    print("\n");
   }
 }
 

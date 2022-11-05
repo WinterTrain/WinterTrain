@@ -53,6 +53,10 @@ define("RT_VIA", 5);
 define("RT_RIGHT", 7);
 define("RT_LEFT", 8);
 
+// Origin of route setting
+define('CO_USR', 1);
+define('CO_TMS', 2);
+
 // Signalling
 define("SIG_UDEF", 0);
 define("SIG_ERROR", 1);
@@ -90,14 +94,6 @@ define("C_LEFT",20);
 define("C_RIGHT",21);
 define("C_HOLD",22);              // Hold according to logicalLieRight
 define("C_RELEASE",23);           // Release held point
-
-// Functional Element state, signal -- used ? FIXME
-/*
-define("S_UNDEFINED", 0);         // No information
-define("S_STOP", 1);
-define("S_PROCEED", 2);
-define("S_PROCEED_PROCEED", 3);
-*/
 
 // ARS status
 define("ARS_DISABLED",0);
@@ -165,7 +161,7 @@ define("TMS_NO_TMS",3);
 // Response code (from RBC) for TMS route setting. Must be aligned with TMS
 define("RSR_UDEF", 0);
 define("RSR_ROUTE_SET", 1);
-define("RSR_SET_EXTENDED", 2);    // Route set, but extended by existing route - Used?? FIXME
+define("RSR_SET_EXTENDED", 2);    // Route set, but extended by existing route - Currently not used?? FIXME
 define("RSR_REJECTED", 3);        // rejected as impossible
 define("RSR_BLOCKED", 4);         // blocked by other route
 define("RSR_INHIBITED", 5);       // inhibited by command

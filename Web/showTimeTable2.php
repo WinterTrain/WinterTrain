@@ -129,7 +129,13 @@ if (is_file($TT_FILE)) {
       }
     }
   } else { // file is read only
-    printTimeTable($trn, $tt);
+    $trn = $_GET["trn"];
+    if (isset($timeTables[$trn])) { // Existing trn
+      printTimeTable($trn, $timeTables[$trn]);
+    } else {
+      print "
+<p>Unknown trn in URL";
+    }
   }
 } else {
   print "
@@ -163,9 +169,15 @@ global $PT1, $timeTables;
       }
       switch ($action["action"]) {
         case " ":
+        case "R":
           if (!isset($PT1[$action["dest"]])) {
             $ok = false;
             $res[$locationIndex][$actionIndex] .= "Unknown destination \"{$action["dest"]}\" ";
+          }
+          if ($PT1[$location["location"]]["element"] == "BSB" or $PT1[$location["location"]]["element"] == "BSE") {
+            $ok = false;
+            $res[$locationIndex][$actionIndex] .=
+              "Location \"{$location["location"]}\" of type Buffer Stop cannot be used as start signal of route ";
           }
           if ($action["xTrn"]!= "") {
             $ok = false;
@@ -174,9 +186,10 @@ global $PT1, $timeTables;
           if ($action["xSig"]!= "") {
             $ok = false;
             $res[$locationIndex][$actionIndex] .= "Wait signal not needed for Ation \"R\" ";
-          }        break;
+          }
+        break;
         case "W":
-          if (!isset($PT1[$action["dest"]])) {
+          if (!isset($PT1[$action["dest"]]) and $PT1[$action["dest"]] != "*") {
             $ok = false;
             $res[$locationIndex][$actionIndex] .= "Unknown destination \"{$action["dest"]}\" ";
           }
@@ -228,7 +241,8 @@ global $PT1, $timeTables;
           if ($action["xSig"]!= "") {
             $ok = false;
             $res[$locationIndex][$actionIndex] .= "Wait signal not needed for Action \"E\" ";
-          }        break;
+          }
+        break;
       }
     }
   }
@@ -373,7 +387,7 @@ global $ttEditable;
   <th>Loc</th>
   <th>Dest</th>
   <th>Delay</th>
-  <th>Cond</th>
+  <th>Act</th>
   <th>Trn</th>
   <th>Sig</th>
   <th style='color:green;'>".(isset($errTxt["ok"]) ? "OK" : "")."</th>

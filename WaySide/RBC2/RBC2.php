@@ -39,6 +39,7 @@ $MCetimeout = 0;
 $pumpTimeout = 0;
 $trainComTimeout = 0;
 $emgRelEP = array(); // List of EP running emergency route release timers
+$baliseStat = array();
 
 $hhtFoundCount = 0;
 $hhtFoundSum = 0;
@@ -54,6 +55,9 @@ $emergencyStop = false;
 $arsEnabled = true;
 $allowSR = false; $allowSH = false; $allowFS = false; $allowATO = false; // Overall allowance of modes
 $tmsStatus = TMS_NO_TMS;
+
+$PMretryTimers = array();
+$emgRelEPTimers = array();
 
 // Test
 $test = false;
@@ -91,7 +95,7 @@ do {
       $secondTimeout = $now;
       $pollEC = true; // Trigger EC poll once per second
       checkECtimeout();
-      checkEmgRelTimers();
+      checkTimers();
     }
     if ($now - $trainComTimeout >= TRAIN_COM_TIMEOUT) {
       $trainComTimeout = $now;

@@ -6,8 +6,8 @@
 
 
 function interfaceServer() {
-global $AbusInterface, $listenerRBC, $listenerMCe, $clients, $clientsData, $inChargeHMI, $inChargeMCe, $inChargeTMS, $listenerTMS, $radioInterface, $tmsStatus, $toAnusGw, $fromAbusGw, $radioLinkFh, $radioBuf;
-
+  global $AbusInterface, $listenerRBC, $listenerMCe, $clients, $clientsData, $inChargeHMI, $inChargeMCe, $inChargeTMS, $listenerTMS,
+    $radioInterface, $tmsStatus, $toAnusGw, $fromAbusGw, $radioLinkFh, $radioBuf;
   $read = $clients;
   $read[] = $listenerRBC;
   $read[] = $listenerMCe;
@@ -123,8 +123,7 @@ global $AbusInterface, $listenerRBC, $listenerMCe, $clients, $clientsData, $inCh
 
 function AbusSendPacket($addr, $packet) { // $packet is indexed as Abus packets, that is: packet type at index 2
 // Data from the slave is returned via call back function  AbusReceivedFrom($addr, $data)
-global $AbusInterface, $toAbusGw, $AbusI2CFh;
-
+  global $AbusInterface, $toAbusGw, $AbusI2CFh;
   if (count($packet) > MAX_ABUS_BUF) {
     fatalLog("AbusSendPacket: Packet too long: ".count($packet));
   }
@@ -191,18 +190,19 @@ global $AbusInterface, $toAbusGw, $AbusI2CFh;
 }
 
 function sendToRadioLink($packet) { // Send radio packet via USB radio
-global $radioLinkFh;
+  global $radioLinkFh;
   fwrite($radioLinkFh, "$packet\n");
 }
 
 function receivedFromRadioLink($data) {  // Distribute radio packet received via USB radio
   $res = explode(" ",$data);
-  if ($res[0] == "OK") {
+  if ($res[0] == "OK") { // FIXME check packet syntax / sufficient data
     switch ($res[2]) {
     case 10: // Packet type Position report
       processPositionReport($res[1] & RF12_ID_MASK, $res[11] & 0x07, ($res[11] & 0x80) >> 7, ($res[11] & 0x18) >> 3,
-        ($res[11] & 0x60) >> 5, sprintf("%02X:%02X:%02X:%02X:%02X",$res[3],$res[4],$res[5],$res[6],$res[7]), 
+        ($res[11] & 0x20) >> 5, ($res[11] & 0x40) >> 6, sprintf("%02X:%02X:%02X:%02X:%02X",$res[3],$res[4],$res[5],$res[6],$res[7]), 
         toSigned($res[8], $res[9]), $res[10], $res[12]);
+        // function processPositionReport($trainID, $requestedMode, $MAreceived, $driveDir, $pwr, $frontUp, $baliseID, $distance,  $speed, $rtoMode)
     break;
     case 50: // Packet type HHT request
       processHhtRequest($res);
@@ -212,8 +212,9 @@ function receivedFromRadioLink($data) {  // Distribute radio packet received via
 }
 
 function initInterfaces() {
-global $HMIport, $MCePort, $TMSport, $HMIaddress, $MCeAddress, $TMSaddress, $listenerRBC, $listenerMCe, $listenerTMS, $RADIO_DEVICE_FILE, $ABUS_I2C_FILE, $radioLinkFh, $radioBuf, $AbusI2CFh, $radioInterface, $AbusInterface, $toAbusGw, $fromAbusGw, $clients, $clientsData, $inChargeHMI, $inChargeMCe, $inChargeTMS;
-
+  global $HMIport, $MCePort, $TMSport, $HMIaddress, $MCeAddress, $TMSaddress, $listenerRBC, $listenerMCe, $listenerTMS, $RADIO_DEVICE_FILE,
+    $ABUS_I2C_FILE, $radioLinkFh, $radioBuf, $AbusI2CFh, $radioInterface, $AbusInterface, $toAbusGw, $fromAbusGw, $clients, $clientsData,
+    $inChargeHMI, $inChargeMCe, $inChargeTMS;
 // --------------------------------------------------------------------------------------------------- Abus Gateway interface
   $AbusI2CFh = $toAbusGw = $fromAbusGw = null; // Default setup
   switch($AbusInterface) {
@@ -238,7 +239,8 @@ global $HMIport, $MCePort, $TMSport, $HMIaddress, $MCeAddress, $TMSaddress, $lis
   $radioBuf = "";
   switch($radioInterface) {// init radioLink (JeeLink)
   case  "USB":
-    $radioLinkFh = fopen($RADIO_DEVICE_FILE,"r+");
+    exec("/bin/stty --file $RADIO_DEVICE_FILE  57600 -ixon -echo -echoe"); // Configure serial device for Radio
+    $radioLinkFh = fopen($RADIO_DEVICE_FILE,"w+");
     if (!$radioLinkFh) {
       fatalError("Cannot create server socket for radioLink: $errstr ($errno)");
     }

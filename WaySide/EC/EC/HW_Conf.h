@@ -1,1 +1,1 @@
-../HW_Conf/EC04/EC04.ino
+../HW_Conf/EC02/EC02.ino

@@ -2,6 +2,7 @@
 // ------------------------------------------------- Cargo train (new)
 
 // define either OVERRIDE_SR, OVERRIDE_SH or none to allow OBU switch to override RBC mode authority
+// OBU_PIN_OVERRIDE must be defined as well
 #define OVERRIDE_SR
 
 // RF12

@@ -4,6 +4,8 @@
 // define either OVERRIDE_SR, OVERRIDE_SH or none to allow OBU switch to override RBC mode authority
 #define OVERRIDE_SR
 
+//#define BEAT
+
 // RF12
 #define OBU_ID 24 // RF12 node ID of train
 #define DMI_ID 25 // RF12 node ID of assigned DMI
@@ -21,6 +23,7 @@
 #define STOP_MA 3 // Distance (wheel turn) below this will show red on DMI
 #define V_OFFSET 30
 #define MIN_DIST 2 // Distance (wheel turn) below this will be ignored
+#define DRIVE_CORRECTION_LIMIT 25 // Drive order below this limt will be corrected over time
 
 // Specific engineering ------------------------ Stop if in shunting
 // Balises commanding "stop if in shunting"
@@ -52,17 +55,18 @@
 };
 
 // OBU HW assignment
-#define OBU_PIN_MOTOR 5         // PWM signal to moter control. JeeNode port 2
+#define OBU_PIN_MOTOR 5         // PWM signal to moter control. JeeNode port 2D
                                 // Note: PWM frequency is set for pin 5 in setup()
-#define OBU_PIN_DIR_CONTROL 7   // Direction control.
+#define OBU_PIN_DIR_CONTROL A1  // Direction control.
 #define OBU_DIR_CONTROL_FORWARD // Define if direction control HIGH means forward
-#define OBU_PIN_TRACK_UP A0     // JeeNode port 1
-#define OBU_PIN_TRACK_DOWN 4    // JeeNode port 1
-#define OBU_PIN_RED A1          // For indication (outout)
+#define OBU_PIN_TRACK_UP A0     // JeeNode port 1A
+#define OBU_PIN_TRACK_DOWN 4    // JeeNode port 1D
+#define OBU_PIN_RED A3          // For indication (outout)
+// Define either OBU_PIN_BLUE or OBU_PIN_OVERRIDE
 //#define OBU_PIN_BLUE 3        // For indication (outout)
 #define OBU_PIN_OVERRIDE 3      // For mode override (input)
-#define OBU_PIN_WHEEL A2        // Wheel sensor  JeeNode port 4
-#define OBU_PIN_FLIGHT A3       // Front light
+#define OBU_PIN_WHEEL A2        // Wheel sensor  JeeNode port 3A
+#define OBU_PIN_FLIGHT 7        // Front light port 4D
 #define OBU_PIN_RLIGHT 6        // Rear light
 
 #define TAG_READER_7941E        // Balise reader type 7941E

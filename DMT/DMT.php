@@ -260,7 +260,8 @@ global $PT1, $HMI, $scFh, $xOffset, $yOffset, $UNIT_SIZE, $FRAME_X_WIDTH, $FRAME
   $DIRECTORY, $SCREEN_LAYOUT_FILE, $symbolDebug;
 
 $HMI["label"] = array();
-
+$HMI["baliseTrack"] = array();
+// FIXME check completeness of screen layout / add default HMI data if element not shown on screen
 // Find position of frame
   $scFh = fopen("$DIRECTORY/$SCREEN_LAYOUT_FILE", "r");
   $frame = false;

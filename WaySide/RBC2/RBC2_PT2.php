@@ -7,7 +7,7 @@
 
 function  ProcessPT2() { //  PT2 (site specific application data) management and analysis
 global $DIRECTORY, $PT2_FILE, $PT2, $trackModel, $HMI, $balisesID, $baliseCountTotal, $totalElement,  $errorFound, $nInspection,
-  $baliseCountUnassigned, $lightSignal;
+  $baliseCountUnassigned, $lightSignal, $baliseStat;
 
   require("$DIRECTORY/$PT2_FILE");
   if (isset($PT1)) { // Rename PT1 to PT2 - DMT to be updated to generate "PT2" FIXME
@@ -30,6 +30,7 @@ global $DIRECTORY, $PT2_FILE, $PT2, $trackModel, $HMI, $balisesID, $baliseCountT
         if ($element["ID"] == "FF:FF:FF:FF:FF") $baliseCountUnassigned++; // Other unassigned/default IDs ?? e.g. 00:00:00:00:00 FIXME 
         $baliseCountTotal++;
         $trackModel[$name] = new BGelement($name);
+        $baliseStat[$name] = array("20" => 0, "22" => 0, "24" => 0, );
       break;
       case "TG":
         $triggers[] = $name;
@@ -83,6 +84,7 @@ global $DIRECTORY, $PT2_FILE, $PT2, $trackModel, $HMI, $balisesID, $baliseCountT
       break;
     }
   }
+  ksort($baliseStat, SORT_NATURAL);
   unset($element); // Otherwise next foreach is not working, see PHP manual
   
   foreach ($PT2 as $name => $element) {  // ---------------------------------------------------------- Assign neighbours to elements

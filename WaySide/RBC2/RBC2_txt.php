@@ -6,7 +6,8 @@
 $TD_TXT_MODE = [0 => "Udef", 1 => "SR", 2 => "SH", 3 => "FS", 4 => "ATO", 5 => "N", ];
 $TD_TXT_DIR = [D_UDEF => "Udef", D_DOWN => "Down", D_UP => "Up", D_STOP => "Stop",];
 $TD_TXT_MADIR = [MD_NODIR => "ND", MD_DOWN => "D", MD_UP => "U", MD_BOTH => "UD", ];
-$TD_TXT_PWR = [0 => "NoComm", 1 => "R", 2 => "L", 3 => "No PWR",];
+$TD_TXT_PWR = [0 => "NoPwr", 1 => "Pwr"];
+$TD_TXT_FRONT = [D_DOWN => "D", D_UP => "U"]; // Orientation of train
 $TD_TXT_ACK = [0 => "NO_MA", 1 => "MA_ACK"];
 $TD_TXT_RTOMODE = [RTO_UDEF => "Udef.", RTO_DMI => "DMI", RTO_REMOTE => "Remote take-over", RTO_PEND_REMOTE => "Pending take-over",
                 RTO_PEND_RELEASE => "Pending release"];
@@ -22,7 +23,7 @@ $TMS_STATUS_TXT = [TMS_UDEF => "TMS: state undefined", TMS_NO_TT => "TMS: Runnin
 // Track Vacancy State
 $TVS_TXT_SH[V_UNDEFINED] = "UDEF";
 $TVS_TXT_SH[V_OCCUPIED] = "OCC";
-$TVS_TXT_SH[V_CLEAR] = "CLR";
+$TVS_TXT_SH[V_CLEAR] = "";
 
 // Route Locking State
 $RLS_TXT_SH[R_UNDEFINED] = "UDEF";

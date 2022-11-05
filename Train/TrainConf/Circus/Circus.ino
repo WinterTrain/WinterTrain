@@ -55,8 +55,8 @@
 //#define OBU_DIR_CONTROL_FORWARD // Define if direction control HIGH means forward
 #define OBU_PIN_TRACK_UP 4      // JeeNode port 1
 #define OBU_PIN_TRACK_DOWN A0   // JeeNode port 1
-#define OBU_PIN_RED A1          // For indication (outout)
-//#define OBU_PIN_BLUE  A2      // Blue LED, JeeNode port 3
+//#define OBU_PIN_RED A1          // For indication (outout) (Circus has no LED)
+//#define OBU_PIN_BLUE  A2      // Blue LED, JeeNode port 3 (Circus has no LED)
 #define OBU_PIN_OVERRIDE A2     // Override switch, JeeNode port 3
 #define OBU_PIN_WHEEL  6        // Wheel sensor  JeeNode port 3
 #define OBU_PIN_FLIGHT  A3      // Front light, JeeNode port 4

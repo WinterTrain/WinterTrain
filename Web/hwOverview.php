@@ -42,8 +42,8 @@ $HWdevice = array(0 => "-", 10 => "P", 11 => "P", 21 => "P", 40 => "L", 41 => "U
   
   print "
 <h2>PT2 Elements:</h2>
-<table>
-<tr>
+<table border='1'>
+<tr align=left>
   <th>ID</th>
   <th>Element</th>
   <th>Type</th>
@@ -59,7 +59,7 @@ $HWdevice = array(0 => "-", 10 => "P", 11 => "P", 21 => "P", 40 => "L", 41 => "U
       case "PT":
       $EC[$element["EC"]["addr"]][$HWdevice[$element["EC"]["type"]]][] = ["major" => $element["EC"]["majorDevice"], "ID" => $name];
         print "
-<tr>
+<tr align=left>
   <td>$name</td>
   <td>{$element["element"]}</td>
   <td></td>
@@ -73,7 +73,7 @@ $HWdevice = array(0 => "-", 10 => "P", 11 => "P", 21 => "P", 40 => "L", 41 => "U
       case "SD":
       $EC[$element["EC"]["addr"]][$HWdevice[$element["EC"]["type"]]][] = ["major" => $element["EC"]["majorDevice"], "ID" => $name];
         print "
-<tr>
+<tr align=left>
   <td>$name</td>
   <td>{$element["element"]}</td>
   <td>{$element["type"]}</td>
@@ -91,8 +91,8 @@ $HWdevice = array(0 => "-", 10 => "P", 11 => "P", 21 => "P", 40 => "L", 41 => "U
 
   print "
 <h2>Element Controllers:</h2>
-<table>
-<tr>
+<table border='1'>
+<tr align=left>
   <th>EC addr</th>
   <th>DevType</th>
   <th>Major</th>
@@ -104,7 +104,7 @@ $HWdevice = array(0 => "-", 10 => "P", 11 => "P", 21 => "P", 40 => "L", 41 => "U
     foreach ($devices as $deviceType => $assignments) {
       foreach ($assignments as $assignment) {
         print "
-<tr>
+<tr align=left>
   <td>$addr</td>";
         print "
   <td>$deviceType</td>
