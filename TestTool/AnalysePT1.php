@@ -19,7 +19,11 @@ $EC_TYPE_TXT = array(0 => "(Reserved)",
 42 =>	"Light Signal, 2 lanterns, 3 aspects,	2 x L-device",	
 43 =>	"Light Signal, 2 lantern, 3 aspects, 2 x U-device",	
 44 =>	"Light Signal, 3 lanterns, 3 aspects,	3 x L-device",	
-45 =>	"Light Signal, 3 lanterns, 3 aspects,	3 x U-device"
+45 =>	"Light Signal, 3 lanterns, 3 aspects,	3 x U-device",
+50 => "Route Indicator, 2 segments, 2 x L-device",
+51 => "Route Indicator, 2 segments, 2 x U-device",
+52 => "Route Indicator, 3 segments, 3 x L-device",
+53 => "Route Indicator, 3 segments, 3 x U-device",
 );
 
 //--------------------------------------- System variable
@@ -131,9 +135,13 @@ switch ($command) {
   case "e": // ----------------------------------------------------------- HW list
     $EC = array();
     foreach ($PT1 as $name => $element) {
-      if ($element["EC"]["addr"] != "" and $element["EC"]["addr"] != "0") {
+      if (isset($element["EC"]["addr"]) and $element["EC"]["addr"] != "0") {
         $EC[$element["EC"]["addr"]][$element["EC"]["type"]][] = array("name" => $name, "majorDevice" => $element["EC"]["majorDevice"],
           "element" => $element["element"], "minorDevice" => (isset($element["EC"]["minorDevice"]) ? $element["EC"]["minorDevice"] : "0") );
+      }
+      if (isset($element["EC"]["riAddr"]) and $element["EC"]["riAddr"] != "0") {
+        $EC[$element["EC"]["riAddr"]][$element["EC"]["riType"]][] = array("name" => $name, "majorDevice" => $element["EC"]["riMajorDevice"],
+          "element" => $element["element"], "minorDevice" => "0");
       }
     }
     ksort($EC);
@@ -143,7 +151,7 @@ switch ($command) {
       foreach ($hwtype as $type => $elem) {
         print "  $type: {$EC_TYPE_TXT[$type]}\n";
         foreach ($elem as $e) {
-          print "    {$e[majorDevice]}, {$e[minorDevice]}: {$e["name"]} {$e["element"]}\n";
+          print "    {$e["majorDevice"]}, {$e["minorDevice"]}: {$e["name"]} {$e["element"]}\n";
         }
         print "\n";
       }

@@ -11,7 +11,7 @@
 // Proporties, see TrainConf.h
 
 const unsigned long C_SPEED = 2500000; // Conversion factor for speed
-const byte drive[6] = {0, 0, 20, 40, 60, 100}; // driveSel: 1-5 // To be relative to Vmax FIXME
+const byte drive[6] = {0, 0, 20, 35, 50, 65}; // driveSel: 1-5 // To be relative to Vmax FIXME
 
 
 // Timing
@@ -22,9 +22,9 @@ const unsigned long POS_REP = 100000; // ~1.6 sec
 const unsigned long DISTANCE = 64000; // 1 sec
 const unsigned long MODE_TIMEOUT = 640000; // 10 sec
 const unsigned long DYN = 3200; // 0.05 sec
-const unsigned long CORINT = 64000;
+const unsigned long CORINT = 32000; // 0.5 sec.  Value for position "integration" timer
 const int POL_SAMPLE_TIME = 3200;
-const byte MAX_MOVE_SUPERVISION = 100; // Max Dyn cycles before non-moving train is stopped
+const int MAX_MOVE_SUPERVISION = 400; // 20 sec. Max number of Dyn cycles before power to non-moving train is turned off
 
 // Enummerations and codes
 // Nominel direction
@@ -149,7 +149,7 @@ boolean shuntBorderStop; // Train has reached shunting border. Stop if in shunti
 int borderDist; // Distance from current balise to shunt border (with sign), if the current balise is a shuntBorder balise FIXME
 boolean emergencyStop; // Prevent motor power if set
 byte driveCorrection; // Correction of MAspeed when approaching EOA
-byte moveSup; // Movement supervision
+int moveSup; // Movement supervision
 boolean safetyStop; // disable motor of non-moving train
 
 // Buffers and triggers

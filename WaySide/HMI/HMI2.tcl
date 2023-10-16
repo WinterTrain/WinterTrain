@@ -24,8 +24,9 @@ set cHeight 350
 # Note, following color definitions may by overwritten by specifications in PT1 data
 set fColor blue         ;# failure color
 set tColor black        ;# Clear track, not locked in route
-set toColor red         ;# Occupied track, locked or not locked in route
+set toColor red         ;# Occupied track, not locked or locked in route or for shunting
 set tcColor green       ;# Clear track, locked in route
+set shColor yellow      ;# Clear track, locked for shunting
 set clColor red         ;# point clamped
 set blColor orange      ;# point blocked
 set oColor lightgreen   ;# signal open
@@ -66,6 +67,7 @@ set trnStatusColor {red lightgreen grey red yellow darkcyan green orange lightgr
 
 set emergencyStop false
 set rtoDisplay no
+set roDisplay no
 
 #----------------------------------------------------------------------------------------------------------------- Display elements
 proc label {text x y} {
@@ -424,7 +426,7 @@ global xOffset yOffset scale cHeight cWidth showGrid nXGrid nYGrid
 #------------------------------------------------------------------------------------------------------------ indication handlers
 
 proc pointState {name vacancyState routeLockingState routeLockingType lockingState blockingState pointState {occupationTrainID ""}} {
-global fColor tColor toColor tcColor clColor blColor
+global fColor tColor toColor tcColor clColor blColor shColor
 
   switch $blockingState {
     1 { ;# B_UNBLOCKED 
@@ -509,7 +511,7 @@ global fColor tColor toColor tcColor clColor blColor
 }
 
 proc levelcrossingState {name state routeState trackState {trainID ""}} { ;# FIXME
-global fColor tColor toColor tcColor mColor lColor
+global fColor tColor toColor tcColor mColor lColor shColor
   switch $state {
     0 { ;# Unsupervised
     .f.canvas itemconfigure "$name&&u" -state hidden
@@ -566,7 +568,7 @@ global fColor tColor toColor tcColor mColor lColor
   }
 }
 proc signalState {name vacancyState routeLockingState routeLockingType lockingState blockingState signalState arsState {occupationTrainID ""}} {
-global nColor fColor oColor cColor toColor tcColor tColor oppColor dColor arsColor blColor clColor
+global nColor fColor oColor cColor toColor tcColor tColor oppColor dColor arsColor blColor clColor shColor
 
     switch $vacancyState {
     0 { ;# Unsupervised
@@ -648,7 +650,7 @@ global nColor fColor oColor cColor toColor tcColor tColor oppColor dColor arsCol
 }
 
 proc bufferStopState {name vacancyState routeLockingState routeLockingType lockingState blockingState {occupationTrainID ""}} {
-global fColor tColor tcColor toColor dColor
+global fColor tColor tcColor toColor dColor shColor
 
   if {$routeLockingState == 1} { # R_IDLE
     .f.canvas itemconfigure "$name&&buffer" -fill $tColor
@@ -682,7 +684,7 @@ global fColor tColor tcColor toColor dColor
 
 
 proc trState {name routeState trackState {occupationTrainID ""}} {
-global fColor tColor tcColor toColor
+global fColor tColor tcColor toColor shColor
 
   switch $trackState {
     0 { ;# V_UNDEFINED
@@ -779,14 +781,19 @@ global status response
   set status "Operation allowed"
   set response ""
   .f.buttonOpr configure -text "Release Operation" -command rlopr
+  .f.entryUserName state disabled
+  .f.entryPw state disabled
   enableButtons
 }
 
 proc oprReleased {} {
-global status response
+global status response userName pw
   set status "No operation"
   set response ""
   .f.buttonOpr configure -text "Request Operation" -command rqopr
+  set pw ""
+  .f.entryUserName state !disabled
+  .f.entryPw state !disabled
   disableButtons
 }
 
@@ -1083,7 +1090,9 @@ proc eStop {} {
 }
 
 proc rqopr {} {
-  sendCommand "Rq"
+  global userName pw
+  sendCommand "Rq $userName $pw"
+  set pw ""
 }
 
 proc rlopr {} {
@@ -1278,7 +1287,7 @@ global server
   }
 }
 
-proc openTty {} { ;# interface to track table demo
+proc openTty {} { ;# interface to track table demo FIXME to be deleted
 global ttyName tty panelEnabled
   if {$panelEnabled} {
     set tty [open $ttyName r+]
@@ -1287,7 +1296,7 @@ global ttyName tty panelEnabled
   }
 }
 
-proc readHandlerTty {} {
+proc readHandlerTty {} { ;# FIXME to be deleted
 global tty debug
   if {[gets $tty line] >= 0 && $line != ""} {
     if {$debug} {
@@ -1297,14 +1306,14 @@ global tty debug
   }
 }
 
-proc writeTty {line} {
+proc writeTty {line} { ;# FIXME to be deleted
 global debug tty
   if {$debug} {
     puts "To panel: >$line<\n"
   }
   puts $tty $line
 }
-proc processIndication {line} { ;# from Process indications from HMI server
+proc processIndication {line} { ;# Process indications from RBC
 global debug
   if {$debug} {
     puts "Recieved: $line"
@@ -1313,7 +1322,7 @@ global debug
   eval $line
 }
 
-proc sendCommand {line} { ;# Send command to HMI server
+proc sendCommand {line} { ;# Send command to RBC
 global server
   catch {puts $server $line}
 }
@@ -1334,8 +1343,11 @@ global response status nColor nTrainFrame
 }
 
 proc reconnected {} {
-global status
+global status userName pw
   .f.buttonOpr state !disabled
+  set pw ""
+  .f.entryUserName state !disabled
+  .f.entryPw state !disabled
   set status "Connected"
 }
 
@@ -1351,11 +1363,14 @@ set srAllowed 0
 set shAllowed 0
 set fsAllowed 0
 set atoAllowed 0
+set pw ""
+set userName ""
 
 set reqIP no
 set reqScale no
 set reqFsize no
 set reqHMIport no
+set reqUserName no
 
 foreach arg $argv {
   if {$reqIP} {
@@ -1375,14 +1390,21 @@ foreach arg $argv {
         set IPport $arg
         set reqHMIport no
       } else {
-        switch $arg {
-        --help {
-          puts "
+        if ($reqUserName) {
+          set userName $arg
+          set reqUserName no
+        } else {
+          switch $arg {
+          --help {
+            puts "
 WinterTrain HMI
 Usage:
 --scale <int>     Set scale factor of track layout
 --font <int>      Set font size
 --rto             Enable Remote Take-over display
+--r               Read only
+--u <user name>   Default user name
+
 --test            Do not enter event loop 
 --IP <address>    Set server address
 --l               Set server address to localhost (127.0.0.1) 
@@ -1390,38 +1412,45 @@ Usage:
 --p               Enable connection to HMI panel
 --d               Debug
   "
-            exit
+              exit
+              }
+            --test {
+              set startLoop no
+              }
+            --IP {
+              set reqIP yes
+              }
+            --u {
+              set reqUserName yes
+              }
+            --HMIport {
+              set reqHMIport yes
+              }
+            --rto {
+              set rtoDisplay yes
+              }
+            --r {
+              set roDisplay yes
+              }
+            --scale {
+              set reqScale yes
+              }
+            --l {
+              set IPaddress "127.0.0.1"
+              }
+            --font {
+              set reqFsize yes
             }
-          --test {
-            set startLoop no
-            }
-          --IP {
-            set reqIP yes
-            }
-          --HMIport {
-            set reqHMIport yes
-            }
-          --rto {
-            set rtoDisplay yes
-            }
-          --scale {
-            set reqScale yes
-            }
-          --l {
-            set IPaddress "127.0.0.1"
-            }
-          --font {
-            set reqFsize yes
-          }
-          --p {
-            set panelEnabled yes
-            }
-          --d {
-            set debug yes
-            }
-          default {
-            puts "Unknown option: $arg"  
-            exit  
+            --p {
+              set panelEnabled yes
+              }
+            --d {
+              set debug yes
+              }
+            default {
+              puts "Unknown option: $arg"  
+              exit  
+              }
             }
           }
         }
@@ -1456,14 +1485,14 @@ grid columnconfigure .f all -weight 1
 grid rowconfigure .f 3 -weight 1
 
 # Buttons
-grid [ttk::button .f.buttonRelease -text "Release" -command buttonRelease] -column 2 -row 2 -sticky we
-grid [ttk::button .f.buttonPoint -text "Spsk" -command buttonPoint] -column 3 -row 2 -sticky we
-grid [ttk::button .f.buttonPointBlock -text "Block" -command buttonPointBlock] -column 4 -row 2 -sticky we
-grid [ttk::button .f.buttonLX -text "Ovk" -command buttonLX] -column 5 -row 2 -sticky we
-grid [ttk::button .f.buttonARS -text "Ars" -command buttonARS] -column 6 -row 2 -sticky we
-grid [ttk::button .f.buttonStop -text "" -command eStop] -column 7 -row 2 -sticky w
-grid [ttk::button .f.buttonARSALL -text "Disable Ars" -command buttonARSALL] -column 8 -row 2 -sticky we
-grid [ttk::button .f.buttonERelease -text "Emg. Rel" -command buttonERelease] -column 12 -row 2 -sticky we
+grid [ttk::button .f.buttonRelease -text "Release" -command buttonRelease] -column 1 -columnspan 2 -row 2 -sticky we
+grid [ttk::button .f.buttonPoint -text "Spsk" -command buttonPoint] -column 3 -columnspan 2 -row 2 -sticky we
+grid [ttk::button .f.buttonPointBlock -text "Block" -command buttonPointBlock] -column 5 -columnspan 2 -row 2 -sticky we
+grid [ttk::button .f.buttonLX -text "Ovk" -command buttonLX] -column 7 -columnspan 2 -row 2 -sticky we
+grid [ttk::button .f.buttonARS -text "Ars" -command buttonARS] -column 9 -row 2 -sticky we
+grid [ttk::button .f.buttonStop -text "" -command eStop] -column 10 -columnspan 2 -row 2 -sticky w
+grid [ttk::button .f.buttonARSALL -text "Disable Ars" -command buttonARSALL] -column 12 -row 2 -sticky we
+grid [ttk::button .f.buttonERelease -text "Emg. Rel" -command buttonERelease] -column 15 -row 2 -sticky we
 
 # Track Layout
 grid [tk::canvas .f.canvas -scrollregion "0 0 $cWidth $cHeight" -yscrollcommand ".f.sbv set" -xscrollcommand ".f.sbh set"] -sticky nwes -column 1 -columnspan 18 -row 3
@@ -1471,11 +1500,10 @@ grid [tk::scrollbar .f.sbh -orient horizontal -command ".f.canvas xview"] -colum
 grid [tk::scrollbar .f.sbv -orient vertical -command ".f.canvas yview"] -column 0 -row 3 -sticky ns
 
 # Status and response
-# grid [ttk::frame .f.fStatus -padding "3 3 3 3"] -column 1 -columnspan 14 -row 5 -sticky nwes
 grid [ttk::label .f.live -textvariable liveIndicator -width 1] -column 1 -row 5 -padx 5 -pady 2 -sticky e
-grid [ttk::label .f.status -textvariable status] -column 9 -columnspan 3 -row 5 -padx 5 -pady 2 -sticky w
+grid [ttk::label .f.response -textvariable response] -column 2 -columnspan 9 -row 5 -padx 5 -pady 2 -sticky w
+grid [ttk::label .f.status -textvariable status] -column 11 -columnspan 3 -row 5 -padx 5 -pady 2 -sticky w
 grid [ttk::label .f.tmsStatus -textvariable tmsStatus] -column 12 -columnspan 2 -row 5 -padx 5 -pady 2 -sticky w
-grid [ttk::label .f.response -textvariable response] -column 2 -columnspan 8 -row 5 -padx 5 -pady 2 -sticky w
 
 # System and HMI commands
   grid [ttk::label .f.sr_allowedX -text "SR:"] -column 1 -row 8 -padx 5 -pady 2 -sticky we
@@ -1490,14 +1518,15 @@ grid [ttk::label .f.response -textvariable response] -column 2 -columnspan 8 -ro
     grid [ttk::label .f.ato_allowedX -text "ATO:"] -column 7 -row 8 -padx 5 -pady 2 -sticky we
   grid [ttk::checkbutton .f.ato_allowed -variable atoAllowed -command "setATOallowed" ] -column 8 -row 8 -padx 5 -pady 2 -sticky we
   .f.ato_allowed state disabled
-  
-grid [ttk::button .f.buttonOpr -text "Request operation" -command rqopr] -column 9 -row 8 -sticky we
-grid [ttk::button .f.buttonShowGrid -text "Show Grid" -command showGrid] -column 10 -row 8 -sticky we
-grid [ttk::button .f.buttonShowLabel -text "Show Label" -command showLabel] -column 11 -row 8 -sticky we
-grid [ttk::button .f.buttonReloadTT -text "Load Timetable" -command loadTT] -column 12 -row 8 -sticky we
-grid [ttk::button .f.buttonEHMI -text "Exit HMI" -command exit] -column 13 -row 8 -sticky we
-# grid [ttk::button .f.buttonERBC -text "Exit RBC" -command exitRBC] -column 14 -row 8 -sticky e
-grid [ttk::button .f.buttonT -text "TEST" -command test] -column 15 -row 8 -sticky we
+
+grid [ttk::entry .f.entryUserName -textvariable userName] -column 9 -row 8 -sticky we
+grid [ttk::entry .f.entryPw -textvariable pw -show "*"] -column 10 -row 8 -sticky we
+grid [ttk::button .f.buttonOpr -text "Request operation" -command rqopr] -column 11 -row 8 -sticky we
+grid [ttk::button .f.buttonShowGrid -text "Show Grid" -command showGrid] -column 12 -row 8 -sticky we
+grid [ttk::button .f.buttonShowLabel -text "Show Label" -command showLabel] -column 13 -row 8 -sticky we
+grid [ttk::button .f.buttonReloadTT -text "Load Timetable" -command loadTT] -column 14 -row 8 -sticky we
+grid [ttk::button .f.buttonEHMI -text "Exit HMI" -command exit] -column 15 -row 8 -sticky we
+grid [ttk::button .f.buttonT -text "TEST" -command test] -column 17 -row 8 -sticky we
 
 # Train data
 grid [ttk::frame .f.fTrain -padding "3 3 3 3" -relief solid -borderwidth 2] -column 1 -row 9 -columnspan 16 -sticky nwes
@@ -1509,7 +1538,7 @@ bind . <space> {eStop}
 dGrid
 disconnected
 openSocket
-openTty
+openTty ;# FIXME to be deleted
 
 puts "WinterTrain HMI $HMIversion"
 if {$startLoop} {

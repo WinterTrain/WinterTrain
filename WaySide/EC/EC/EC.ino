@@ -704,6 +704,32 @@ void elementOrder(byte index, byte order) {
             break;
         }
         break;
+      case 50: // Route indicator, 2 segments 	2 x L-device 
+        order = order & 0x03;
+        Ldevice(element[index].deviceMajor, order & 0x01);
+        Ldevice(element[index].deviceMajor + 1, order & 0x02);
+        element[index].cStatus = order;
+      break;
+      case 51: // Route indicator, 2 segments 	2 x U-device 
+        order = order & 0x03;
+        Udevice(element[index].deviceMajor, order & 0x01);
+        Udevice(element[index].deviceMajor + 1, order & 0x02);
+        element[index].cStatus = order;
+      break;
+      case 52: // Route indicator, 3 segments 	3 x L-device 
+        order = order & 0x07;
+        Ldevice(element[index].deviceMajor, order & 0x01);
+        Ldevice(element[index].deviceMajor + 1, order & 0x02);
+        Ldevice(element[index].deviceMajor + 2, order & 0x04);
+        element[index].cStatus = order;
+      break;
+      case 53: // Route indicator, 3 segments 	3 x U-device 
+        order = order & 0x07;
+        Udevice(element[index].deviceMajor, order & 0x01);
+        Udevice(element[index].deviceMajor + 1, order & 0x02);
+        Udevice(element[index].deviceMajor + 2, order & 0x04);
+        element[index].cStatus = order;
+      break;
       case 30: // Road signal, L-device
         switch (order) {
           case R_PASS:
@@ -715,6 +741,7 @@ void elementOrder(byte index, byte order) {
             element[index].cStatus = I_STOP;
             break;
         }
+        break;
       case 31: // Road signal, U-device
         switch (order) {
           case R_PASS:
@@ -742,7 +769,7 @@ void elementOrder(byte index, byte order) {
         }
         break;
     }
-  } // else invalid element index
+  } // else invalid element index - ignore
 }
 
 void elementStatus() {

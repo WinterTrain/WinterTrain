@@ -4,66 +4,107 @@
 
 function processCommandMCe($command, $from) { // ------------------------------------------ Process commands from MCe clients
   global $run, $reloadRBC, $inChargeMCe, $clientsData, $EC, $trackModel, $test, $triggerMCeUpdate, $triggerHMIupdate, $simTrain,
-    $automaticPointThrowEnabled, $DIRECTORY, $PT2_FILE, $BL_FILE, $PT2, $baliseCountUnassigned, $balisesID;
+    $automaticPointThrowEnabled, $DIRECTORY, $PT2_FILE, $BL_FILE, $PT2, $baliseCountUnassigned, $balisesID, $inChargeHMI, $dumpActive, $dumpFh;
   $triggerMCeUpdate = true;
   $param = explode(" ",$command);
   switch ($param[0]) {
     case "Rq": // Request operation
-      if ($inChargeMCe) {
+      if ($inChargeMCe) { // FIXME re-arrange flow as for HMI
         MCeIndication($from, "displayResponse {Rejected ".$clientsData[(int)$inChargeMCe]["addr"]." is in charge (since ".
-          $clientsData[(int)$inChargeMCe]["inChargeSince"].")}\n");
-      } else {
+          $clientsData[(int)$inChargeMCe]["inChargeSince"].")}\n"); // FIXME add userName
+      } else { // FIXME add user check
         $inChargeMCe = $from;
         $clientsData[(int)$from]["inChargeSince"] = date("Ymd H:i:s");
+        $clientsData[(int)$from]["activeAt"] = date("Ymd H:i:s");
+        $clientsData[(int)$from]["userName"] = isset($param[1]) ? $param[1] : "<unknown>";
         MCeIndication($from, "oprAllowed\n");
       }
     break;
     case "Rl": // Release operation
-      $inChargeMCe = false;
-      MCeIndication($from, "oprReleased\n");
+      if ($from == $inChargeMCe) {
+        $clientsData[(int)$from]["activeAt"] = date("Ymd H:i:s");
+        $inChargeMCe = false;
+        MCeIndication($from, "oprReleased\n");
+      }
     break;
     case "CMD1": // DumpTrackModel
       if ($from == $inChargeMCe) {
+        $clientsData[(int)$from]["activeAt"] = date("Ymd H:i:s");
         dumpTrackModel();
       }
     break;
     case "CMD2":
       if ($from == $inChargeMCe) {
+        $clientsData[(int)$from]["activeAt"] = date("Ymd H:i:s");
         dumpRoutes();
       }
     break;
     case "CMD3":
       if ($from == $inChargeMCe) {
+        $clientsData[(int)$from]["activeAt"] = date("Ymd H:i:s");
         dumpTrainData();
       }
     break;
     case "CMD4":
       if ($from == $inChargeMCe) { // Toggle automatic point throw
+        $clientsData[(int)$from]["activeAt"] = date("Ymd H:i:s");
         $automaticPointThrowEnabled = !$automaticPointThrowEnabled;
+      }
+    break;
+    case "CMD5":
+      if ($from == $inChargeMCe) {
+        $clientsData[(int)$from]["activeAt"] = date("Ymd H:i:s");
+        HMIindication($inChargeHMI, "oprReleased");
+        HMIindication($inChargeHMI, "displayResponse {--- Operation released by maintenance operator ---}");        
+        $inChargeHMI = false;
+      }
+    break;
+    case "CMD6":
+      if ($from == $inChargeMCe) {
+        $clientsData[(int)$from]["activeAt"] = date("Ymd H:i:s");
+      }
+    break;
+    case "CMD7":
+      if ($from == $inChargeMCe) {
+        $clientsData[(int)$from]["activeAt"] = date("Ymd H:i:s");
+      }
+    break;
+    case "CMD8":
+      if ($from == $inChargeMCe) {
+        $clientsData[(int)$from]["activeAt"] = date("Ymd H:i:s");
+        $dumpActive = !$dumpActive;
+        fwrite($dumpFh, date("Ymd H:i:s").($dumpActive ? " Start dump" : " End dump")."\n"); 
       }
     break;
     case "exitRBC":
       if ($from == $inChargeMCe) {
+        $clientsData[(int)$from]["activeAt"] = date("Ymd H:i:s");
         $run = false;
       }
     break;
     case "rlRBC":
       if ($from == $inChargeMCe) {
+        $clientsData[(int)$from]["activeAt"] = date("Ymd H:i:s");
         $reloadRBC = true;
       }
     break;
     case "exitTMS":
       if ($from == $inChargeMCe) {
+        $clientsData[(int)$from]["activeAt"] = date("Ymd H:i:s");
         notifyTMS("exitTMS");
       }
     break;
     case "ECstatus":
-      foreach($EC as $addr => $ec) {
-        requestECstatus($addr);
+      if ($from == $inChargeMCe) {
+        $clientsData[(int)$from]["activeAt"] = date("Ymd H:i:s");
+        foreach($EC as $addr => $ec) {
+          requestECstatus($addr);
+        }
       }
     break;
     case "aBN": // assign balise name
       if ($from == $inChargeMCe) {
+        $clientsData[(int)$from]["activeAt"] = date("Ymd H:i:s");
         $baliseID = $param[1];
         $baliseName = (isset($param[2]) ? $param[2] : "<udef>");
         if ($baliseID != "--:--:--:--:--") { // default in MCe after startup
@@ -83,12 +124,13 @@ function processCommandMCe($command, $from) { // -------------------------------
             $hhtBaliseStatus = "Unknown balise";
           }
           $baliseCountUnassigned = 0;
-          foreach ($PT1 as $name => $element) {
+          foreach ($PT2 as $name => $element) {
             if ($element["element"] == "BL" and $element["ID"] == "FF:FF:FF:FF:FF") $baliseCountUnassigned++;
           }
         } // else ignore
       }
-    break;    case "dBL": // dump balise list
+    break;
+    case "dBL": // dump balise list
       if ($blFh = fopen("$DIRECTORY/$BL_FILE","w")) {
         fwrite($blFh, "<?php
 // Balise list generated by RBC
@@ -196,7 +238,7 @@ function MCeStartup($client) { // Initialise specific MCe client with static dat
 }
 
 function MCeIndication($to, $msg) {// Send indication to specific MCe client
-  fwrite($to,"$msg\n");
+  @fwrite($to,"$msg\n"); // FIXME Consider a better solution
 }
 
 function MCeIndicationAll($msg) {// Send indication to all MCe client
@@ -210,22 +252,22 @@ function MCeIndicationAll($msg) {// Send indication to all MCe client
 
 function dumpTrainData() {
   global $trainData;
-  print "\nRBC2 Train Data Dump ".date("Ymd H:i:s")."\n";
-  print "ID Route    MAbalise         Dist Occupation\n";
+  debugPrint("\n".date("Ymd H:i:s")." RBC2 Train Data Dump");
+  debugPrint("ID Route    MAbalise         Dist Occupation");
   foreach ($trainData as $index => $train) {
-    printf("%2.2s %-8.8s %-16.16s %4.4s ", $train["ID"], $train["assignedRoute"], $train["MAbaliseName"], $train["MAdist"]);
-    if (!$train["curPositionUnambiguous"]) print "Amb! ";
+    $line = sprintf("%2.2s %-8.8s %-16.16s %4.4s ", $train["ID"], $train["assignedRoute"], $train["MAbaliseName"], $train["MAdist"]);
+    if (!$train["curPositionUnambiguous"]) $line .= "Amb! ";
     foreach ($train["curOccupation"] as $elementName) {
-      print "$elementName ";
+      $line .= "$elementName ";
     }
-    print "\n";
+    debugPrint($line);
   }
 }
 
 function dumpRoutes() {
   global $trackModel;
-  print "\nRBC2 Route Dump ".date("Ymd H:i:s")."\n";
-  print "EP       Train Route\n";
+  debugPrint("\n".date("Ymd H:i:s")." RBC2 Route Dump");
+  debugPrint("EP       Train Route");
   foreach ($trackModel as $name => $model) {
     switch($model->elementType) {
       case "SU":
@@ -233,23 +275,22 @@ function dumpRoutes() {
       case "BSB":
       case "BSE":
         if ($model->routeLockingType == RT_END_POINT) {
-          printf ("%-8.8s %2.2s    ", $name, $model->assignedTrain);
-          print ($model->routeLockingUp ? "U" : "D")." ".$model->dumpRoute()."\n";
+          debugPrint(sprintf("%-8.8s %2.2s    ", $name, $model->assignedTrain).($model->routeLockingUp ? "U" : "D")." ".$model->dumpRoute());
         }
       break;
       default:
       break;
     }
   }
-  print "\n";
+  debugPrint("");
 }
 
 function dumpTrackModel() {
   global  $trackModel, $TVS_TXT_SH, $RLS_TXT_SH, $RLT_TXT_SH, $RDIR_TXT_SH, $PS_TXT_SH, $SIGNALLING_TXT_SH;
-  print "\nRBC2 Track Model Dump ".date("Ymd H:i:s")."\n";
-  print "Name     Type TVS  RLS  RLT  DIR P  Train Sig Occup\n";
+  debugPrint("\n".date("Ymd H:i:s")." RBC2 Track Model Dump");
+  debugPrint("Name     Type TVS  RLS  RLT  DIR P  Train Sig Occup");
   foreach ($trackModel as $name => $model) {
-    $lines[] = sprintf("%-8.8s %-4.4s %-4.4s %-4.4s %-4.4s %2s  %2.2s %5.5s %2.2s %s\n", $name, $model->elementType, $TVS_TXT_SH[$model->vacancyState],
+    $lines[] = sprintf("%-8.8s %-4.4s %-4.4s %-4.4s %-4.4s %2s  %2.2s %5.5s %2.2s %s", $name, $model->elementType, $TVS_TXT_SH[$model->vacancyState],
       $RLS_TXT_SH[$model->routeLockingState], $RLT_TXT_SH[$model->routeLockingType], $RDIR_TXT_SH[$model->routeLockingUp],
         (($model->elementType == "PF" or $model->elementType == "PT") ?
           ($PS_TXT_SH[$model->pointState].($model->throwLockedByRoute ? "!" : " ")) : ""),
@@ -261,24 +302,23 @@ function dumpTrackModel() {
   }
   sort($lines, SORT_NATURAL);
   foreach ($lines as $line) {
-    print "$line";
+    debugPrint("$line");
   }
-  print "\n";
+  debugPrint("");
   dumpBaliseStat();
 }
 
 function dumpBaliseStat() {
   global $baliseStat;
-  print "BaliseStat
-Name    20  22  24
-";
+  debugPrint("Balise Statistics
+Name    20  22  24");
   
   foreach ($baliseStat as $name => $countTrain) {
-    printf("%-5s  ", $name);
+    $line = sprintf("%-5s  ", $name);
     foreach ($countTrain as $count) {
-      printf("%3d ", $count);
+      $line .= sprintf("%3d ", $count);
     }
-    print("\n");
+    debugPrint($line);
   }
 }
 

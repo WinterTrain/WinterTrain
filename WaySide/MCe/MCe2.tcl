@@ -1,12 +1,10 @@
 #!/usr/bin/wish
-# MCe version 2
+# MCe for WinterTrain RBC2
 
 package require Tk
 
-set MCeVersion 01P01
 set IPaddress 192.168.8.230
-set IPport 9901
-#set IPport 9701
+set IPport 9911
 
 # Default configuration
 set trackWidth 0.15
@@ -213,6 +211,10 @@ global nSimFrame
   .f.buttonT2 state disabled
   .f.buttonT3 state disabled
   .f.buttonT4 state disabled
+  .f.buttonT5 state disabled
+  .f.buttonT6 state disabled
+  .f.buttonT7 state disabled
+  .f.buttonT8 state disabled
   .f.fStatus.balise.baliseNameInp state disabled
   .f.fStatus.balise.setName state disabled
   .f.fStatus.balise.dumpAll state disabled
@@ -246,6 +248,10 @@ global nSimFrame
   .f.buttonT2 state !disabled
   .f.buttonT3 state !disabled
   .f.buttonT4 state !disabled
+  .f.buttonT5 state !disabled
+  .f.buttonT6 state !disabled
+  .f.buttonT7 state !disabled
+  .f.buttonT8 state !disabled
   .f.fStatus.balise.baliseNameInp state !disabled
   .f.fStatus.balise.setName state !disabled
   .f.fStatus.balise.dumpAll state !disabled
@@ -280,6 +286,22 @@ proc cmd3 { } {
 
 proc cmd4 { } {
   sendCommand "CMD4"
+}
+
+proc cmd5 { } {
+  sendCommand "CMD5"
+}
+
+proc cmd6 { } {
+  sendCommand "CMD6"
+}
+
+proc cmd7 { } {
+  sendCommand "CMD7"
+}
+
+proc cmd8 { } {
+  sendCommand "CMD8"
 }
 
 #---------------------------------------------------- Communication
@@ -439,7 +461,11 @@ grid [ttk::button .f.buttonRLTMS -text "Reload TMS" -command "sendCommand rlTMS"
 grid [ttk::button .f.buttonT1 -text "DumpTrackModel" -command cmd1] -column 2 -row 2 -sticky e
 grid [ttk::button .f.buttonT2 -text "DumpRoutes" -command cmd2] -column 3 -row 2 -sticky e
 grid [ttk::button .f.buttonT3 -text "DumpTrainData" -command cmd3] -column 4 -row 2 -sticky e
-grid [ttk::button .f.buttonT4 -text "Toggle AutPT" -command cmd4] -column 5 -row 2 -sticky w
+grid [ttk::button .f.buttonT4 -text "Toggle AutoPT" -command cmd4] -column 5 -row 2 -sticky w
+grid [ttk::button .f.buttonT5 -text "Rel HMI opr" -command cmd5] -column 6 -row 2 -sticky w
+grid [ttk::button .f.buttonT6 -text "CMD6" -command cmd6] -column 7 -row 2 -sticky w
+grid [ttk::button .f.buttonT7 -text "CMD7" -command cmd7] -column 8 -row 2 -sticky w
+grid [ttk::button .f.buttonT8 -text "ToggleDump" -command cmd8] -column 9 -row 2 -sticky w
 
 #grid [tk::scrollbar .f.sbh -orient horizontal -command ".f.canvas xview"] -column 2 -columnspan 7 -row 4 -sticky we
 #grid [tk::scrollbar .f.sbv -orient vertical -command ".f.canvas yview"] -column 9 -row 3 -sticky ns

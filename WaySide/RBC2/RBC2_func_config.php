@@ -14,7 +14,7 @@ $ATOallowed = 0;
 $posRestoreEnabled = true; // Allow position restore
 $clearMultiOccupationEnabled = true; // Allow clerance of track occupied by more trains
 
-define("POSITION_TIMEOUT", 10);
+define("POSITION_TIMEOUT", 14);
 define("TRAIN_COM_TIMEOUT",5);
 define("EMG_REL_TIMEOUT", 10);
 define("PM_RETRY_TIMEOUT", 2);

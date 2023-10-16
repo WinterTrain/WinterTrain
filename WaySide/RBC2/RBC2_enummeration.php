@@ -41,8 +41,9 @@ define("V_CLEAR", 2);
 // Route Locking State
 define("R_UNDEFINED", 0);
 define("R_IDLE", 1);
-define("R_LOCKED", 2);
+define("R_LOCKED", 2);    // Locked in route
 define("R_RELEASING", 3); // Waiting for emergency release
+define("R_TSA", 4);       // Locked in TSA
 
 // Route Locking Type
 define("RT_IDLE", 1);
@@ -98,6 +99,9 @@ define("C_RELEASE",23);           // Release held point
 // ARS status
 define("ARS_DISABLED",0);
 define("ARS_ENABLED",1);
+
+// Route Indicator
+define("RI_OFF",0);
 
 // ------------------------------------ Train
 // Train mode

@@ -25,6 +25,7 @@ function ProcessTrainData() { //------------------------------------------------
     $train["comTimeStamp"] = 0;
     $train["posTimeStamp"] = 0;
     $train["posRestored"] = true; // To prevent position restore until a real position report has been received.
+    $train["posRestoredLogged"] = false;
     $train["restoreCount"] = 0;
     $train["driveDir"] = 1; // Nominel driving direction (UP/DOWN) determined by OBU
     $train["prevDriveDir"] = 1;

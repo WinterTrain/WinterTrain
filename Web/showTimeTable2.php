@@ -31,7 +31,7 @@ if (is_file($TT_FILE)) {
       editTimeTable(0, "", $tt);
     } else {
       $trn = $_GET["trn"];
-      if ($trn == 0 or isset($timeTables[$trn])) { // Existing trn
+      if ($trn == 0 or isset($timeTables[$trn])) { // Existing or new trn
         if ($trn == 0 or $timeTables[$trn]["protection"] != "R") {
           $ttEditable = true;
           if (isset($_POST["delete"])) { // -------------------------------------------------------------------------- Delete
@@ -44,17 +44,7 @@ if (is_file($TT_FILE)) {
             ";
           } else if (isset($_POST["doDelete"])) { // ---------------------------------------------------------------------- Do Delete
             unset($timeTables[$_GET["trn"]]);
-            $ttFh = fopen("$TT_FILE", "w");
-            fwrite($ttFh, "<?php
-// ------------------------------------------------- 
-
-\$PT2_GENERATION_TIME = \"".(date("Y-m-d H:i:s"))."\";
-
-// -------------------------------------------------- TimeTables
-\$timeTables = ".(var_export($timeTables,true)).";
-
-?>");
-            fclose($ttFh);
+            saveTts();
             print "
 <p>Deleted!
 <p><a href='index.php'>Overview</a>";
@@ -91,30 +81,60 @@ if (is_file($TT_FILE)) {
             $tt = $timeTables[$_GET["trn"]];
             $errTxt = verify($tt["locationTable"]);
             printTimeTable($trn, $tt, $errTxt);
-          } else if (isset($_POST["save"])) { // ---------------------------------------------------------------------- Save
+          } else if (isset($_POST["save"]) and $trn == 0) { // -------------------------------------------------------- Save new
             $tt =  $_POST["tt"];
             $tt["locationTable"] = cleanUp($tt["locationTable"]);
-            if (($trn != 0 and ($_POST["editTrn"] == $trn 
-                or (is_numeric($_POST["editTrn"]) and $_POST["editTrn"] > 0 and !isset($timeTables[$_POST["editTrn"]]))))
-              or ($trn == 0 and is_numeric($_POST["editTrn"]) and $_POST["editTrn"] > 0 and !isset($timeTables[$_POST["editTrn"]]))) {
-              unset($timeTables[$trn]);
+            if (is_numeric($_POST["editTrn"]) and $_POST["editTrn"] > 0 and !isset($timeTables[$_POST["editTrn"]])) {
               $timeTables[$_POST["editTrn"]] = $tt;
-              $ttFh = fopen("$TT_FILE", "w");
-              fwrite($ttFh, "<?php
-// ------------------------------------------------- 
-
-\$PT2_GENERATION_TIME = \"".(date("Y-m-d H:i:s"))."\";
-
-// -------------------------------------------------- TimeTables
-\$timeTables = ".(var_export($timeTables,true)).";
-
-?>");
-              fclose($ttFh);
+              saveTts();
               $trn = $_POST["editTrn"];
               printTimeTable($trn, $tt);
             } else {
               print "
 <p style='color:red;'>Train Running Number \"{$_POST["editTrn"]}\" is invalid or already in use!";
+              editTimeTable($trn, $_POST["editTrn"], $tt);
+            }
+          } else if (isset($_POST["saveNew"])) { // ------------------------------------------------------------------- Save as New
+            $tt =  $_POST["tt"];
+            $tt["locationTable"] = cleanUp($tt["locationTable"]);
+            if (is_numeric($_POST["editTrn"]) and $_POST["editTrn"] > 0) {
+              if (!isset($timeTables[$_POST["editTrn"]])) {
+                $timeTables[$_POST["editTrn"]] = $tt;
+                saveTts();
+                $trn = $_POST["editTrn"];
+                printTimeTable($trn, $tt);
+              } else {
+                print "
+<p style='color:red;'>Train Running Number \"{$_POST["editTrn"]}\" is invalid or already in use!";
+              editTimeTable($trn, $_POST["editTrn"], $tt);
+              }      
+            } else {
+              print "
+<p style='color:red;'>Train Running Number \"{$_POST["editTrn"]}\" is invalid!";
+              editTimeTable($trn, $_POST["editTrn"], $tt);
+            }
+          } else if (isset($_POST["save"]) and $trn > 0) { // --------------------------------------------------------- Save existing
+            $tt =  $_POST["tt"];
+            $tt["locationTable"] = cleanUp($tt["locationTable"]);
+            if (is_numeric($_POST["editTrn"]) and $_POST["editTrn"] > 0) {
+              if ($_POST["editTrn"] == $trn) { // Save with same trn
+                $timeTables[$_POST["editTrn"]] = $tt;
+                saveTts();
+                printTimeTable($trn, $tt);            
+              } else if (!isset($timeTables[$_POST["editTrn"]])) { // Save with new trn
+                unset($timeTables[$trn]);
+                $timeTables[$_POST["editTrn"]] = $tt;
+                saveTts();
+                $trn = $_POST["editTrn"];
+                printTimeTable($trn, $tt);
+              } else {
+                print "
+<p style='color:red;'>Train Running Number \"{$_POST["editTrn"]}\" is invalid or already in use!";
+              editTimeTable($trn, $_POST["editTrn"], $tt);
+              }      
+            } else {
+              print "
+<p style='color:red;'>Train Running Number \"{$_POST["editTrn"]}\" is invalid!";
               editTimeTable($trn, $_POST["editTrn"], $tt);
             }
           } else {
@@ -127,7 +147,7 @@ if (is_file($TT_FILE)) {
         print "
 <p>Unknown trn in URL";    
       }
-    }
+    } 
   } else { // file is read only
     $trn = $_GET["trn"];
     if (isset($timeTables[$trn])) { // Existing trn
@@ -150,7 +170,25 @@ print "
 </body>
 </html>
 ";
-  
+
+// ===================================================================================
+
+function saveTts() {
+  global $timeTables, $TT_FILE;
+  $ttFh = fopen("$TT_FILE", "w");
+  fwrite($ttFh, "<?php
+// ------------------------------------------------- 
+
+\$PT2_GENERATION_TIME = \"".(date("Y-m-d H:i:s"))."\";
+
+// -------------------------------------------------- TimeTables
+\$timeTables = ".(var_export($timeTables,true)).";
+
+?>");
+  fclose($ttFh);
+}
+
+
 function verify ($locationTable) {
 global $PT1, $timeTables;
   $res = array();
@@ -358,6 +396,7 @@ function editTimeTable($trn, $editTrn, $tt, $errTxt = null) {
 <hr>";
   print "
   <input type='submit' value='Save' name='save'>
+  <input type='submit' value='Save as New' name='saveNew'>
   <input type='submit' value='Verify/CleanUp' name='verifyEdit'>
   <input type='reset' value='Reset'>
   <input type='submit' value='Cancel' name='cancel'>

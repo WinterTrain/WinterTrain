@@ -34,6 +34,7 @@ $simTrain = array();
 $tmsStatus = TMS_NO_TMS;
 $triggerHMIupdate = false;
 $triggerMCeUpdate = false;
+$dumpActive = false;
 $HMItimeout = 0;
 $MCetimeout = 0;
 $pumpTimeout = 0;
@@ -53,6 +54,7 @@ $baliseCountUnassigned = 0;
 // -------------------------------------- Operational varaibles
 $emergencyStop = false;
 $arsEnabled = true;
+$simulateAllPoint = false;
 $allowSR = false; $allowSH = false; $allowFS = false; $allowATO = false; // Overall allowance of modes
 $tmsStatus = TMS_NO_TMS;
 

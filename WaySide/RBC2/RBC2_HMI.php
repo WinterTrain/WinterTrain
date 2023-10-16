@@ -142,7 +142,7 @@ function HMIstartup($client) { // Initialise specific HMI client with static com
 }
 
 function HMIindication($to, $msg) {// Send indication to specific HMI client
-  fwrite($to,"$msg\n");
+  @fwrite($to,"$msg\n");// FIXME Consider a better solution
 //  print ">$msg<\n";
 }
 

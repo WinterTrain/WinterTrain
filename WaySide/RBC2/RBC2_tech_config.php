@@ -18,6 +18,7 @@ $AbusInterface = "I2C";   // Abus interface type:
 $DIRECTORY =        ".";                  
 $ERRLOG_FILE =      "Log/RBCIL_ErrLog.txt";
 $MSGLOG_FILE =      "Log/RBCIL.log";
+$DUMP_FILE =        "Log/Dump.log";
 $PT2_FILE =         "PT2.php";
 $BL_FILE =          "baliseDump.php";
 $TRAIN_DATA_FILE =  "TrainData.php";

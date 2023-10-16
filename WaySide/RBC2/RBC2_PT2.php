@@ -2,12 +2,9 @@
 // WinterTrain, RBC2
 // PT2 handlers
 
-// Print or log errors? ProcessPT2 might be called while running in background FIXME
-
-
 function  ProcessPT2() { //  PT2 (site specific application data) management and analysis
 global $DIRECTORY, $PT2_FILE, $PT2, $trackModel, $HMI, $balisesID, $baliseCountTotal, $totalElement,  $errorFound, $nInspection,
-  $baliseCountUnassigned, $lightSignal, $baliseStat;
+  $baliseCountUnassigned, $lightSignal, $baliseStat, $simulateAllPoint;
 
   require("$DIRECTORY/$PT2_FILE");
   if (isset($PT1)) { // Rename PT1 to PT2 - DMT to be updated to generate "PT2" FIXME
@@ -40,7 +37,7 @@ global $DIRECTORY, $PT2_FILE, $PT2, $trackModel, $HMI, $balisesID, $baliseCountT
       case "PHTD":
         if (!isset($PT2[$element["holdPoint"]])) {
           $errorFound = true;
-          print "Error: Unknown point \"{$element["holdPoint"]}\" specified in PHTU/PHTD: $name\n";
+          errLog("Error: Unknown point \"{$element["holdPoint"]}\" specified in PHTU/PHTD: $name");
         }
         $trackModel[$name] = new PHTelement($name);
       break;
@@ -60,10 +57,11 @@ global $DIRECTORY, $PT2_FILE, $PT2, $trackModel, $HMI, $balisesID, $baliseCountT
           case "CL":  // Clamped left
           break;    
           default:
-            print "Element $name: Unknown supervision state: {$element["supervisionState"]}\n";
+            errLog("Element $name: Unknown supervision state: {$element["supervisionState"]}");
             $errorFound = true;
           break;
         }
+        if ($simulateAllPoint) $element["supervisionState"] = "S";
         $trackModel[$name] = new Pelement($name);
       break;
       case "SU":
@@ -79,7 +77,7 @@ global $DIRECTORY, $PT2_FILE, $PT2, $trackModel, $HMI, $balisesID, $baliseCountT
         $trackModel[$name] = new BSelement($name);
       break;
       default:
-        print "Element $name: Unknown type of element.\n";
+        errLog("Element $name: Unknown type of element.");
         $errorFound = true;
       break;
     }
@@ -120,7 +118,7 @@ global $DIRECTORY, $PT2_FILE, $PT2, $trackModel, $HMI, $balisesID, $baliseCountT
     }
   }
   
-  print "Count of elements: $totalElement\n";
+  errLog("Count of elements: $totalElement");
   $start = ""; 
   foreach ($bufferstops as $name) { // ----------.---------------- Find a beginning Bufferstop as starting point for checking the graph
     if ($PT2[$name]["element"] == "BSB") {
@@ -133,16 +131,16 @@ global $DIRECTORY, $PT2_FILE, $PT2, $trackModel, $HMI, $balisesID, $baliseCountT
     $nInspection = 0;
     inspect($PT2[$start]["U"],$start,true);
   } else {
-    print "Error: At least one element of type 'BSB' (Bufferstop begin) is required in the track network.\n";
+    errLog("Error: At least one element of type 'BSB' (Bufferstop begin) is required in the track network.");
     $errorFound = true;
   }
   foreach ($PT2 as $name => $element) { // ----------------------- Check that all nodes have been checked and hence are connected
    if (!$element["checked"] and $name != "") {
-      print "Warning: Element $name is not connected to main network. Element ignored.\n";
+      errLog("Warning: Element $name is not connected to main network. Element ignored.");
     }
   }
   if ($errorFound) {
-    print "Error: Track network not OK. Source: $DIRECTORY/$PT2_FILE\n";
+    errLog("Error: Track network not OK. Source: $DIRECTORY/$PT2_FILE");
     fatalError("Track network not OK. Source: $DIRECTORY/$PT2_FILE");
   } else {
     msgLog("Found $totalElement elements in PT2 data file: $DIRECTORY/$PT2_FILE");
@@ -157,14 +155,15 @@ global $DIRECTORY, $PT2_FILE, $PT2, $trackModel, $HMI, $balisesID, $baliseCountT
     foreach ($baliseTrack["balises"] as $baliseName ) {
       if (!isset($PT2[$baliseName])) {
         $errorFound = true;
-        print "Error: Unknown balise \"$baliseName\" in HMI baliseTrack: $trackName\n";
+        errLog("Error: Unknown balise \"$baliseName\" in HMI baliseTrack: $trackName");
       }
     }
   }
   if ($errorFound) {
-    print "Error: HMI data not OK. Source: $DIRECTORY/$PT2_FILE\n";
+    errLog("Error: HMI data not OK. Source: $DIRECTORY/$PT2_FILE");
     fatalError("HMI data not OK. Source: $DIRECTORY/$PT2_FILE");
-  }  
+  }
+//  print_r($PT2);
 }
 
 function inspect($this, $prevName, $up) { // Check each edge in the graph for consistency
@@ -211,7 +210,7 @@ global $PT2, $nInspection, $totalElement, $errorFound;
               $PT2[$name]["checked"] = true;
               inspect($thisNode["T"], $name, true);
               $neighbor = ["name" => "","dist" => 0];
-              print "Error: ($prevName => $name) Inconsistant branch reference\n";
+              errLog("Error: ($prevName => $name) Inconsistant branch reference");
               $errorFound = true;
             }
           break;
@@ -226,7 +225,7 @@ global $PT2, $nInspection, $totalElement, $errorFound;
             inspect($thisNode["U"], $name, true);
           break;
           case "BSB":
-            print "Error: ($prevName => $name) BSB cannot be used as end of track for direction up.\n";
+            errLog("Error: ($prevName => $name) BSB cannot be used as end of track for direction up.");
             $neighbor = ["name" => "","dist" => 0];
             $errorFound = true;
           break;
@@ -235,7 +234,7 @@ global $PT2, $nInspection, $totalElement, $errorFound;
             $neighbor = $thisNode["D"];
           break;
           default :
-            print "Error: ($prevName => $name) Unknown element type: ".$thisNode["element"]."\n";
+            errLog("Error: ($prevName => $name) Unknown element type: ".$thisNode["element"]."");
             $errorFound = true;
         }
       } else { //------------------------------------------- DOWN
@@ -274,7 +273,7 @@ global $PT2, $nInspection, $totalElement, $errorFound;
             } else {
               inspect($thisNode["T"], $name, false);
               $neighbor = ["name" => "","dist" => 0];
-              print "Error: ($prevName => $name) Inconsistant branch reference\n";
+              errLog("Error: ($prevName => $name) Inconsistant branch reference");
               $errorFound = true;
             }
           break;
@@ -293,25 +292,25 @@ global $PT2, $nInspection, $totalElement, $errorFound;
             $neighbor = $thisNode["U"];
           break;
           case "BSE":
-            print "Error: ($prevName => $name) BSE cannot be used as end of track for direction down.\n";
+            errLog("Error: ($prevName => $name) BSE cannot be used as end of track for direction down.");
             $neighbor = ["name" => "","dist" => 0];
             $errorFound = true;
           break;
             default :
-            print "Error: ($prevName => $name) Unknown element type: ".$thisNode["element"]."\n";
+            errLog("Error: ($prevName => $name) Unknown element type: ".$thisNode["element"]."");
             $errorFound = true;
         }
       }
       if ($neighbor["name"] != $prevName) {
-        print "Error: ($prevName => $name) Inconsistant reference\n";
+        errLog("Error: ($prevName => $name) Inconsistant reference");
         $errorFound = true;
       }
     } else {
-      print "Error: ($prevName => $name) Unknown element $name\n";
+      errLog("Error: ($prevName => $name) Unknown element $name");
       $errorFound = true;
     }
   } else {
-    print "Error: Looping references detected.\n";
+    errLog("Error: Looping references detected.");
     $errorFound = true;
   }
 }

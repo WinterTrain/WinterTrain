@@ -490,6 +490,18 @@ global $PT1, $elementCount, $projectName, $projectDate, $projectAuthor, $doRepla
         if (!is_int($element["EC"]["majorDevice"]) or $element["EC"]["majorDevice"] < 1 or $element["EC"]["majorDevice"] > 32 ) {
           print "Warning: No valid major device number assigned to physical signal $name\n";
         }
+        if (!isset($element["routeInfo"])) {
+          print "Warning: Signal $name No route information defined - assuming routeInformation = 0\n";
+          $element["routeInformation"] = RI_OFF;
+        }
+        if ($element["riType"] != "NRI") {
+          if (!is_int($element["EC"]["riAddr"]) or $element["EC"]["riAddr"] == 0) {
+            print "Warning: No EC address assigned to route indicator, signal $name.\n";
+          }
+          if (!is_int($element["EC"]["riMajorDevice"]) or $element["EC"]["riMajorDevice"] < 1 or $element["EC"]["riMajorDevice"] > 32 ) {
+            print "Warning: No valid major device number assigned to route indicator, signal $name\n";
+          }
+        }
       }
     break;
     case "PF":

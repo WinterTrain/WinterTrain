@@ -10,8 +10,8 @@ set trainID(1) 20
 set dmiID(1) 21
 set trainName(1) "Cargo"
 
-set trainID(2) 22
-set dmiID(2) 23
+set trainID(2) 24
+set dmiID(2) 25
 set trainName(2) "Circus"
 
 set winWidth 620

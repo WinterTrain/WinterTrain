@@ -19,18 +19,21 @@ function interfaceServer() {
     $read[] = $fromAbusGw;
   }
   $except = NULL;
-  $write = NULL;
+  $write = NULL; // FIXME to be used for writing to HMI etc. ???
   if (stream_select($read, $write, $except, 0, 100000 )) {
     foreach ($read as $r) {
       if ($r == $listenerRBC) { // new HMI client
         if ($newClient = stream_socket_accept($listenerRBC,0,$clientName)) {
           msgLog("HMI Client $clientName signed in");
+          stream_set_blocking($newClient,false);
           $clients[] = $newClient;
           $clientsData[(int)$newClient] = [
             "addr" => $clientName,
             "signIn" => date("Ymd H:i:s"),
             "inChargeSince" => "",
-            "type" => "HMI"];
+            "activeAt" => "",
+            "type" => "HMI",
+            "userName" => ""];
           HMIstartup($newClient);
         } else {
           fatalError("HMI: accept failed");
@@ -38,12 +41,15 @@ function interfaceServer() {
       } elseif ($r == $listenerMCe) { // new MCe Client
         if ($newClient = stream_socket_accept($listenerMCe,0,$clientName)) {
           msgLog("MCe Client $clientName signed in");
+          stream_set_blocking($newClient,false);
           $clients[] = $newClient;
           $clientsData[(int)$newClient] = [
             "addr" => $clientName,
             "signIn" => date("Ymd H:i:s"),
             "inChargeSince" => "",
-            "type" => "MCe"];
+            "activeAt" => "",
+            "type" => "MCe",
+            "userName" => ""];
           MCeStartup($newClient);
         } else {
           fatalError("MCe: accept failed");

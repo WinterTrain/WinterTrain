@@ -3,7 +3,7 @@
 // Element Controller handlers
 
 function orderSignal ($elementName, $signalling) {
-global $PT2;
+  global $PT2;
   switch ($signalling) { // Mapping of signalling (SIG_) to EC order (O_) to be refined FIXME
     case SIG_PROCEED:
       orderElement($elementName, O_PROCEED);
@@ -21,8 +21,24 @@ global $PT2;
   }
 }
 
-function orderElement($elementName, $order) {
-global $PT2;
+function orderRouteIndicator ($elementName, $routeInformation) {
+  global $PT2;
+  $element = $PT2[$elementName];
+  switch ($PT2[$elementName]["riType"]) {
+    case "RI2":
+      orderEC($element["EC"]["riAddr"], $element["EC"]["riIndex"], $routeInformation & 0x03);
+//  print "orderRouteIndicator: $elementName, $routeInformation\n";
+    break;
+    case "RI3":
+      orderEC($element["EC"]["riAddr"], $element["EC"]["riIndex"], $routeInformation & 0x07);
+//  print "orderRouteIndicator: $elementName, $routeInformation\n";
+    break;
+    default:
+  }
+}
+
+function orderElement($elementName, $order, $riOrder = 0) {
+  global $PT2;
   $element = $PT2[$elementName];
   switch ($element["element"]) {
     case "SU":
@@ -55,7 +71,7 @@ global $PT2;
 }
 
 function elementStatusEC($addr, $data) { // Analyse element status for one EC
-global $EC, $PT2, $trackModel, $triggerHMIupdate;
+  global $EC, $PT2, $trackModel, $triggerHMIupdate;
   if (isset($EC[$addr]) and $data[3] < count($EC[$addr]["index"])) { // Check EC configuration
     errLog("EC ($addr) not configured: #conf. element EC: {$data[3]}, RBC: ".count($EC[$addr]["index"]));
     unset($EC[$addr]);
@@ -99,7 +115,7 @@ global $EC, $PT2, $trackModel, $triggerHMIupdate;
           }
         break;
         case "SD":
-        case "SU":
+        case "SU": // Note: status could be from route indicator as well
         break;
         case "LX":
         break;
@@ -109,7 +125,7 @@ global $EC, $PT2, $trackModel, $triggerHMIupdate;
 }
 
 function pollNextEC() { // Poll one EC at a time
-global $EC, $pollEC;
+  global $EC, $pollEC;
   if ($pollEC) {
     requestElementStatusEC(key($EC));
     if (next($EC) === FALSE) {
@@ -120,7 +136,7 @@ global $EC, $pollEC;
 }
 
 function checkECtimeout() {
-global $PT2, $EC, $now, $radioLinkAddr;
+  global $PT2, $EC, $now, $radioLinkAddr;
   foreach ($EC as $addr => &$ec) {
     if ($now > $ec["validTimer"]) { // EC not providing status - EC assumed offline
       if ($ec["EConline"]) { // Was online
@@ -135,7 +151,7 @@ global $PT2, $EC, $now, $radioLinkAddr;
 }
 
 function AbusReceivedFrom($addr, $data) { // Call-back function called by Abus interface handler when receiving data from Abus slave
-global $EC, $radioInterface;
+  global $EC, $radioInterface;
 //print "receivedFromEC: addr >$addr< ";
 //print_r($data);
 //print "
@@ -179,8 +195,7 @@ global $EC, $radioInterface;
 }
 
 function initEC($specificEC = "") { // Initialize all or one specific EC from data in PT2
-global $PT2, $EC;
-
+  global $PT2, $EC;
   if ($specificEC == "") $EC = array(); // Enforce a rebuild of EC table from PT2 as PT2 might have been reloaded in this case
   foreach ($PT2 as $name => &$element) {
     if ($specificEC == "" or (isset($element["EC"]["addr"]) and $element["EC"]["addr"] == $specificEC)) {
@@ -208,6 +223,15 @@ global $PT2, $EC;
           configureEC($addr, $element["EC"]["type"], $element["EC"]["majorDevice"]);
           $element["EC"]["index"] = count($EC[$addr]["index"]);
           $EC[$addr]["index"][] = $name;
+          if($element["riType"] != "NRI" and $element["EC"]["riType"] != 0) { // Configure optional route indicator
+            $addr = $element["EC"]["riAddr"];
+            if (!isset($EC[$addr])) {
+              addEC($addr);
+            }
+            configureEC($addr, $element["EC"]["riType"], $element["EC"]["riMajorDevice"]);
+            $element["EC"]["riIndex"] = count($EC[$addr]["index"]);
+            $EC[$addr]["index"][] = $name; // FIXME OK?
+            }
         }
         break;
         case "LX":
@@ -237,7 +261,7 @@ global $PT2, $EC;
 
 // ------------------------------------------------------------------------------------------------- Low level command handlers for EC
 function addEC($addr) { // Add new Element Controller data to EC table
-global $EC;
+  global $EC;
   $EC[$addr]["index"] = array();
   $EC[$addr]["validTimer"] = 0;
   $EC[$addr]["EConline"] = false;

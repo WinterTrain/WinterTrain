@@ -161,7 +161,16 @@ abstract class genericElement { // ---------------------------------------------
       return SIG_NOT_LOCKED;
     }
   }
-
+  
+  protected function routeIndication($routeInformation) {
+  // Distribute route information from EP
+    if ($this->routeLockingUp) {
+      $this->neighbourDown->routeIndication($routeInformation);
+    } else {
+      $this->neighbourUp->routeIndication($routeInformation);
+    }
+  }
+  
   protected function EOAdist($train, $EOAdist, $searchRoute, $caller) { // Compute distance between LRBG and EOA.
   // Starting from EOA (alias EP) follow route whilst locked ($searchRoute true), then search all tracks for LRBG
     global $PT2;
@@ -202,7 +211,6 @@ abstract class genericElement { // ---------------------------------------------
 }
 
 // ==========================================================================================================================================
-
 
 class Pelement extends genericElement { // -------------------------------------------------------------------------------------- Point
   public $neighbourTip;
@@ -308,7 +316,7 @@ class Pelement extends genericElement { // -------------------------------------
     if ($this->pointHeld) {
       $this->pointHeld = false;
       $this->throwPoint(C_RELEASE); // FIXME is retry needed
-print "C_RELEASE {$this->elementName}\n";
+      debugPrint("C_RELEASE {$this->elementName}");
     }
   }
   
@@ -653,7 +661,6 @@ print "C_RELEASE {$this->elementName}\n";
       }
     } // else point not locked
   }
- 
 
   public function searchSP($searchUp) {
     return ""; // Points are not allowed between train and Start Point of route
@@ -692,7 +699,20 @@ print "C_RELEASE {$this->elementName}\n";
       return SIG_NOT_LOCKED;
     }
   }
-
+  
+  protected function routeIndication($routeInformation) {
+  // Distribute route information from EP
+    if ($this->routeLockingUp == $this->facingUp) {
+      $this->neighbourTip->routeIndication($routeInformation);
+    } else {
+      if ($this->routeLockingType == RT_RIGHT) {
+        $this->neighbourRight->routeIndication($routeInformation);
+      } else {
+        $this->neighbourLeft->routeIndication($routeInformation);
+      }
+    }
+  }
+  
   protected function EOAdist($train, $EOAdist, $searchRoute, $caller) { // Point
     global $PT2;
     if ($this->routeLockingState != R_LOCKED) $searchRoute = false;
@@ -759,7 +779,7 @@ print "C_RELEASE {$this->elementName}\n";
             errLog("Warning: Point {$this->elementName} reported position (left), differs from expected lie (right)");
           }   
         break;
-        default:
+        default: // Not supervised ------------------ FIXME --------------------------- update signalling, updateSignalling()
       }
     }
   }
@@ -859,6 +879,7 @@ class Selement extends genericElement { // -------------------------------------
       }
       $this->routeLockingUp = $this->facingUp;;
       $trackModel[$EP]->updateSignalling();
+      $trackModel[$EP]->routeIndication(RI_OFF);
       $trackModel[$EP]->cmdOrigin = $cmdOrigin;
     }
     return $EP;
@@ -874,6 +895,7 @@ class Selement extends genericElement { // -------------------------------------
       $this->routeLockingType = RT_IDLE;
       $this->signallingState = SIG_NOT_LOCKED;
       orderSignal($this->elementName, SIG_STOP);
+      orderRouteIndicator($this->elementName, RI_OFF);
     }
   }
   
@@ -884,6 +906,20 @@ class Selement extends genericElement { // -------------------------------------
       $this->routeLockingState = R_RELEASING;
       $this->signallingState = SIG_CLOSED;
       orderSignal($this->elementName, SIG_STOP);
+      orderRouteIndicator($this->elementName, RI_OFF);
+    }
+  }
+
+  protected function releaseRoute($caller) { // unconditional route release
+    global $recCount;
+    $recCount +=1;
+    if ($recCount > 1000) die("Recursion B {$this->elementName} **********************\n"); // FIXME
+    if ($this->routeLockingState != R_IDLE and $caller == ($this->routeLockingUp ? $this->neighbourUp : $this->neighbourDown)) {
+      $this->routeLockingUp ? $this->neighbourDown->releaseRoute($this) : $this->neighbourUp->releaseRoute($this);
+      $this->routeLockingState = R_IDLE;
+      $this->routeLockingType = RT_IDLE;
+      $this->signallingState = SIG_NOT_LOCKED;
+      orderRouteIndicator($this->elementName, RI_OFF);
     }
   }
 
@@ -921,6 +957,7 @@ class Selement extends genericElement { // -------------------------------------
                   $this->routeLockingState = R_IDLE;
                   $this->routeLockingType = RT_IDLE;
                   $this->signallingState = SIG_NOT_LOCKED;
+                  orderRouteIndicator($this->elementName, RI_OFF);
                 break;
                 case RT_VIA:
                   if ($this->neighbourDown->routeLockingState == R_IDLE) {
@@ -928,6 +965,7 @@ class Selement extends genericElement { // -------------------------------------
                     $this->routeLockingType = RT_IDLE;
                     $this->occupationTrainID = "";
                     $this->signallingState = SIG_NOT_LOCKED;
+                    orderRouteIndicator($this->elementName, RI_OFF);
                   } // else Warning: element release in the middle of a route - ignored
                 break;
                 case RT_VIA_REVERSE:
@@ -960,12 +998,14 @@ class Selement extends genericElement { // -------------------------------------
                   $this->routeLockingState = R_IDLE;
                   $this->routeLockingType = RT_IDLE;
                   $this->signallingState = SIG_NOT_LOCKED;
+                  orderRouteIndicator($this->elementName, RI_OFF);
                 break;
                 case RT_VIA:
                   if ( $this->neighbourUp->routeLockingState == R_IDLE) { // other conditions FIXME
                     $this->routeLockingState = R_IDLE;
                     $this->routeLockingType = RT_IDLE;
                     $this->signallingState = SIG_NOT_LOCKED;
+                    orderRouteIndicator($this->elementName, RI_OFF);
                   } // else Warning: element release in the middle of a route - ignored
                 break;
                 case RT_VIA_REVERSE:
@@ -1026,7 +1066,7 @@ class Selement extends genericElement { // -------------------------------------
           $this->routeLockingType = RT_VIA;
           $this->signallingState = SIG_STOP;
           $EP = $this->searchEP($directionUp); 
-        } else {                                         // Not locked
+        } else {                               // Not locked
           if ($directionUp ? $this->neighbourUp->routeLockingState == R_LOCKED : $this->neighbourDown->routeLockingState == R_LOCKED) {
             return "__B"; // Preventing this new EP to be related to any old route behind the signal
           }
@@ -1086,7 +1126,7 @@ class Selement extends genericElement { // -------------------------------------
   
   public function updateSignalling() { // To be called for EP, signal
     if ($this->routeLockingState == R_LOCKED and $this->routeLockingType == RT_END_POINT) {
-      // Vacancy state not included as the signal has no extent on the facing side 
+      // Vacancy state of signal not included as the signal has no extent on the facing side 
       $this->signallingState = SIG_STOP;
       return ($this->routeLockingUp ?
         $this->neighbourDown->signalling(SIG_PROCEED, $this->assignedTrain) :
@@ -1094,6 +1134,40 @@ class Selement extends genericElement { // -------------------------------------
     } else {
       $this->signallingState = SIG_NOT_LOCKED;
       return SIG_NOT_LOCKED;
+    }
+  }
+  
+  public function routeIndication($routeInformation) { // Distribute route information from EP within locked route
+  global $PT2;
+    if ($this->routeLockingState == R_LOCKED) {
+      switch ($this->routeLockingType) {
+        case RT_END_POINT: // This is the EP
+          $routeInformation = $PT2[$this->elementName]["routeInfo"];
+          if ($this->routeLockingUp) {
+            $this->neighbourDown->routeIndication($routeInformation);
+          } else {
+            $this->neighbourUp->routeIndication($routeInformation); 
+          }
+        break;
+        case RT_VIA:
+          orderRouteIndicator($this->elementName, $routeInformation);
+          if ($this->routeLockingUp) {
+            $this->neighbourDown->routeIndication($routeInformation);
+          } else {
+            $this->neighbourUp->routeIndication($routeInformation); 
+          }
+        break;
+        case RT_VIA_REVERSE:
+          if ($this->routeLockingUp) {
+            $this->neighbourDown->routeIndication($routeInformation);
+          } else {
+            $this->neighbourUp->routeIndication($routeInformation); 
+          }
+        break;
+        case RT_START_POINT:
+          orderRouteIndicator($this->elementName, $routeInformation);
+        break;
+      }
     }
   }
   
@@ -1150,8 +1224,8 @@ class Selement extends genericElement { // -------------------------------------
     $train = $trainData[$index];
     return ($this->routeLockingUp ?
       $this->neighbourDown->EOAdist($train, $PT2[$this->elementName]["D"]["dist"], true, $this) :
-      $this->neighbourUp->EOAdist($train, $PT2[$this->elementName]["U"]["dist"], true, $this)) - 10;
-      // FIXME safety distance in rear of signal to be specified as specific EP parameter
+      $this->neighbourUp->EOAdist($train, $PT2[$this->elementName]["U"]["dist"], true, $this)) - $PT2[$this->elementName]["EPdist"];
+      // Subtract safety distance in rear of signal
   }
 
   protected function EOAdist($train, $EOAdist, $searchRoute, $caller) { // Signal
@@ -1313,7 +1387,17 @@ class BSelement extends genericElement { // ------------------------------------
       return SIG_NOT_LOCKED;
     }
   }
-  
+
+  public function routeIndication($routeInformation) {
+  // Distribute route information from EP
+  global $PT2;
+    if ($this->routeLockingUp) {
+      $this->neighbourDown->routeIndication($PT2[$this->elementName]["routeInfo"]);
+    } else {
+      $this->neighbourUp->routeIndication($PT2[$this->elementName]["routeInfo"]);  
+    }
+  }
+   
   public function computeEOAdist($index) {
     global $PT2, $trainData;
     $train = $trainData[$index];
@@ -1387,14 +1471,14 @@ class PHTelement extends genericElement { // -----------------------------------
         if ($this->facingUp and !$this->pointToHold->pointHeld) {
           $this->pointToHold->pointHeld = true;
           $this->pointToHold->throwPoint(C_HOLD); // FIXME is retry needed
-print "C_HOLD {$this->pointToHold->elementName}\n";
+          debugPrint("C_HOLD {$this->pointToHold->elementName}");
         }
       break;
       case D_DOWN:
         if (!$this->facingUp and !$this->pointToHold->pointHeld) {
           $this->pointToHold->pointHeld = true;
           $this->pointToHold->throwPoint(C_HOLD); // FIXME is retry needed
-print "C_HOLD {$this->pointToHold->elementName}\n";
+          debugPrint("C_HOLD {$this->pointToHold->elementName}");
         }
       break;
       case D_STOP: // Ignore occupation

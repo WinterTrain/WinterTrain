@@ -1,44 +1,28 @@
 <?php
-// WinterTrain, RBC2
+// WinterTrain, OBUng
 // Utility functions
 
 function CmdLineParam() {
-  global $argv, $debug, $background, $PT2_FILE, $TRAIN_DATA_FILE, $DIRECTORY, $ERRLOG_FILE, $MSGLOG_FILE, $BL_FILE,
-    $radioInterface, $AbusInterface, $allowSR, $allowSH, $allowFS, $allowATO, $HMIport, $MCePort, $simulateAllPoint;
+  global $argv, $debug, $background, $noHWbackend;
+  
   if (in_array("-h",$argv)) {
-    print "RBC2 - WinterTrain
+    print "OBUng - WinterTrain
     
 Usage:
 
--sr               Allow mode SR
--sh               Allow mode SH
--fs               Allow mode FS
--ato              Allow mode ATO
-
--sp               Simulate all points
-
--nr               No Radio, disable radio interface
--ai2c             Abus gateway via I2C
--ai2ct            Abus gateway via I2C (using I2C tool)
--aip              Abus gateway via ethernet
--na               do not connect to Abus gateway
-
 -b, --background  start as daemon
+-nw               No HW backend, disable backend interface
 
 -d                enable debug info, level all
--dg               enable debug info, general
--dr               enable debug info, RBC
--dt               enable debug info, TMS
 
 -D <directory>    use <directory> as working directory for all files. Must be given before option -td, -pt2, -l, -e and -bl in order to take effect
 -td <file>        read Train Data from <file>
--pt2 <file>       read PT2 data from <file>
+
 -l <file>         use <file> as Message Log File instead of default
 -e <file>         use <file> as Error Log File instead of default
--bl <file>        use <file> as Balise Dump File instead of default
 
--HMIport <port>   listen to port <port> for HMI interface
--MCeport <port>   listen to port <port> for MCe interface
+-DMIport <port>   listen to port <port> for DMI interface
+-MMIport <port>   listen to port <port> for MMI interface
 
 ";
     exit();
@@ -46,55 +30,6 @@ Usage:
   next($argv);
   while (list(,$opt) = each($argv)) {
     switch ($opt) {
-    case "-sr":
-      $allowSR = true;
-      break;
-    case "-sh":
-      $allowSH = true;
-      break;
-    case "-fs":
-      $allowFS = true;
-      break;
-    case "-ato":
-      $allowATO = true;
-      break;
-    case "-sp":
-    print "Warning: All points are simulated\n";
-      $simulateAllPoint = true;
-      break;
-    case "-nr":
-      $radioInterface = "NONE";
-      print "Warning: Radio interface disabled\n";
-      break;
-    case "-ai2c":
-      $AbusInterface = "I2C";
-      print "Abus gateway via I2C\n";
-      break;
-    case "-ai2ct":
-      $AbusInterface = "I2C_T";
-      print "Abus gateway via I2C (using I2C tool)\n";
-      break;
-    case "-aip":
-      $AbusInterface = "IP";
-      print "Abus gateway via ethernet\n";
-      break;
-    case "-na":
-      $AbusInterface = "none";
-      print "Warning: No Abus gateway selected\n";
-      break;
-    case "-pt2":
-      list(,$p) = each($argv);
-      if ($p) {
-        $PT2_FILE = $p;
-        if (!is_readable("$DIRECTORY/$PT2_FILE")) {
-          print "Error: option -pt2: Cannot read PT2 file: $DIRECTORY/$PT2_FILE \n";
-          exit(1);
-        }
-      } else {
-        print "Error: option -pt2: File name is missing \n";
-        exit(1);
-      }
-      break;
     case "-td":
       list(,$p) = each($argv);
       if ($p) {
@@ -147,46 +82,35 @@ Usage:
         exit(1);
       }
       break;
-      // FIXME add option for naming DUMP_FILE
-    case "-bl":
-      list(,$p) = each($argv);
-      if ($p) {
-        $BL_FILE = $p;
-        if (!is_writeable("$DIRECTORY/$BL_FILE")) {
-          print "Error: option -bl: Cannot write to Balise Dump File: $DIRECTORY/$BL_FILE\n";
-          exit(1);
-        }
-      } else {
-        print "Error: option -bl: File name is missing \n";
-        exit(1);
-      }
-      break;   
-    case "-HMIport":
+    case "-DMIport":
       list(,$p) = each($argv);
       if ($p) {
         $HMIport = $p;
         if (!is_numeric($HMIport)) {
-          print "Error: option -HMIport: <port> must be numeric\n";
+          print "Error: option -DMIport: <port> must be numeric\n";
           exit(1);
         }
       } else {
-        print "Error: option -HMIport: <port> is missing \n";
+        print "Error: option -DMIport: <port> is missing \n";
         exit(1);
       }
     break; 
-    case "-MCeport":
+    case "-MMIport":
       list(,$p) = each($argv);
       if ($p) {
         $MCePort = $p;
         if (!is_numeric($MCePort)) {
-          print "Error: option -MCeport: <port> must be numeric\n";
+          print "Error: option -MMIport: <port> must be numeric\n";
           exit(1);
         }
       } else {
-        print "Error: option -MCeport: <port> is missing \n";
+        print "Error: option -MMIport: <port> is missing \n";
         exit(1);
       }
     break; 
+    case "-nW":
+      $noHWbackend = TRUE;
+      break;
     case "-b":
     case "--background" :
       $background = TRUE;
@@ -194,21 +118,6 @@ Usage:
     case "-d":
       $debug = 0x07;
       print "Debug, all\n";
-      break;
-    case "-dg":
-    case "--debug";
-      $debug = $debug | 0x01;
-      print "Debug general mode\n";
-      break;
-    case "-dr":
-    case "--debugRBC";
-      $debug = $debug | 0x02;
-      print "Debug RBC mode\n";
-      break;
-    case "-dt":
-    case "--debugTMS";
-      $debug = $debug | 0x04;
-      "Debug TMS mode\n";
       break;
     default :
       print "Unknown option: $opt\n";
@@ -218,7 +127,7 @@ Usage:
 }
 
 function prepareMainProgram() {
-  global $debug, $logFh, $errFh, $blFh, $DIRECTORY, $ERRLOG_FILE, $MSGLOG_FILE, $PT2_FILE, $TRAIN_DATA_FILE, $BL_FILE, $DUMP_FILE, $dumpFh;
+  global $debug, $logFh, $errFh, $DIRECTORY, $ERRLOG_FILE, $MSGLOG_FILE, $TRAIN_DATA_FILE, $DUMP_FILE, $dumpFh ;
   if ($debug) {
     error_reporting(E_ALL);
   } else {
@@ -236,23 +145,15 @@ function prepareMainProgram() {
     print "Warning: Cannot open Dump file: $DIRECTORY/$DUMP_FILE\n";
     $dumpFh = fopen("/dev/null","w");
   }
-  if (!is_readable("$DIRECTORY/$PT2_FILE")) {
-    print "Error: Cannot read PT2 data file: $DIRECTORY/$PT2_FILE\n";
-    exit(1);
-  }
   if (!is_readable("$DIRECTORY/$TRAIN_DATA_FILE")) {
     print "Error: Cannot read Train Data file: $DIRECTORY/$TRAIN_DATA_FILE\n";
     exit(1);
   }
-  if (!($blFh = @fopen("$DIRECTORY/$BL_FILE","w"))) {
-    print "Warning: Cannot write Balise List file: $DIRECTORY/$BL_FILE\n";
-    $blFh = fopen("/dev/null","w");
-  }
 }
 
 function initMainProgram() {
-  global $logFh, $errFh, $debug, $DIRECTORY, $ERRLOG_FILE, $MSGLOG_FILE, $background, $DUMP_FILE, $dumpFh;
-// logFh and errFh are closed before fork to background, so need to be reopened here:
+  global $logFh, $errFh, $debug, $DIRECTORY, $ERRLOG_FILE, $MSGLOG_FILE, $background, $DUMP_FILE, $dumpFh, $OBUstart;
+  // logFh and errFh are closed before fork to background, so need to be reopened here:
   if (!($errFh = @fopen("$DIRECTORY/$ERRLOG_FILE","a"))) {
     print "Warning: Cannot open Error log file: $DIRECTORY/$ERRLOG_FILE\n";
     $errFh = fopen("/dev/null","w");
@@ -270,6 +171,17 @@ function initMainProgram() {
   } else {
     msgLog("Starting in forground");
   }
+  $OBUstart = time();
+}
+
+function prettyPrintTime($sec) {
+  $s = $sec % 60;
+  $min = ($sec - $s) / 60;
+  $m = $min % 60;
+  $hour = ($min - $m) / 60;
+  $h = $hour % 24;
+  $d = ($hour - $h) / 24;
+  return "$d:$h:$m:$s";
 }
 
 function forkToBackground() {

@@ -79,7 +79,7 @@ function generateModeAuthority($index) { // ------------------------------------
                   "{$trackModel[$routeEP]->assignedTrain} FS");
                 voidMovementAuthority($index);              
               }
-            } else { // No SO route available for FS
+            } else { // No SP route available for FS
 //print "No SP route available for train {$train["ID"]} in FS\n";
               voidMovementAuthority($index);
             }
@@ -88,7 +88,7 @@ function generateModeAuthority($index) { // ------------------------------------
             generateMovementAuthority($index);
           }
         } else { // Position ambiguous, reject MA request
-print "Posiiton of train {$train["ID"]} is ambiguous\n";
+          debugprint("Posiiton of train {$train["ID"]} is ambiguous");
           voidMovementAuthority($index);
         }          
       } else { // FS not allowed
@@ -142,6 +142,7 @@ print "Posiiton of train {$train["ID"]} is ambiguous\n";
             generateMovementAuthority($index);
           }
         } else { // Position ambiguous, reject MA request
+          debugprint("Posiiton of train {$train["ID"]} is ambiguous");
           voidMovementAuthority($index);
         } 
       } else { // ATO not allowed
@@ -382,19 +383,18 @@ function processPositionReport( // ------------------ Process Point Position Rep
     $train["rtoMode"] = $rtoMode;
     $train["speed"] = $speed;
     if ($baliseID == "01:00:00:00:01") { // ------------------------------------------------------------------- OBU indicates void position
-//      $train["posTimeStamp"] = $now;
+//      $train["posTimeStamp"] = $now; // FIXME
       if ($posRestoreEnabled) {
         if (!$train["posRestored"]) {
           if ($now - $train["posTimeStamp"] <= POSITION_TIMEOUT) { // Pos can be restored
-    // FIXME If driving direction is known, restored position can be compensated for movement
             $train["restoreCount"] +=1;
-            errLog("Train ({$train["ID"]}): Void position restored to: {$train["baliseID"]} {$train["distance"]} Stamped: ".
+            errLog("Train ({$train["ID"]}): Void position restored to: {$train["baliseName"]} ({$train["baliseID"]}) {$train["distance"]} Stamped: ".
                 date("Ymd H:i:s", $train["posTimeStamp"]));
             sendPosRestore($train["ID"], $train["baliseID"], (int)($train["distance"] / $train["wheelFactor"]));
             // New posRep from OBU is awaited before position is determined (to verify restore)
   // FIXME          $train["posRestored"] = true; // to prevent continuous restore
           } else { // Old pos outdated
-            errLog("Train ({$train["ID"]}): RBC position ({$train["baliseID"]}) not restored - outdated. Stamped: ".
+            errLog("Train ({$train["ID"]}): RBC position {$train["baliseName"]} ({$train["baliseID"]}) not restored - outdated. Stamped: ".
               date("Ymd H:i:s", $train["posTimeStamp"]));
             $train["baliseName"] = "<void balise>";
             $train["distance"] = 0;
@@ -403,8 +403,10 @@ function processPositionReport( // ------------------ Process Point Position Rep
           }
         } else {
           $train["curPositionValid"] = false;
-          errLog("Train ({$train["ID"]}): position void, but already restored. Awaiting new real position.");
-          // Dont keep repeating this in the log FIXME
+          if (!$train["posRestoredLogged"]) {
+            errLog("Train ({$train["ID"]}): position void, but already restored. Awaiting new real position.");
+            $train["posRestoredLogged"] = true;
+          }
         }
       }
     } elseif (isset($balisesID[$baliseID])) { // -------------------------------------------------------------- OBU indicates known position
@@ -412,13 +414,12 @@ function processPositionReport( // ------------------ Process Point Position Rep
       $train["distance"] = (int)($distance * $train["wheelFactor"]);
       $train["baliseID"] = $baliseID;
       $train["baliseName"] = $balisesID[$baliseID];
-
-if ($train["baliseName"] != $train["prevBaliseName"]) {
-  $baliseStat[$train["baliseName"]][$trainID] +=1;
-  $train["prevBaliseName"] = $train["baliseName"];
-}
-
+      if ($train["baliseName"] != $train["prevBaliseName"]) { // Update balise statistics
+        $baliseStat[$train["baliseName"]][$trainID] +=1;
+        $train["prevBaliseName"] = $train["baliseName"];
+      }
       $train["posRestored"] = false;
+      $train["posRestoredLogged"] = false;
       determineOccupation($index);
       $train["curPositionValid"] = $train["curPositionUnambiguous"];
     } else { // ----------------------------------------------------------------------------------------------- OBU indicates unknown balise
@@ -571,9 +572,9 @@ function checkTimers() {
         $element->throwPoint($element->logicalLieRight ? C_RIGHT : C_LEFT);
         $element->retryTimer = $now;
         $element->retryCount += 1;
-print "PM throw retry {$element->elementName}\n";
+        errLog("Notice: PM throw retry {$element->elementName}");
         if ($element->retryCount > PM_MAX_RETRY) {
-          print "Warning: {$element->elementName} Max point throw retry reached\n";
+          errLog("Warning: {$element->elementName} Max point throw retry reached");
           unset($PMretryTimers[$key]);
         }
       } else { // point state OK
@@ -591,11 +592,15 @@ function processCommandRBC($command, $from) { // -------------------------------
   if ($param[0] == "Rq") {// Request operation
     if ($inChargeHMI) {
       HMIindication($from, "displayResponse {Rejected ".$clientsData[(int)$inChargeHMI]["addr"]." is in charge (since ".
-        $clientsData[(int)$inChargeHMI]["inChargeSince"].")}");
-    } else {
+        $clientsData[(int)$inChargeHMI]["inChargeSince"].")}"); // FIXME add userName
+    } elseif (true or isset($param[1]) and $param[1] == "hej") {
       $inChargeHMI = $from;
       $clientsData[(int)$from]["inChargeSince"] = date("Ymd H:i:s");
+      $clientsData[(int)$from]["activeAt"] = date("Ymd H:i:s");
+      $clientsData[(int)$from]["userName"] = isset($param[1]) ? $param[1] : "<unknown>";
       HMIindication($from, "oprAllowed");
+    } else {
+      HMIindication($from, "displayResponse {Rejected}");
     }
     return;
   }
@@ -623,6 +628,7 @@ function processCommandRBC($command, $from) { // -------------------------------
 // Routes
       case "tr": // Set route
         $EP = $trackModel[$param[1]]->cmdSetRouteTo($param[2]);
+        if ($EP == "__R")  $EP = $trackModel[$param[2]]->cmdSetRouteTo($param[1]); // Try opposite signal order
         switch ($EP) {
           case "__R":
             HMIindication($from, "displayResponse {Rejected - no route possible}");
