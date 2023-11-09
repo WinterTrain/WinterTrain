@@ -3,8 +3,8 @@
 // WinterTrain, OBUng
 // Configuration files
 include("OBU_tech_config.php");    // Technical configuration data like file names, interfaces, addresses etc.
-//include("OBU_enummeration.php");   // Definition of enummeration constants
-//include("OBU_txt.php");            // Text and language support
+include("OBU_enummeration.php");   // Definition of enummeration constants
+include("OBU_txt.php");            // Text and language support
 
 // Feature handlers
 include("OBU_utility.php");        // Process related functions, logging etc. 
@@ -20,8 +20,10 @@ include("OBU_TrainData.php");      // Process OBU TrainData
 //--------------------------------------- System variables
 $debug = 0x00; $background = false; $run = true; $noHWbackend = false;
 $startTime = $secondTimeout = time();
-$MMItimer = 0;
+$MMItimer = 0; $dmiPoll = 0;
 $trainData = array();
+
+$triggerMMIupdate = false;
 
 // -------------------------------------- Operational varaibles
 $emergencyStop = false;
@@ -35,19 +37,23 @@ initMainProgram();
 // --------------------------------------------------------------------------------------- System initialization
 initInterfaces();
 
+ProcessTrainData(); // FIXME allow re-read of train data
 $prevHrTime = hrtime(true);
 do {
   $now = time();
   $hrTime = hrtime(true);
-  $dT = $hrtime - $prevHrTime;
+  $dT = $hrTime - $prevHrTime;
   $prevHrTime = $hrTime;
   if ($now > $MMItimer) { // Each second
     $MMItimer = $now;
     pollHWbackend();
-    pollDMI();
-    MMIupdateAll();
   }
-  motorControl($dT);
+  if ($now > $dmiPoll) {
+    $dmiPoll = $now + TIMER_DMI_POLL;
+    pollDMI();
+  }
+  if ($triggerMMIupdate) MMIupdateAll();
+//  motorControl($dT);
   interfaceServer();
 } while ($run);
 ShutDown();

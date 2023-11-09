@@ -3,8 +3,8 @@
 
 package require Tk
 
-set IPaddress 192.168.8.230
-set IPport 9911
+set IPaddress 192.168.1.230
+set IPport 9901
 
 # Default configuration
 set trackWidth 0.15
@@ -437,7 +437,7 @@ ttk::style configure TButton -font "'Helvetica', $buttonFontSize"
 ttk::style configure TLabel -font "'Helvetica', $labelFontSize"
 #ttk::style configure TEntry -font "'Helvetica', 24"  // virker ikke jf web
 
-wm title . "WinterTrain MCe $MCeVersion"
+wm title . "WinterTrain MCe"
 wm geometry . $winWidth\x$winHeight$winX$winY
 grid columnconfigure . 0 -weight 1; grid rowconfigure . 0 -weight 1
 
@@ -509,7 +509,7 @@ grid [ttk::frame .f.fStatus -padding "3 3 3 3" -relief solid -borderwidth 2] -co
 disconnected
 openSocket
 
-puts "WinterTrain MCe $MCeVersion"
+puts "WinterTrain MCe"
 if {$startLoop} {
   vwait forever
 } else {

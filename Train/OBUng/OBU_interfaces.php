@@ -4,9 +4,11 @@
 
 // This module provides interfaces to: IP network and Train HW
 
+$DMIbuffer = "";
 
 function interfaceServer() {
-  global $listenerDMI, $listenerMMI, $clients, $clientsData, $inChargeDMI, $inChargeMMI;
+  global $listenerDMI, $listenerMMI, $clients, $clientsData, $inChargeDMI, $inChargeMMI, $DMIbuffer, $dmiState, $triggerMMIupdate,
+    $modeSel, $driSel, $driveSel, $batteryCgarge, $chargeStatus, $rssi;
   $read = $clients;
   $read[] = $listenerDMI;
   $read[] = $listenerMMI;
@@ -28,10 +30,7 @@ function interfaceServer() {
               "activeAt" => "",
               "type" => "DMI",
               "userName" => ""];
-            fwrite($newClient, "A\n"); // Accept DMI login
-            DMIstartup($newClient);
           } else {
-            fwrite($newClient, "R\n"); // Reject DMI login
             fclose($newClient);
             msgLog("Another DMI client already signed in - rejecting this client >$clientName<.");        
           }
@@ -56,9 +55,14 @@ function interfaceServer() {
         }
       } else { // Existing client
         if ($data = fgets($r)) {
+//        print "data >$data<\n";
           switch ($clientsData[(int)$r]["type"]) {
             case "DMI":
-              processCommandDMI(trim($data),$r);
+              $DMIbuffer .= $data;
+              if ($DMIbuffer[-1] == "\n") {
+                processCommandDMI(trim($DMIbuffer),$r);
+                $DMIbuffer = "";
+              }
             break;
             case "MMI":
               processCommandMMI(trim($data),$r);
@@ -69,8 +73,11 @@ function interfaceServer() {
           fclose($r);
           unset($clientsData[(int)$r]);
           unset($clients[array_search($r, $clients, TRUE)]);
-          if ($r == $inChargeDMI) {
+          if ($r == $inChargeDMI) { // DMI disconnected - FIXME move to separate funciton?
             $inChargeDMI = false;
+            $DMIbuffer = "";
+            $dmiState = DMI_DISCONNECTED; $modeSel = $dirSel = $driveSel = $batteryCgarge = $chargeStatus = $rssi = 0;
+            $triggerMMIupdate = true;
           } elseif ($r == $inChargeMMI) {
             $inChargeMMI = false;
           } 
@@ -82,7 +89,7 @@ function interfaceServer() {
 
 function pollHWbackend() {
   global $I2CFh, $noHWbackend;
-  if (!noHWbackend and $I2CFh) {
+  if (!$noHWbackend and $I2CFh) {
 
   }
 }

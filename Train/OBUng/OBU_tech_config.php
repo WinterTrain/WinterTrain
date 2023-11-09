@@ -17,11 +17,12 @@ $DMIaddress = "0.0.0.0";
 $DMIport = 9910;
 $MMIaddress = "0.0.0.0";
 $MMIport = 9911;
-$RBCaddress = "10.0.0.230";
+$RBCaddress = "192.168.1.230";
 $RBCport = 9904; // FIXME
 
 // 
 define("SERVER_WAIT", "100000"); // Max waiting time for IP interface
+define("TIMER_DMI_POLL","5");
 
 
 

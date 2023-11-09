@@ -51,10 +51,15 @@ global $DIRECTORY, $PT2_FILE, $PT2, $trackModel, $HMI, $balisesID, $baliseCountT
         switch($element["supervisionState"]) {
           case "U":   // Unsupervised
           case "S":   // Suprvision state simulated, no real point machine
-          case "P":   // Real point machine
-          case "F":   // Real point machine with position feedback
           case "CR":  // Clamped right 
           case "CL":  // Clamped left
+          break;
+          case "P":   // Real point machine
+          case "F":   // Real point machine with position feedback
+            if (!(is_int($element["EC"]["addr"]) and $element["EC"]["addr"] >= 0)) {
+              errLog("Element $name: Invalid Abus address: {$element["EC"]["addr"]}");
+              $errorFound = true;
+            }
           break;    
           default:
             errLog("Element $name: Unknown supervision state: {$element["supervisionState"]}");
@@ -166,12 +171,12 @@ global $DIRECTORY, $PT2_FILE, $PT2, $trackModel, $HMI, $balisesID, $baliseCountT
 //  print_r($PT2);
 }
 
-function inspect($this, $prevName, $up) { // Check each edge in the graph for consistency
+function inspect($thisRef, $prevName, $up) { // Check each edge in the graph for consistency
 global $PT2, $nInspection, $totalElement, $errorFound;
   $nInspection +=1;
-  $name = $this["name"];
+  $name = $thisRef["name"];
   if ($nInspection < 3 * $totalElement) { //  Prevent endless inspection loop
-    if (array_key_exists($this["name"], $PT2)) {
+    if (array_key_exists($thisRef["name"], $PT2)) {
       $thisNode = $PT2[$name];
       if ($up) { // ----------------------- UP
         switch ($thisNode["element"]) {

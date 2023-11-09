@@ -1,20 +1,24 @@
 // WinterTrain DMI next generation - DMI configuration
 
 // DMI identity
-#define DMI_ID "DMI_01"
+#define DMI_ID "DMIng01"
 
 // OBU identity
 // #define OBU_ADDR 10.0.0.206 // FIXME to be dependent on wifi AP
 #define OBU_PORT 9910
 
 // Timers
-#define TIMER_CHECK_AVAIABILITY 3000 // How often to check availability of connected wifi
-#define TIMER_WIFI_RETRY 10000 // Timer for reconnecting to wifi
-#define TIMER_OBU_CONNECT 1000 // Timer for reconnecting to OBU
+#define TIMER_CHECK_AVAIABILITY 3000  // How often to check availability of connected wifi
+#define TIMER_WIFI_RETRY 10000        // Timer for reconnecting to wifi
+#define TIMER_OBU_CONNECT 5000        // Timer for reconnecting to OBU
+#define TIMER_OBU_LOGIN 2000          // Timer for OBU login
+#define TIMER_UPDATE 1000             // Timer for update of meter in ST_DMI_STDBY
+#define FLASH1TIME 500
+#define FLASH5TIME 100
 
 // Counters
 #define MAX_WIFI_RETRY 5
-#define MAX_DMI_RETRY 3
+#define MAX_DMI_RETRY 5
 
 // HW assignment
 #define PIN_IND {4,5,3, 1, 0, 2}
@@ -25,6 +29,7 @@
 #define PIN_METER 6           // Meter
 
 #define SERIAL_SPEED 115200
+#define CMDBUFFER_SIZE 20
 
 // LiPo management
 // Voltage divider at ADC input: R1 =  330000, R2 = 1200000
@@ -35,11 +40,15 @@
 #define VBAT_EMPTY 3.3
 #define C_BAT 2
 
-// Timing
-#define FLASH1TIME 500
-#define FLASH5TIME 100
 
 // Enummerations
+
+// LoginState
+#define LS_UDEF 0
+#define LS_ACCEPTED 1
+#define LS_REJECTED 2
+
+// Indications
 #define IND_WHITE 0
 #define IND_BLUE 1
 #define IND_RED_OPR 2
@@ -65,7 +74,6 @@
 #define MODE_FS   4
 #define MODE_ATO  5
 
-
 // WiFi state machine
 #define ST_WIFI_BOOT 0
 #define ST_WIFI_START 1
@@ -78,7 +86,7 @@
 // DMI state machine
 #define ST_DMI_BOOT     0
 #define ST_DMI_STDBY    1
-#define ST_DMI_IDLE     2
+#define ST_DMI_AWAIT_WIFI     2
 #define ST_DMI_TCP      8
 #define ST_DMI_TCP_WAIT   3
 #define ST_DMI_LOGIN    4

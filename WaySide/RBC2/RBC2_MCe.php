@@ -323,13 +323,17 @@ Name    20  22  24");
 }
 
 function prettyPrintTime($sec) {
+  if (is_numeric($sec)) {
   $s = $sec % 60;
   $min = ($sec - $s) / 60;
   $m = $min % 60;
   $hour = ($min - $m) / 60;
   $h = $hour % 24;
   $d = ($hour - $h) / 24;
-  return "$d:$h:$m:$s";
+  return "$d-$h:$m:$s";
+  } else {
+    return "*-*:*:*";
+  }
 }
 
 ?>

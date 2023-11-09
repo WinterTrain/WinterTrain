@@ -316,12 +316,12 @@ function processPT1() {
 global $DIRECTORY, $PT2_FILE, $TRAIN_DATA_FILE, $PT2_GENERATION_TIME, $PT1, $HMI, $HMIoffset, $errorFound, $totalElement,
   $points, $signals, $levelCrossings, $balises, $balisesID, $bufferstops, $triggers, $tracks, $baliseCountTotal, $baliseCountUnassigned;
 
-  function inspect($this, $prevName, $up) { // check each edge in the graph
+  function inspect($thisRef, $prevName, $up) { // check each edge in the graph
   global $PT1, $nInspection, $totalElement, $errorFound;
     $nInspection +=1;
-    $name = $this["name"];
+    $name = $thisRef["name"];
     if ($nInspection < 3 * $totalElement) {
-      if (array_key_exists($this["name"], $PT1)) {
+      if (array_key_exists($thisRef["name"], $PT1)) {
         $thisNode = $PT1[$name];
         if ($up) { // ----------------------- UP
           switch ($thisNode["element"]) {

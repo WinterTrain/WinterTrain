@@ -5,11 +5,12 @@
 $MMIdisplayBuffer = array();
 
 function MMIdisplay() {
-  global $MMIdisplayBuffer, $OBUstart, $inChargeDMI, $connectedHWbackend;
+  global $MMIdisplayBuffer, $OBUstart, $dmiState, $connectedHWbackend, $modeSel, $dirSel, $driveSel, $batteryCharge, $chargeStatus, $rssi,
+    $DMI_TXT_MODE, $DMI_TXT_DIR, $DMI_TXT_DRIVE;
   $MMIdisplayBuffer = [
-    ["Time:", date("Y-m-d H:i:s"), "", "xxx"],
-    ["OBU Uptime:", prettyPrintTime(time() - $OBUstart), "yyy:", "234"],
-    ["DMI: ", $inChargeDMI ? "Connected" : "-", "", ""],
+    ["Time:", date("Y-m-d H:i:s"), "", "", "OBU Uptime:", prettyPrintTime(time() - $OBUstart), "", ""],
+    ["DMI: ", ($dmiState == 1 ? "Connected" : "-"), "modeSel: {$DMI_TXT_MODE[$modeSel]}", "dirSel: {$DMI_TXT_DIR[$dirSel]}",
+        "driveSel: {$DMI_TXT_DRIVE[$driveSel]}", "BatteryCharge: $batteryCharge", "chargeStatus: $chargeStatus", "RSSI: $rssi"],
     ["HW backend: ", $connectedHWbackend ? "Connected" : "-", "", ""],
   ];
 }
@@ -24,13 +25,14 @@ function MMIupdate($client) {
 }
 
 function MMIupdateAll() {
-  global $clients, $clientsData;
+  global $clients, $clientsData, $triggerMMIupdate;
   MMIdisplay();
   foreach ($clients as $client) {
     if ($clientsData[(int)$client]["type"] == "MMI") {
       MMIupdate($client);
     }
   }
+  $triggerMMIupdate = false;
 }
 
 function MMIstartup($client) {

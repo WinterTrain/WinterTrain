@@ -71,7 +71,7 @@ function orderElement($elementName, $order, $riOrder = 0) {
 }
 
 function elementStatusEC($addr, $data) { // Analyse element status for one EC
-  global $EC, $PT2, $trackModel, $triggerHMIupdate;
+  global $EC, $PT2, $trackModel, $triggerHMIupdate, $triggerMCeUpdate;
   if (isset($EC[$addr]) and $data[3] < count($EC[$addr]["index"])) { // Check EC configuration
     errLog("EC ($addr) not configured: #conf. element EC: {$data[3]}, RBC: ".count($EC[$addr]["index"]));
     unset($EC[$addr]);
@@ -83,6 +83,7 @@ function elementStatusEC($addr, $data) { // Analyse element status for one EC
     }
     $EC[$addr]["validTimer"] = time() + EC_TIMEOUT;
     $triggerHMIupdate = true;
+    $triggerMCeUpdate = true;
     
 // Analyse EC status for all elements of EC and apply consequences
     foreach ($EC[$addr]["index"] as $index => $name) {
@@ -127,8 +128,11 @@ function elementStatusEC($addr, $data) { // Analyse element status for one EC
 function pollNextEC() { // Poll one EC at a time
   global $EC, $pollEC;
   if ($pollEC) {
-    requestElementStatusEC(key($EC));
-    if (next($EC) === FALSE) {
+    $addr = key($EC);
+    if ($addr) {
+      requestElementStatusEC($addr);
+      next($EC);
+    } else {
       reset($EC);
       $pollEC = false;
     }

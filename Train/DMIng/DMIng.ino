@@ -1,4 +1,5 @@
 // WinterTrain DMI next generation
+
 #include <ArduinoLowPower.h>
 #include <SPI.h>
 #include <WiFiNINA.h>
@@ -6,28 +7,32 @@
 #include <stdlib.h>
 
 #include "TrainConf.h" // Include specific train configuration
+#include "WiFiCredentials.h"
 
 byte indPin[6] = PIN_IND;
 byte indState[6];
 int  wifiState = ST_WIFI_BOOT, prevState = ST_WIFI_UDEF, dmiState = ST_DMI_BOOT, ws, cs;
-int  oprSel, modeSel, driveSel, dirSel, wifiRetryCount, dmiRetryCount, wifiConnectedCount;
-int  prevDirSel, prevOprSel = 255;
+int  oprSel, modeSel, driveSel, dirSel, prevModeSel, prevDriveSel, prevDirSel;
+int wifiRetryCount, dmiRetryCount, wifiConnectedCount;
 
-IPAddress myAddress, obuAddr(10,0,0,206);  // FIXME Dependent on actual AP, move to configuration
+IPAddress myAddress, obuAddr(192,168,1,241);  // FIXME Dependent on actual AP, move to configuration
 
 boolean flash1State, flash5State;
 
+byte loginState, i;
+char cmdBuffer[CMDBUFFER_SIZE];
+
 // Timing
 unsigned long lastMillis, deltaMillis, thisMillis;
-long timer, oprTimer, wifiTimer, flash1timer, flash5timer;
+long dmiTimer, updateTimer, wifiTimer, flash1timer, flash5timer;
 
 
 WiFiServer server(80);
 WiFiClient dmiClient; // Client towards OBU
-WiFiClient webClient; // Client towards DMI web
+WiFiClient webClient; // Client towards DMI web for maintenance
 
-char ssid[] = "Protokol-Oberst";
-char pass[] = "sAEbespAAner";  // FIXME Where to store??
+char ssid[] = AP_SSID; // Defined in WiFiCredentuials.h
+char pass[] = AP_PASS;
 
 void setup() {
   Serial.begin(SERIAL_SPEED);
@@ -39,9 +44,10 @@ void setup() {
   PMIC.setChargeVoltage(VBAT_FULL);
   PMIC.setChargeCurrent(C_BAT/2);
   PMIC.enableCharge();
-  WiFiDrv::pinMode(25, OUTPUT); // FIXME is RGB used??
-  WiFiDrv::pinMode(26, OUTPUT);
-  WiFiDrv::pinMode(27, OUTPUT);
+  WiFi.setHostname(DMI_ID);
+//  WiFiDrv::pinMode(25, OUTPUT); // RGB led on module - not used for DMI
+//  WiFiDrv::pinMode(26, OUTPUT);
+//  WiFiDrv::pinMode(27, OUTPUT);
   for (byte i = 0; i < 6; i++) pinMode(indPin[i], OUTPUT);
   pinMode(PIN_METER, OUTPUT);
   pinMode(PIN_OPERATION_SEL, INPUT);
@@ -51,52 +57,70 @@ void setup() {
   analogWrite(PIN_METER, 0);
   for (byte f = 0; f < 4; f++) {
     allIndOn();
-    delay(300);
+    delay(200);
     allIndOff();
-    delay(300); 
+    delay(200); 
   }
   Serial.println("DMIng booting");
-  indicator(IND_RED, FLASH1);
 }
 
 void loop() {
   scanSelector();
   wifiStateMachine();
   dmiStateMachine();
-  dmi();
+  cmdHandler();
   indication();
   flashInd();
   webServer();
   timing();
 }
 
-void dmi() {
-  if (dmiClient.available()) { // FIXME ---- here or in dmiStateMachine
-        Serial.print("OBU: ");
-        Serial.println(dmiClient.readStringUntil('\n'));
+void cmdHandler() {
+    // --------------------------------------------- where to reset connection timer???
+  while (dmiClient.available() and i < CMDBUFFER_SIZE) {
+    cmdBuffer[i] = dmiClient.read();
+    i++;
   }
-  switch (true) {
-    case 'A': // Login accepted
-    break;
-    case 'R': // Login rejected
-    break;
-    case 'P':
-    // reset connection timer
-      dmiClient.print("P");
-      dmiClient.print(modeSel);
-      dmiClient.print(" ");
-      dmiClient.print(dirSel);
-      dmiClient.print(" ");
-      dmiClient.println(driveSel);
-    break;
-    case 'S':
-      dmiClient.print("S");
-      dmiClient.print(batteryCharge());
-      dmiClient.print("");
-      dmiClient.print(PMIC.chargeStatus());
-      dmiClient.print(" ");
-      dmiClient.println(WiFi.RSSI(), 4);
-    break;
+  cmdBuffer[i] = char(0);
+  if (i > 0) {
+    Serial.print("OBU: >");
+    Serial.print(cmdBuffer);
+    Serial.println("<");
+    i=0;
+    switch (cmdBuffer[0]) {
+      case 'A': // Login accepted
+        loginState = LS_ACCEPTED;
+      break;
+      case 'R': // Login rejected
+        loginState = LS_REJECTED;
+      break;
+      case 'P':
+        analogWrite(PIN_METER, 100 * (cmdBuffer[1] - 48) + 10 * (cmdBuffer[2] - 48) + (cmdBuffer[3] - 48));
+        for (byte b = 4; b < 8; b++) {
+          indicator(b - 2, cmdBuffer[b] != '0' ? ON : OFF);
+        }
+        sendSelector();
+      break;
+      case 'S':
+        dmiClient.print("S,");
+        dmiClient.print(batteryCharge());
+        dmiClient.print(",");
+        dmiClient.print(PMIC.chargeStatus());
+        dmiClient.print(",");
+        dmiClient.println(map(constrain(WiFi.RSSI(), -90, -10), -90, -10, 0, 100));
+      break;
+    }
+  }
+}
+
+void sendSelector() {
+  if (dmiState == ST_DMI_RUN) {
+    dmiClient.print("P,");
+    dmiClient.print(modeSel);
+    dmiClient.print(",");
+    dmiClient.print(dirSel);
+    dmiClient.print(",");
+    dmiClient.println(driveSel);
   }
 }
 
@@ -109,11 +133,11 @@ void dmiStateMachine() { // Controlling connection to OBU
     case ST_DMI_STDBY:
       if (oprSel == OPR_OPR) {
         analogWrite(PIN_METER, 0);
-        dmiState = ST_DMI_IDLE;
+        dmiState = ST_DMI_AWAIT_WIFI;
         break;
       }
-      if (oprTimer < 0) {
-        oprTimer = 1000; // FIXME move to configuration?
+      if (updateTimer < 0) {
+        updateTimer = TIMER_UPDATE;
         switch (modeSel) {
           case MODE_SH:
             analogWrite(PIN_METER, batteryCharge() * 256 / 100);
@@ -129,43 +153,35 @@ void dmiStateMachine() { // Controlling connection to OBU
         }
       }
     break;
-    case ST_DMI_IDLE: // Waiting for wifi
+    case ST_DMI_AWAIT_WIFI: // Waiting for wifi
       if (oprSel == OPR_STDBY) {
-//        dmiClient.println("O");
-//        dmiClient.stop();
         dmiState = ST_DMI_STDBY;
-        break;
-      }
-      if (wifiState = ST_WIFI_AVAILABLE) {
+      } else if (wifiState == ST_WIFI_AVAILABLE) {
         dmiState = ST_DMI_TCP;
       }
     break;
     case ST_DMI_TCP:
       if (oprSel == OPR_STDBY) {
-        Serial.println("O");
         dmiClient.println("O");
         dmiClient.stop();
         dmiState = ST_DMI_STDBY;
         break;
       }
-      Serial.println("Opening TCP to OBU");
+      Serial.println("Opening TCP link to OBU");
       cs = dmiClient.connect(obuAddr, OBU_PORT);
       timing(); // Refresh all timers as dmiClient.connect() blocks the loop while connecting to the server
       if (cs) {
         Serial.println("TCP to OBU established, logging in");
         dmiClient.setTimeout(500);
-        dmiClient.println("L DMI1");
         dmiState = ST_DMI_LOGIN;
       } else {
-        Serial.print("OBU not reachable, cs: ");
-        Serial.print(cs);
-        Serial.print(" wifi: ");
-        Serial.println(WiFi.status());
+        Serial.print("OBU not reachable, cs: "); Serial.print(cs);
+        Serial.print(" wifi.status(): "); Serial.println(WiFi.status());
         if (dmiRetryCount < MAX_DMI_RETRY) {
           dmiState = ST_DMI_TCP_WAIT;
-          timer = TIMER_OBU_CONNECT;
+          dmiTimer = TIMER_OBU_CONNECT;
         } else {
-          Serial.print("TCP failed, Wifi,status(): ");
+          Serial.print("TCP failed, Wifi.status(): ");
           Serial.println(WiFi.status());
           dmiRetryCount = 0;
           dmiState = ST_DMI_FAILED;
@@ -174,14 +190,10 @@ void dmiStateMachine() { // Controlling connection to OBU
     break;
     case ST_DMI_TCP_WAIT:
       if (oprSel == OPR_STDBY) {
-        Serial.println("Going stdby");
-//        dmiClient.println("O");
-//        dmiClient.stop();
+        dmiClient.println("O");
+        dmiClient.stop();
         dmiState = ST_DMI_STDBY;
-        break;
-      }
-      if (timer < 0) {
-        Serial.println("timeout");
+      } else if (dmiTimer < 0) {
         dmiState = ST_DMI_TCP;
         dmiRetryCount++;
       }
@@ -190,66 +202,58 @@ void dmiStateMachine() { // Controlling connection to OBU
       if (oprSel == OPR_STDBY) {
         dmiClient.println("O");
         dmiClient.stop();
-        dmiState = ST_DMI_IDLE;
-        break;
+        dmiState = ST_DMI_STDBY;
+      } else {
+        dmiClient.print("L,"); dmiClient.println(DMI_ID);
+        dmiState = ST_DMI_LOGIN_WAIT;
+        dmiTimer = TIMER_OBU_LOGIN;
       }
-      dmiClient.print("L ");
-      dmiClient.println(DMI_ID);
-      dmiState = ST_DMI_LOGIN_WAIT;
-      
-/*      if (dmiClient.available()) { // --------------------------------- here or in dmi()??
-        switch (char c = dmiClient.read()) {  
-          case 'A':
-            dmiState = ST_DMI_RUN;
-          break;
-          case 'R':
-            dmiState = ST_DMI_REJECTED;
-            Serial.println("DMI rejected by OBU");
-            dmiClient.stop();
-          break;
-          default:
-            Serial.print("Unexpected code from OBU: ");
-            Serial.println(c);
-        }
-        
-      } */ 
     break;
     case ST_DMI_LOGIN_WAIT:
-      // case "A" accept login or "R" reject login
+      if (oprSel == OPR_STDBY) {
+        dmiClient.println("O");
+        dmiClient.stop();
+        dmiState = ST_DMI_STDBY;
+      } else if (dmiTimer < 0) {
+        Serial.println("Login failed, OBU not responding to login");
+        dmiState = ST_DMI_FAILED;
+      } else {
+        switch (loginState) {
+          case LS_ACCEPTED:
+            Serial.println("Signed in to OBU");
+            indicator(IND_RED_OPR, OFF); indicator(IND_RED, OFF); indicator(IND_YELLOW, OFF); indicator(IND_GREEN, OFF);
+            dmiState = ST_DMI_RUN;
+            sendSelector();
+          break;
+          case LS_REJECTED:
+            Serial.println("Login rejected");
+            dmiState = ST_DMI_REJECTED;
+          break;        
+        }
+      }
     break;
     case ST_DMI_RUN:
       if (oprSel == OPR_STDBY) {
-        Serial.println("Going stdby");
         dmiClient.println("O");
         dmiClient.stop();
         dmiState = ST_DMI_STDBY;
-        break;
-      }
-      if (!dmiClient.connected()) {
+      } else if (!dmiClient.connected() ) {
         Serial.println();
         Serial.println("TCP disconnected.");
         dmiClient.stop();
-        dmiState = ST_DMI_IDLE;
+        dmiState = ST_DMI_TCP;
         dmiRetryCount = 0;
-        break;
+        loginState = LS_UDEF;
+      } else if (wifiState != ST_WIFI_AVAILABLE) {
+        dmiState = ST_DMI_AWAIT_WIFI;
       }
     break;
     case ST_DMI_REJECTED:
-      if (oprSel == OPR_STDBY) {
-        Serial.println("Going stdby");
-        dmiClient.println("O");
-        dmiClient.stop();
-        dmiState = ST_DMI_STDBY;
-        break;
-      }
-    break;
     case ST_DMI_FAILED:
       if (oprSel == OPR_STDBY) {
-        Serial.println("Going stdby");
         dmiClient.println("O");
         dmiClient.stop();
         dmiState = ST_DMI_STDBY;
-        break;
       }
     break;
   }
@@ -282,7 +286,7 @@ void wifiStateMachine() { // Controlling connection to wifi AP
           WiFi.end();
           if (wifiRetryCount < MAX_WIFI_RETRY) {
             wifiState = ST_WIFI_WAIT;
-            timer = TIMER_WIFI_RETRY;
+            wifiTimer = TIMER_WIFI_RETRY;
             Serial.println("No wifi, waiting");
           } else {
             wifiState = ST_WIFI_FAILED;
@@ -302,7 +306,7 @@ void wifiStateMachine() { // Controlling connection to wifi AP
       }
     break;
     case ST_WIFI_WAIT:
-      if (timer < 0) {
+      if (wifiTimer < 0) {
         wifiState = ST_WIFI_START;
         wifiRetryCount++;
       }
@@ -314,7 +318,7 @@ void wifiStateMachine() { // Controlling connection to wifi AP
       Serial.println("Going to sleep");
       analogWrite(PIN_METER, 0);
       allIndOff(); delay(200); allIndOn(); delay(200); allIndOff();
-// FIXME inform OBU and maintenace, then close all IP connectins
+                                                                        // FIXME inform OBU and maintenace, then close all IP connectins
       WiFi.end();
       LowPower.deepSleep();
       Serial.println("Waking up");
@@ -336,6 +340,7 @@ void wifiStateMachine() { // Controlling connection to wifi AP
 void indication() {
   switch (oprSel) {
     case OPR_STDBY:
+      indicator(IND_RED, OFF); indicator(IND_YELLOW, OFF); indicator(IND_GREEN, OFF);
       switch (wifiState) {
         case ST_WIFI_BOOT:
         case ST_WIFI_START:
@@ -369,15 +374,15 @@ void indication() {
         case ST_WIFI_AVAILABLE:
           switch (dmiState) {
             case ST_DMI_BOOT:
-              indicator(IND_WHITE, OFF); indicator(IND_RED_OPR, ON); indicator(IND_BLUE, OFF);
-            break;
+            case ST_DMI_AWAIT_WIFI:
             case ST_DMI_TCP:
             case ST_DMI_TCP_WAIT:
             case ST_DMI_LOGIN:
               indicator(IND_WHITE, OFF); indicator(IND_RED_OPR, ON); indicator(IND_BLUE, OFF);
+              indicator(IND_RED, OFF); indicator(IND_YELLOW, OFF); indicator(IND_GREEN, OFF);
             break;
             case ST_DMI_RUN:
-              indicator(IND_WHITE, ON); indicator(IND_RED_OPR, OFF); indicator(IND_BLUE, OFF);
+              indicator(IND_WHITE, ON); indicator(IND_BLUE, OFF);
             break;
             case ST_DMI_REJECTED:
               indicator(IND_WHITE, ON); indicator(IND_RED_OPR, OFF); indicator(IND_BLUE, ON);
@@ -419,10 +424,9 @@ void webServer() {
             webClient.println("HTTP/1.1 200 OK");
             webClient.println("Content-type:text/html");
             webClient.println();
-           
-            //create the buttons
-//            webClient.print("Click <a href=\"/H\">here</a> turn the LED on<br>");
-//            webClient.print("Click <a href=\"/L\">here</a> turn the LED off<br><br>");
+            webClient.print("<H3>");
+            webClient.print(DMI_ID);
+            webClient.println("</H3>");
             int VbatRaw = analogRead(ADC_BATTERY);
             float Vbat  = VbatRaw * BAT_ADC_FACTOR;
             byte charge = Vbat >= VBAT_FULL ? 100 :  (Vbat - VBAT_EMPTY) * BAT_C_PERCENT;
@@ -430,37 +434,37 @@ void webServer() {
             webClient.print(Vbat);
             webClient.print(" / ");
             webClient.print(VbatRaw);
-            webClient.print("<p>Charge: ");
+            webClient.print(" Charge: ");
             webClient.print(charge);
-            webClient.print("<p>Opr ");
+            webClient.print("% <p>Switches: Opr ");
             webClient.println(oprSel);
-            webClient.print("<p>Mode ");
+            webClient.print(" Mode ");
             webClient.println(modeSel);
-            webClient.print("<p>Dir ");
+            webClient.print(" Dir ");
             webClient.println(dirSel);
-            webClient.print("<p>Drive ");
+            webClient.print(" Drive ");
             webClient.println(driveSel);
             webClient.print("<p>connectedCount ");
             webClient.println(wifiConnectedCount);
-            webClient.print("<p>wifiRetryCount ");
+            webClient.print(" wifiRetryCount ");
             webClient.println(wifiRetryCount);
             webClient.print("<p>PMIC.getChargeFault: ");
             webClient.println(PMIC.getChargeFault()); 
-            webClient.print("<p>PMIC.chargeStatus: ");
+            webClient.print(" PMIC.chargeStatus: ");
             webClient.println(PMIC.chargeStatus()); 
-            webClient.print("<p>getInputVoltageLimit: ");
+            webClient.print(" getInputVoltageLimit: ");
             webClient.println(PMIC.getInputVoltageLimit()); 
-            webClient.print("<p>getInputCurrentLimit: ");
+            webClient.print(" getInputCurrentLimit: ");
             webClient.println(PMIC.getInputCurrentLimit()); 
             webClient.print("<p>getMinimumSystemVoltage: ");
             webClient.println(PMIC.getMinimumSystemVoltage()); 
-            webClient.print("<p>getChargeCurrent: ");
+            webClient.print(" getChargeCurrent: ");
             webClient.println(PMIC.getChargeCurrent()); 
-            webClient.print("<p>getPreChargeCurrent: ");
+            webClient.print(" getPreChargeCurrent: ");
             webClient.println(PMIC.getPreChargeCurrent()); 
-            webClient.print("<p>getTermChargeCurrent: ");
+            webClient.print(" getTermChargeCurrent: ");
             webClient.println(PMIC.getTermChargeCurrent()); 
-            webClient.print("<p>getChargeVoltage: ");
+            webClient.print(" getChargeVoltage: ");
             webClient.println(PMIC.getChargeVoltage()); 
             webClient.print("<p>Uptime ");
             webClient.println(millis()); 
@@ -495,9 +499,13 @@ void webServer() {
 
 void scanSelector() {
   oprSel = (analogRead(PIN_OPERATION_SEL) + 1024) / 2048 + 1; // 1 - 3
-  modeSel = (analogRead(PIN_MODE_SEL) + 512) / 1024 + 1; // 1 - 5  4096 / 4
-  driveSel = (analogRead(PIN_DRIVE_SEL) + 341) / 682; // 0 - 6  4096 / 6
-  dirSel = (analogRead(PIN_DIR_SEL) + 1024) / 2048 + 1; // 1 - 3  4096 / 2
+  modeSel = (analogRead(PIN_MODE_SEL) + 512) / 1024 + 1;      // 1 - 5  4096 / 4
+  driveSel = (analogRead(PIN_DRIVE_SEL) + 341) / 682 + 1;     // 1 - 7  4096 / 6
+  dirSel = (analogRead(PIN_DIR_SEL) + 1024) / 2048 + 1;       // 1 - 3  4096 / 2
+  if (modeSel != prevModeSel or driveSel != prevDriveSel or dirSel != prevDirSel) {
+    sendSelector();
+    prevModeSel = modeSel; prevDriveSel = driveSel; prevDirSel = dirSel;
+  }
 }
 
 void flashInd() {
@@ -531,11 +539,11 @@ void timing() {
   if (thisMillis != lastMillis) {
     deltaMillis = thisMillis - lastMillis; // note this works even if millis() has rolled over back to 0
     lastMillis = thisMillis;
-    timer -=  deltaMillis;
+    dmiTimer -=  deltaMillis;
     wifiTimer -=  deltaMillis;
     flash1timer -= deltaMillis;
     flash5timer -= deltaMillis;
-    oprTimer -= deltaMillis;
+    updateTimer -= deltaMillis;
   }
 }
 
@@ -556,6 +564,12 @@ void allIndOff() {
 byte batteryCharge() { // battery charge in %
   float Vbat  = analogRead(ADC_BATTERY) * BAT_ADC_FACTOR;
   return Vbat >= VBAT_FULL ? 100 :  (Vbat - VBAT_EMPTY) * BAT_C_PERCENT;
+}
+
+byte fh(char c) {
+  byte b = (byte)c - 48;
+  if (b > 9) b -= 7;
+  return b;
 }
 
 void writeRGB(byte r, byte g, byte b) {
