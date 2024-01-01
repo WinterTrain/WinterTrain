@@ -7,5 +7,5 @@ The project implements concepts like *train route locking* to avoid collisions b
 
 The *winterTrain* is realized using [Arduino](http://arduino.cc), [JeeNode](http://jeelabs.org) and [Raspberry PI](https://www.raspberrypi.org).
 
-Documentation including HW diagrams and photos can be found at the [WinterTrain wiki](http://w57.dk/doku.php?id=it:wintertrainv3:start)
+Documentation including HW diagrams and photos can be found at the WinterTrain wiki (currently off-line, sorry)
 
