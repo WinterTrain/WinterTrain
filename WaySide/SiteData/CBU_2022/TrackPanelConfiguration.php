@@ -3,6 +3,7 @@
 // Configuration data
 
 $PM = array( // I2C address => ModuleConfiguration (Pin no => use)
+
   0x41 => array( // Prototype I / Alperne station, up
     "type" =>"EVERY",
     "pins" => array(
@@ -52,7 +53,7 @@ $PM = array( // I2C address => ModuleConfiguration (Pin no => use)
       15 => "",
       16 => "",
       ),
-  ), 
+  ),  
 
   0x40 => array(
     "type" =>"EVERY",

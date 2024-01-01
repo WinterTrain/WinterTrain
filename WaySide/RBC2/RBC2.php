@@ -45,7 +45,7 @@ $baliseStat = array();
 $hhtFoundCount = 0;
 $hhtFoundSum = 0;
 $hhtBaliseStatus = "";
-$hhtBaliseID = "--:--:--:--:--";
+//$hhtBaliseID = "--:--:--:--:--";
 $hhtBaliseName = "";;
 
 $baliseCountTotal = 0;
@@ -64,7 +64,9 @@ $emgRelEPTimers = array();
 // Test
 $test = false;
 $recCount = 0;
-
+$MCeBaliseID = "--:--:--:--:--";
+$MCeBaliseName = "<udef>";
+$MCeBaliseReader = "HHT";
 // --------------------------------------------------------------------------------------- PHP process initialization
 cmdLineParam();
 prepareMainProgram();

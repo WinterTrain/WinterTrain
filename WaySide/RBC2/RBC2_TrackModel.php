@@ -10,9 +10,9 @@ abstract class genericElement { // ---------------------------------------------
 // Dynamic properties are stored in the object while static data are kept in PT2  
   public $vacancyState = V_CLEAR;
   public $occupationTrainID = "";
-  public $routeLockingState = R_IDLE;
+  public $routeLockingState = R_IDLE; // FIXME RouteLockingState to be provided by a function in order for a branck neighbour of a point to be released even when point is locked in other branch
   public $routeLockingType = RT_IDLE;
-  public $routeLockingUp = true; // Only applicable when routeLockingState != R_IDLE
+  public $routeLockingUp = true; // Route is locked in direction UP - only applicable when routeLockingState != R_IDLE
   public $blockingState = B_NOT_BLOCKED;
   public $lockingState = L_NOT_LOCKED; // Not used, but still part of HMI interface
   
@@ -94,7 +94,6 @@ abstract class genericElement { // ---------------------------------------------
       }
       errLog("Warning: Element {$this->elementName} being released, but occupied by more trains: {$this->occupationTrainID}");
     } 
-
   }
   
   public function checkOccupationUp($trainIndex, $trainPositionUp, $trainPositionDown, $caller, $reportIndex) {
@@ -938,7 +937,7 @@ class Selement extends genericElement { // -------------------------------------
       $this->occupationTrainID  .= "/$trainID";
     }
     if ($this->routeLockingState != R_IDLE and ($this->routeLockingType == RT_START_POINT or $this->routeLockingType == RT_VIA)) {
-      orderSignal($this->elementName, SIG_STOP);
+      orderSignal($this->elementName, SIG_STOP);  // FIXME stopfald på bagkant
       $this->signallingState = SIG_STOP; // or SIG_CLOSED ??? FIXME
     }
   }
@@ -1225,7 +1224,7 @@ class Selement extends genericElement { // -------------------------------------
     return ($this->routeLockingUp ?
       $this->neighbourDown->EOAdist($train, $PT2[$this->elementName]["D"]["dist"], true, $this) :
       $this->neighbourUp->EOAdist($train, $PT2[$this->elementName]["U"]["dist"], true, $this)) - $PT2[$this->elementName]["EPdist"];
-      // Subtract safety distance in rear of signal
+      // Subtract safety distance in rear of EP signal
   }
 
   protected function EOAdist($train, $EOAdist, $searchRoute, $caller) { // Signal
@@ -1404,6 +1403,7 @@ class BSelement extends genericElement { // ------------------------------------
     return ($this->routeLockingUp ?
       $this->neighbourDown->EOAdist($train, $PT2[$this->elementName]["D"]["dist"], true, $this) :
       $this->neighbourUp->EOAdist($train, $PT2[$this->elementName]["U"]["dist"], true, $this));  
+      // FIXME Subtract safety distance in rear of buffer stop ?? Not in PT2 yet
   }
 
   protected function EOAdist($train, $EOAdist, $searchRoute, $caller) { 

@@ -166,6 +166,7 @@ function searchSP($index) { // Search for Start Point in both directions
   foreach ($train["curOccupation"] as $i => $pos) {
     if ($i < $extentDown) $extentDown = $i;
   }
+  // FIXME test if extent > 1000
   $occupiedElementUp = $trackModel[$train["curOccupation"][$extentUp]];
   $occupiedElementDown = $trackModel[$train["curOccupation"][$extentDown]];
   
@@ -366,7 +367,7 @@ function sendRTO($trainID, $cmd, $mode, $drive, $dir) {
 function processPositionReport( // ------------------ Process Point Position Report from OBU
   $trainID, $requestedMode, $MAreceived, $driveDir, $pwr, $frontUp, $baliseID, $distance,  $speed, $rtoMode) {
   global $TD_TXT_MODE, $TD_TXT_ACK, $TD_TXT_DIR, $TD_TXT_PWR, $TD_TXT_RTOMODE, $trainData, $trainIndex, $now, $PT2, $balisesID,
-    $posRestoreEnabled, $triggerHMIupdate, $baliseStat;
+    $posRestoreEnabled, $triggerHMIupdate, $baliseStat, $MCeBaliseName, $MCeBaliseID, $MCeBaliseReader;
   $triggerHMIupdate = true; // posRep will likely result in new states
   if (isset($trainIndex[$trainID])) { // Train is known
     $index = $trainIndex[$trainID];
@@ -382,6 +383,12 @@ function processPositionReport( // ------------------ Process Point Position Rep
     $train["MAreceived"] = $MAreceived;
     $train["rtoMode"] = $rtoMode;
     $train["speed"] = $speed;
+    
+    if ($train["name"] == $MCeBaliseReader) {
+      $MCeBaliseName = isset($balisesID[$baliseID]) ? $balisesID[$baliseID] : "<udef>";
+      $MCeBaliseID = $baliseID;
+    }
+    
     if ($baliseID == "01:00:00:00:01") { // ------------------------------------------------------------------- OBU indicates void position
 //      $train["posTimeStamp"] = $now; // FIXME
       if ($posRestoreEnabled) {

@@ -10,12 +10,12 @@ $RBC_SERVER_PORT = 9900;
 
 // ----------------------------------------- File names
 $DIRECTORY = ".";
-$PM_CONF_FILE = "TrackPanelConfiguration.php"; // Configuration giles for PanelModules
+$PM_CONF_FILE = "TrackPanelConfiguration.php"; // Configuration file for PanelModules
 $MSGLOG = "Log/TPM.log";
 $ERRLOG = "Log/TPM_ErrLog.txt";
 
 // ----------------------------------------- GPIO configuration
-$GPIO_HOSTNAME = "SuperPhoneII"; // Only conigure GPIO if running on this host
+$GPIO_HOSTNAME = "TraclPanel"; // Only conigure GPIO if running on this host
 $GPIO_EXPORT = "/sys/class/gpio/export";
 $GPIO_DIRECTION = "/sys/class/gpio/gpio4/direction";
 $GPIO_VALUE = "/sys/class/gpio/gpio4/value";
@@ -24,14 +24,15 @@ $GPIO_RUN_PIN = 4;
 // ----------------------------------------- I2C configuration
 $I2C_FILE = "/dev/i2c-1";
 define("N_I2C_WRITE","3");
-// EVERY Panel Module orders and registers
+// ARDUINO EVERY Panel Module orders and registers
 define("PM_WRITE_OUTPUT","20");
 define("PM_READ_INPUT","21");
 define("PM_RESET","10");
 define("PM_CONFIGURE_INPUT","11");
 define("PM_GET_STATUS","8");
 // MCP23017 orders and registers
-define("MCP_GPIOA","0x12");
+define("MCP_GPIOA",0x12);
+define("MCP_IODIRA",0x00);
 
 // ---------------------------------------- Ennumeration
 $outputUseCodes = array("lR","lG","tR","tG","aY","bB","rR","rG", "oG"); // Possible output useCodes
@@ -218,7 +219,7 @@ function configurePanelModules() {
         }
       break;
       case "MCP23017": // Input from MCP23017 is not implemented
-
+        writePanelModule($I2Caddr, MCP_IODIRA, array(0, 0)); // Set GPIOx as output
       break;
     }
   }
@@ -230,10 +231,12 @@ function handleButtonPress($buttonsPressed) {
   if ($count == 0) {
     $buttonsReleased = true;
   } elseif ($buttonsReleased) {
-    if ($count == 2) {
+    if ($count == 1) {
+      if ($buttonsPressed[0] == "E") sendCommandRBC("eStop");
+    } elseif ($count == 2) {
       list ($e1, $c1) = explode(".", $buttonsPressed[0]);
       list ($e2, $c2) = explode(".", $buttonsPressed[1]);
-      $buttonsReleased = false;;
+      $buttonsReleased = false;; // --------------------------------------------------------- FIXME Used??
 //      print "Buttons: $e1.$c1 $e2.$c2 ";
       if ($c1 == "S" and $c2 == "S") { // Two select buttons => Set route
         print "Set route $e1 $e2\n";
@@ -247,20 +250,32 @@ function handleButtonPress($buttonsPressed) {
           $element = $e2;
         }
         switch ($common) {
-          case "N":
+          case "N":  // Point throw
+            // if $element type point
             sendCommandRBC("pt $element");
+            // else ignore
           break;
-          case "R":
+          case "R":  // Route release
             sendCommandRBC("rr $element");
           break;
-          case "F":
+          case "F":  // Forced route release
             sendCommandRBC("err $element");
           break;
           case "A": // Toggle specific ARS
             sendCommandRBC("ars $element");            
           break;
           case "B": // Block signal / point / LX
-            // FIXME different command for signals and points....
+            switch ($element[0]) { // FIXME Assumes "standard" syntax of element names
+              case "P":
+                sendCommandRBC("pb $element");            
+              break;
+              case "S":
+                sendCommandRBC("sb $element");            
+              break;
+              case "L":
+                // sendCommandRBC(""); // Block LX
+              break;
+            }
           break;
           case "I": // Show train ID
             if (isset($elementCT[$element])) {
@@ -290,7 +305,7 @@ function handleButtonPress($buttonsPressed) {
           sendCommandRBC("arsAll");
         }
       }
-    }
+    } // else if ($count == 3)  FIXME Special features.....
   }
 }
 
@@ -532,20 +547,20 @@ function processNotificationRBC($data) {
     case "eStopInd": // state
       switch ($tokens[1]) {
         case 0: // eStop inactive
-          setIndication($element, "eR", 0);
+          setIndication("COM", "eR", 0);
         break;
         case 1: // eStop active
-          setIndication($element, "eR", 1);
+          setIndication("COM", "eR", 1);
         break;
       }
     break;    
     case "arsAllInd": // state
       switch ($tokens[1]) { 
         case 0: // ARS enabled
-          setIndication($element, "gY", 0);
+          setIndication("COM", "aY", 0);
         break;
         case 1: // ARS disabled
-          setIndication($element, "gY", 1);
+          setIndication("COM", "aY", 1);
         break;
       }
     break;    
@@ -710,7 +725,7 @@ function writePanelModule($I2Caddr, $order, $packet) {
     i2c_select($I2CFh, $I2Caddr);
     $n = 0;
     while (!i2c_write($I2CFh, $order, $packet) and $n < N_I2C_WRITE) {
-      debugPrint("I2C write retry");
+      debugPrint("I2C write retry, addr $I2Caddr");
       $n +=1;
     }
   }

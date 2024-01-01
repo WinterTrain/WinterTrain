@@ -265,6 +265,9 @@ function initMainProgram() {
     print "Warning: Cannot open dump file: $DIRECTORY/$DUMP_FILE\n";
     $dumpFh = fopen("/dev/null","w");
   }
+  
+  ini_set("error_log", "$DIRECTORY/$ERRLOG_FILE");
+  
   if ($background) {
     msgLog("Starting as daemon");
   } else {

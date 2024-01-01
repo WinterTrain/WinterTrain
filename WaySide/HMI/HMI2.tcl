@@ -6,7 +6,7 @@ set ttyName "/dev/ttyUSB0"
 set panelEnabled no ;# Enable test interface to operator panel prototype for proof of concept.
 
 set HMIversion 01P01
-set IPaddress 192.168.8.230
+set IPaddress 192.168.0.230
 set IPport 9900
 #set IPport 9700
 

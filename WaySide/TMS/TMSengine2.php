@@ -590,11 +590,11 @@ global $tts, $trainData, $run, $PT2;
       readTimeTables();
     break;
     case "exitTMS":
-  print_r($trainData);  
-//      $run = false;
+//  print_r($trainData);  
+      $run = false;
     break;
     default:
-      errLog("Ups, unimplemented notification frim RBC {$param[0]}");
+      errLog("Ups, unimplemented notification from RBC {$param[0]}");
   }
 }
 

@@ -88,7 +88,7 @@ reading new IDs from:
 }
 
 function generateShuntingBorder() {
-global $PT1, $elementName, $distance, $maxBalise;
+  global $PT1, $elementName, $distance, $maxBalise;
   readSignallingLayout();
   verifySignallingLayout();
   if (isset($PT1[$elementName])) {
@@ -119,7 +119,7 @@ global $PT1, $elementName, $distance, $maxBalise;
 }
 
 function distUp($sum, $elementName, $baliseCount, $caller) {
-global $PT1, $maxBalise, $wheelFactor;
+  global $PT1, $maxBalise, $wheelFactor;
   $element = $PT1[$elementName];
   switch($element["element"]) {
     case "BSE":
@@ -154,7 +154,7 @@ global $PT1, $maxBalise, $wheelFactor;
 }
 
 function distDown($sum, $elementName, $baliseCount, $caller) {
-global $PT1, $maxBalise, $wheelFactor;
+  global $PT1, $maxBalise, $wheelFactor;
   $element = $PT1[$elementName];
   switch($element["element"]) {
     case "BSE":
@@ -188,20 +188,21 @@ global $PT1, $maxBalise, $wheelFactor;
   }
 }
 
-
 function modifySL() {
-global $DIRECTORY, $SIGNALLING_LAYOUT_FILE, $command, $DEFAULT_PARAM, $baliseList, $refdes, $BALISE_DUMP_FILE;
-
-
+  global $DIRECTORY, $SIGNALLING_LAYOUT_FILE, $command, $DEFAULT_PARAM, $baliseList, $refdes, $BALISE_DUMP_FILE;
   $refdes = "";
   if (rename("$DIRECTORY/$SIGNALLING_LAYOUT_FILE", "$DIRECTORY/{$SIGNALLING_LAYOUT_FILE}_OLD")) {
     $slFh = fopen("$DIRECTORY/{$SIGNALLING_LAYOUT_FILE}_OLD", "r");
     if ($newSlFh = fopen("$DIRECTORY/$SIGNALLING_LAYOUT_FILE", "w")) {
+    
+      $buf = array();
+      $l = 1;
       while ($line = fgets($slFh) ) {
         $line = trim($line);
 //        print "Source: >$line<\n";
         if (strpos($line, "C ") === 0) { // start of element found
           $refdes = "";
+          $idLine = 0;
         }
         if (strpos($line, "=") !== false) {
           list($param,$value) = explode("=", trim($line));
@@ -209,14 +210,21 @@ global $DIRECTORY, $SIGNALLING_LAYOUT_FILE, $command, $DEFAULT_PARAM, $baliseLis
             case "refdes":
               $refdes = $value;
 //              debugPrint ("refdes: $value");
+              if ($idLine != 0) {
+                if (isset($baliseList[$refdes]) and ($command == "O" or $baliseList[$refdes]["dynName"])) {
+                  $buf[$idLine] = "ID={$baliseList[$refdes]["ID"]}";
+                  $idLine = 0;
+                  debugPrint ("Changed element $refdes: $line");
+                }
+              }
             break;
             default:
               switch ($command) {
                 case "B": // Set balise ID to default
-                if ($param == "ID") {
-                  $line = "ID=FF:FF:FF:FF:FF";
-                  debugPrint ("Changed element $refdes: $line");
-                }
+                  if ($param == "ID") {
+                    $line = "ID=FF:FF:FF:FF:FF";
+                    debugPrint ("Changed element $refdes: $line");
+                  }
                 break;
                 case "D": // Set all element parameters to default
                   if (isset($DEFAULT_PARAM[$param])) {
@@ -233,8 +241,7 @@ global $DIRECTORY, $SIGNALLING_LAYOUT_FILE, $command, $DEFAULT_PARAM, $baliseLis
                         debugPrint ("Changed element $refdes: $line");
                       }
                     } else {
-                      print "Error: Attribute \"ID\" is specified before attribute \"refdes\". Please correct BG symbol.\n";
-                      exit(1);
+                      $idLine = $l;
                     }
                   }
                 break;
@@ -242,7 +249,10 @@ global $DIRECTORY, $SIGNALLING_LAYOUT_FILE, $command, $DEFAULT_PARAM, $baliseLis
             break;
           }
         }
-        fwrite($newSlFh, "$line\n");
+        $buf[$l++] = $line;
+      }
+      for ($l = 1; $l <= count($buf); $l++) {
+        fwrite($newSlFh, "{$buf[$l]}\n");      
       }
     } else {
       print "Error: Cannot create $DIRECTORY/$SIGNALLING_LAYOUT_FILE\n";
@@ -256,11 +266,10 @@ global $DIRECTORY, $SIGNALLING_LAYOUT_FILE, $command, $DEFAULT_PARAM, $baliseLis
 
 
 function readScreenLayout() {
-global $PT1, $HMI, $scFh, $xOffset, $yOffset, $UNIT_SIZE, $FRAME_X_WIDTH, $FRAME_Y_HIGHT, $SU_SIZE, $SD1X_SIZE, $SDY_SIZE, $P_OR, $TR_OR,
-  $DIRECTORY, $SCREEN_LAYOUT_FILE, $symbolDebug;
-
-$HMI["label"] = array();
-$HMI["baliseTrack"] = array();
+  global $PT1, $HMI, $scFh, $xOffset, $yOffset, $UNIT_SIZE, $FRAME_X_WIDTH, $FRAME_Y_HIGHT, $SU_SIZE, $SD1X_SIZE, $SDY_SIZE,
+    $P_OR, $TR_OR, $DIRECTORY, $SCREEN_LAYOUT_FILE, $symbolDebug;
+  $HMI["label"] = array();
+  $HMI["baliseTrack"] = array();
 // FIXME check completeness of screen layout / add default HMI data if element not shown on screen
 // Find position of frame
   $scFh = fopen("$DIRECTORY/$SCREEN_LAYOUT_FILE", "r");
@@ -449,16 +458,14 @@ $HMI["baliseTrack"] = array();
 }
 
 function readSignallingLayout () {
-global $DIRECTORY, $GNETLIST_CMD, $SIGNALLING_LAYOUT_FILE, $PT1;
-
+  global $DIRECTORY, $GNETLIST_CMD, $SIGNALLING_LAYOUT_FILE, $PT1;
   exec ("cd $DIRECTORY; $GNETLIST_CMD -g wt $SIGNALLING_LAYOUT_FILE");
   require("$DIRECTORY/output.net");
   unlink("$DIRECTORY/output.net");
 }
 
 function verifySignallingLayout() {
-global $PT1, $elementCount, $projectName, $projectDate, $projectAuthor, $doReplaceDefaultID;
-
+  global $PT1, $elementCount, $projectName, $projectDate, $projectAuthor, $doReplaceDefaultID;
   $frame = false;
   $virtuelID = 1; 
   foreach($PT1 as $name => &$element) {
@@ -542,9 +549,9 @@ global $PT1, $elementCount, $projectName, $projectDate, $projectAuthor, $doRepla
 }
 
 function compilePT2() {
-global $PT1, $HMI, $SCREEN_LAYOUT_FILE, $SIGNALLING_LAYOUT_FILE, $PT2_FILE, $DIRECTORY, $xOffset, $yOffset, $FRAME_X_WIDTH, $FRAME_Y_HIGHT, $PT1_VERSION, $elementCount, $projectName, $projectDate, $projectAuthor;
-
-print "Compiling\n  Signalling Layout: \"$DIRECTORY/$SIGNALLING_LAYOUT_FILE\" and
+  global $PT1, $HMI, $SCREEN_LAYOUT_FILE, $SIGNALLING_LAYOUT_FILE, $PT2_FILE, $DIRECTORY, $xOffset, $yOffset, $FRAME_X_WIDTH,
+    $FRAME_Y_HIGHT, $PT1_VERSION, $elementCount, $projectName, $projectDate, $projectAuthor;
+  print "Compiling\n  Signalling Layout: \"$DIRECTORY/$SIGNALLING_LAYOUT_FILE\" and
   Screen Layout: \"$DIRECTORY/$SCREEN_LAYOUT_FILE\" into
   Output file: \"$DIRECTORY/$PT2_FILE\"
 ";
@@ -584,7 +591,8 @@ fwrite($pt2Fh, "<?php
 
 
 function CmdLineParam() {
-global $debug, $SCREEN_LAYOUT_FILE, $SIGNALLING_LAYOUT_FILE, $PT2_FILE, $DIRECTORY,$BALISE_DUMP_FILE, $element1, $element2, $argv, $PT1, $command, $symbolDebug, $doReplaceDefaultID, $elementName, $distance, $wheelFactor, $maxBalise;
+  global $debug, $SCREEN_LAYOUT_FILE, $SIGNALLING_LAYOUT_FILE, $PT2_FILE, $DIRECTORY,$BALISE_DUMP_FILE, $element1, $element2, $argv, $PT1,
+    $command, $symbolDebug, $doReplaceDefaultID, $elementName, $distance, $wheelFactor, $maxBalise;
   if (in_array("-h",$argv) or count($argv) == 1) {
     print "Usage: [option] COMMAND [PARAM]
 Generate PT2 data for the WinterTrain. All files are located in working directory unless option -D is called..
@@ -727,7 +735,7 @@ Commands D, N, U, O and B will rename the input file \"$SIGNALLING_LAYOUT_FILE\"
 }
 
 function debugPrint($txt) {
-global $debug;
+  global $debug;
   if ($debug & 0x01) {
     print "$txt\n";
   }

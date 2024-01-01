@@ -403,6 +403,35 @@ function editTimeTable($trn, $editTrn, $tt, $errTxt = null) {
   <input type='submit' value='Add Actions' name='addActions'>
   <input type='submit' value='Add Locations' name='addLocations'>
 </form>
+<hr>
+
+Actions:
+<table>
+  <tr>
+  <td>(empty)</td>
+  <td>Set route</td>
+  </tr>
+  <tr>
+  <td>R</td>
+  <td>Set route</td>
+  </tr>
+  <tr>
+  <td>E</td>
+  <td>End of train run</td>
+  </tr>
+  <tr>
+  <td>N</td>
+  <td>End of train run - set new train running number \"Trn\"</td>
+  </tr>
+  <tr>
+  <td>W</td>
+  <td>Await meeting train w. running number \"Trn\" at signal \"Sig\"</td>
+  </tr>
+  <tr>
+  <td>D</td>
+  <td>Change driving direction</td>
+  </tr>
+</table>
 ";
 }
 

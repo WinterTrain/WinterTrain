@@ -3,19 +3,19 @@
 // HHT handlers
 
 function processHhtRequest($data) { // 
-global $balisesID, $hhtFoundCount, $hhtFoundSum, $PT2, $hhtBaliseID, $hhtBaliseName, $triggerMCeUpdate;
+global $balisesID, $hhtFoundCount, $hhtFoundSum, $PT2, $hhtBaliseID, $MCeBaliseName, $triggerMCeUpdate, $MCeBaliseReader, $MCeBaliseID;
 // Check sender ID: $data[1] & $RF12_ID_MASK  FIXME
   switch ($data[3]) { // Request code
     case 1: // Balise lookup
       $triggerMCeUpdate = true;
       $balise = sprintf("%'02X:%'02X:%'02X:%'02X:%'02X",$data[4],$data[5],$data[6],$data[7],$data[8]);
-      $hhtBaliseID = $balise;
+      if ($MCeBaliseReader == "HHT") $MCeBaliseID = $balise;
       if (isset($balisesID[$balise])) {
         sendHHTresponse(1, $balise, $balisesID[$balise]);
-        $hhtBaliseName = $balisesID[$balise];
+        $MCeBaliseName = $balisesID[$balise];
       } else {
         sendHHTresponse(2, $balise, "(unknown)");
-        $hhtBaliseName = "(Unknown)";
+        $MCeBaliseName = "(Unknown)";
       }
     break;
     case 2: // Distance lookup

@@ -4,7 +4,8 @@
 
 function processCommandMCe($command, $from) { // ------------------------------------------ Process commands from MCe clients
   global $run, $reloadRBC, $inChargeMCe, $clientsData, $EC, $trackModel, $test, $triggerMCeUpdate, $triggerHMIupdate, $simTrain,
-    $automaticPointThrowEnabled, $DIRECTORY, $PT2_FILE, $BL_FILE, $PT2, $baliseCountUnassigned, $balisesID, $inChargeHMI, $dumpActive, $dumpFh;
+    $automaticPointThrowEnabled, $DIRECTORY, $PT2_FILE, $BL_FILE, $PT2, $baliseCountUnassigned, $balisesID, $inChargeHMI, $dumpActive, $dumpFh,
+    $MCeBaliseReader, $MCeBaliseID, $MCeBaliseName;
   $triggerMCeUpdate = true;
   $param = explode(" ",$command);
   switch ($param[0]) {
@@ -63,6 +64,7 @@ function processCommandMCe($command, $from) { // -------------------------------
       if ($from == $inChargeMCe) {
         $clientsData[(int)$from]["activeAt"] = date("Ymd H:i:s");
       }
+      print "gryf $gryf\n";
     break;
     case "CMD7":
       if ($from == $inChargeMCe) {
@@ -101,6 +103,13 @@ function processCommandMCe($command, $from) { // -------------------------------
           requestECstatus($addr);
         }
       }
+    break;
+    case "blR": // Select balise reader
+      $MCeBaliseReader = $param[1];
+      MCeIndicationAll("set ::MCeBaliseReader {{$MCeBaliseReader}}\n");
+      $MCeBaliseID = "<udef>";
+      $MCeBaliseName = "<udef>";
+      print ">$command<\n";
     break;
     case "aBN": // assign balise name
       if ($from == $inChargeMCe) {
@@ -199,12 +208,14 @@ function processCommandMCe($command, $from) { // -------------------------------
 
 function UpdateIndicationMCe() { // Update indications for all MCe clients
   global $EC, $startTime, $tmsStatus, $TMS_STATUS_TXT, $TD_TXT_MADIR, $triggerMCeUpdate, $simTrain, $trainData, $hhtBaliseID, $hhtBaliseName,
-    $hhtBaliseStatus, $baliseCountTotal, $baliseCountUnassigned;
+    $hhtBaliseStatus, $baliseCountTotal, $baliseCountUnassigned, $MCeBaliseID, $MCeBaliseReader, $MCeBaliseName;
   MCeIndicationAll("set ::serverUptime {".trim(`/usr/bin/uptime`)."}");
   MCeIndicationAll("set ::RBCuptime {".prettyPrintTime(time() - $startTime)."}");
   MCeIndicationAll("set ::tmsStatus {{$TMS_STATUS_TXT[$tmsStatus]}}"); 
-  MCeIndicationAll("set ::baliseID {{$hhtBaliseID}}\n");
-  MCeIndicationAll("set ::baliseName {{$hhtBaliseName}}\n");
+//  MCeIndicationAll("set ::baliseID {{$hhtBaliseID}}\n");
+//  MCeIndicationAll("set ::baliseName {{$hhtBaliseName}}\n");
+  MCeIndicationAll("set ::baliseID {{$MCeBaliseID}}\n");
+  MCeIndicationAll("set ::baliseName {{$MCeBaliseName}}\n");
   MCeIndicationAll("set ::baliseStatus {{$hhtBaliseStatus}}\n");
   MCeIndicationAll("set ::baliseCount {{$baliseCountTotal}/{$baliseCountUnassigned}}\n");
   foreach($EC as $addr => $ec) {
@@ -225,7 +236,7 @@ function UpdateIndicationMCe() { // Update indications for all MCe clients
 }
 
 function MCeStartup($client) { // Initialise specific MCe client with static data
-  global $EC, $simTrain, $triggerMCeUpdate;
+  global $EC, $simTrain, $triggerMCeUpdate, $trainData;
   MCeIndication($client, "destroyDynFrame");
   foreach ($EC as  $addr => $ec) {
     MCeIndication($client, "ECframe $addr");
@@ -234,6 +245,15 @@ function MCeStartup($client) { // Initialise specific MCe client with static dat
   foreach ($simTrain as  $index => $train) {
     MCeIndication($client, "SimFrame $index {$train["name"]} {$train["ID"]}");
   }
+  $trains = "HHT";
+  foreach ($trainData as $index => $train) {
+    $trains .= " ".$train["name"];
+  }
+  // Update Balise reader selector
+  MCeIndication($client, "destroy .f.fStatus.balise.selector"); // Move to client program
+  MCeIndication($client, "grid [ttk::combobox .f.fStatus.balise.selector -values \"$trains\" -textvariable baliseReader] -column 2 -row 0 -padx 5 -pady 5 -sticky we
+");
+
   $triggerMCeUpdate = true; 
 }
 
