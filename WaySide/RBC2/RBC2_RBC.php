@@ -635,7 +635,7 @@ function processCommandRBC($command, $from) { // -------------------------------
 // Routes
       case "tr": // Set route
         $EP = $trackModel[$param[1]]->cmdSetRouteTo($param[2]);
-        if ($EP == "__R")  $EP = $trackModel[$param[2]]->cmdSetRouteTo($param[1]); // Try opposite signal order
+        if (substr($EP, 0, 2)  == "__")  $EP = $trackModel[$param[2]]->cmdSetRouteTo($param[1]); // Try opposite signal order
         switch ($EP) {
           case "__R":
             HMIindication($from, "displayResponse {Rejected - no route possible}");

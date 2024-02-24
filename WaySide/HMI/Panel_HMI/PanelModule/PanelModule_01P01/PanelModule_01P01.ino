@@ -2,7 +2,7 @@
 // WinterTrain, Track Panel
 #include <Wire.h>
 
-#define MODULE_I2C_ADDR 0x3f // To be specific per module
+#define MODULE_I2C_ADDR 0x42 // To be specific per module
 
 #define MAXBUF 6
 #define N_INPUT 8
@@ -28,10 +28,10 @@ void setup() {
   Wire.onReceive(WireReceiver);
   Wire.onRequest(WireSender);
   pinModeAllOut();
-//  Serial.begin(115200);
-//  Serial.println("WinterTrain, Track Panel");
-//  Serial.print("PanelModule, I2C addr: ");
-//  Serial.println(MODULE_I2C_ADDR, HEX);
+  Serial.begin(115200);
+  Serial.println("WinterTrain, Track Panel");
+  Serial.print("PanelModule, I2C addr: ");
+  Serial.println(MODULE_I2C_ADDR, HEX);
 }
 
 void loop() {
@@ -88,7 +88,7 @@ void WireReceiver(int count) {
     case 20: // Set output, x1, x2, x3
       if (count == 4) {
         outputOrder = i2cRxBuf[1] | (unsigned long) i2cRxBuf[2] << 8 | (unsigned long) i2cRxBuf[3] << 16;
-        for (byte b = 0; b < 20; b++) {
+        for (byte b = 0; b < 22; b++) {
           if (bitRead(outputMap, b)) digitalWrite(b, bitRead(outputOrder, b));
         }
         error = 0;

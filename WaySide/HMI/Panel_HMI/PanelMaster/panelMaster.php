@@ -5,8 +5,11 @@
 //--------------------------------------- Default Configuration
 $VERSION = "01P01";  // What does this mean with git?? FIXME
 
-$RBC_SERVER_ADDR = "10.0.0.206";
-$RBC_SERVER_PORT = 9900;
+$RBC_SERVER = [
+  "<default>"       => [ "addr" => "127.0.0.1", "port" => 9900],
+  "Protokol-Oberst" => [ "addr" => "127.0.0.1", "port" => 9900],
+  "CBU"             => [ "addr" => "192.168.8.230", "port" => 9900],
+];
 
 // ----------------------------------------- File names
 $DIRECTORY = ".";
@@ -35,8 +38,8 @@ define("MCP_GPIOA",0x12);
 define("MCP_IODIRA",0x00);
 
 // ---------------------------------------- Ennumeration
-$outputUseCodes = array("lR","lG","tR","tG","aY","bB","rR","rG", "oG"); // Possible output useCodes
-$inputUseCodes = array("S","N","B","R","F","E","G","A", "O"); // Possible input useCodes
+$outputUseCodes = array("lR","lG","tR","tG","aY","bW","rR","rG", "oG", "oR", "eR", "nR", "nG"); // Possible output useCodes
+$inputUseCodes = array("S","N","B","R","F","E","G","A", "O", "I"); // Possible input useCodes
 define("TR_CLEAR", 0);
 define("TR_CLEAR_LOCKED", 1);
 define("TR_OCCUPIED", 2);
@@ -67,26 +70,40 @@ forkToBackground();
 initMainProgram();
 configurePanelModules();
 
+initPM();
 do {
-  if (initServer()) {
-    initPM();
-    do {
-      $now = microtime(true);
-      if ($now > $pollTimer) {
-        $pollTimer = $now + POLL_TIMEOUT;
-        readPanelInput();
-      }
-      if ($now > $updateTimer) {
-        $updateTimer = $now + UPDATE_TIMEOUT;
-        writePanelOutput();
-      }
-      toggleRunIndicator();
-    } while (server() and $run);
-    clearPanel();
+  if (isset($RBC_SERVER[getSSI()])) { // knovn network
+    setIndication("COM", "nR", 1);
+    setIndication("COM", "nG", 1);
+    writePanelOutput();
+    if (initServer()) { // connected to RBC
+      setIndication("COM", "nR", 0);
+      setIndication("COM", "oR", 1);
+      writePanelOutput();
+      if ($reqOpr) sendCommandRBC("Rq");
+      do {
+        $now = microtime(true);
+        if ($now > $pollTimer) {
+          $pollTimer = $now + POLL_TIMEOUT;
+          readPanelInput();
+        }
+        if ($now > $updateTimer) {
+          $updateTimer = $now + UPDATE_TIMEOUT;
+          writePanelOutput();
+        }
+      } while (server() and $run);
+      clearPanel();
+      setIndication("COM", "nR", 1);
+      setIndication("COM", "nG", 1);
+      setIndication("COM", "oR", 1);
+      writePanelOutput();
+    }
   } else {
-    sleep(RECONNECT_TIMEOUT);
+    setIndication("COM", "nR", 1);
+    setIndication("COM", "nG", 0);
+    writePanelOutput();
   }
-  toggleRunIndicator();
+  sleep(RECONNECT_TIMEOUT);
 } while ($run);
 msgLog("Exitting...");
 
@@ -182,6 +199,7 @@ function processPMconfiguration() {
     }
   }
 //print_r($PM);
+//print_r($elementIndicator);
 //print_r($elementCT);
 //print_r($ctIndication);
 }
@@ -190,7 +208,8 @@ function initPM() {
   global $PM, $reqOpr;
   configurePanelModules();
   clearPanel();
-  if ($reqOpr) sendCommandRBC("Rq");
+  setIndication("COM", "nR", 1);
+  setIndication("COM", "oR", 0);
 }
 
 function clearPanel() {
@@ -239,7 +258,7 @@ function handleButtonPress($buttonsPressed) {
       $buttonsReleased = false;; // --------------------------------------------------------- FIXME Used??
 //      print "Buttons: $e1.$c1 $e2.$c2 ";
       if ($c1 == "S" and $c2 == "S") { // Two select buttons => Set route
-        print "Set route $e1 $e2\n";
+        debugPrint("Set route $e1 $e2\n");
         sendCommandRBC("tr $e2 $e1");
       } elseif (($c1 == "S" or $c2 == "S")) { // One select button => "common command"
         if ($c1 == "S") {
@@ -253,7 +272,7 @@ function handleButtonPress($buttonsPressed) {
           case "N":  // Point throw
             // if $element type point
             sendCommandRBC("pt $element");
-            // else ignore
+            // else other commands
           break;
           case "R":  // Route release
             sendCommandRBC("rr $element");
@@ -279,12 +298,12 @@ function handleButtonPress($buttonsPressed) {
           break;
           case "I": // Show train ID
             if (isset($elementCT[$element])) {
-              print "  Train ID for CT {$elementCT[$element]}\n";
+              debugPrint("  Train ID for CT {$elementCT[$element]}\n");
               foreach ($combinedTrackIndication[$elementCT[$element]] as $ctName => $state) {
-                print "    Train ID for $ctName: ".(isset($occupationTrainID[$ctNamet]) ? $occupationTrainID[$ctName] : "<unknovn>")."\n";
+                debugPrint("    Train ID for $ctName: ".(isset($occupationTrainID[$ctNamet]) ? $occupationTrainID[$ctName] : "<unknovn>")."\n");
               }
             } else {
-             print "Train ID for $element: ".(isset($occupationTrainID[$element]) ? $occupationTrainID[$element] : "<unknovn>")."\n";
+             debugPrint("Train ID for $element: ".(isset($occupationTrainID[$element]) ? $occupationTrainID[$element] : "<unknovn>")."\n");
             }
           break;
           case "T": // Show TRN
@@ -292,7 +311,7 @@ function handleButtonPress($buttonsPressed) {
           case "O": // Ignore not used combinations
           break;
           default:
-            print "Ups, unimplemented common push button $common\n";
+            debugPrint("Ups, unimplemented common push button $common\n");
         }
       } else { // Two common buttons => special command
         if (($c1 == "N" and $c2 == "O") or ($c1 == "O" and $c2 == "N") ) { // Request / release operation
@@ -381,6 +400,17 @@ function processNotificationRBC($data) {
           setIndication($element, "lR", 1);
           setIndication($element, "lG", 1);
       }
+      switch ($tokens[6]) { // Blocking state
+        case 1: // point unblocked
+          setIndication($element, "bW", 0);
+        break;
+        case 11: // point blocked
+        case 12:
+        case 13:
+        case 14:
+          setIndication($element, "bW", 1);
+        break;
+      }
     break;
     case "signalState":
       // name vacancyState routeLockingState routeLockingType lockingState blockingState signalState arsState {occupationTrainID ""}
@@ -466,6 +496,14 @@ function processNotificationRBC($data) {
           setIndication($element, "aY", 0);
         break;
       }
+      switch ($tokens[6]) { // Blocking state
+        case 0: // Signal unblocked
+          setIndication($element, "bW", 0);
+        break;
+        case 1: // Signal blocked
+          setIndication($element, "bW", 1);
+        break;
+      }
     break;    
     case "trState": // name routeState trackState {occupationTrainID ""}
       $element = $tokens[1];
@@ -532,17 +570,19 @@ function processNotificationRBC($data) {
       }
     break;    
     case "displayResponse":
-      print "RBC response: $data\n";
+      debugPrint("\nRBC response: $data  ");
     break;   
     case "oprAllowed":
       $operationAllowed = true;
-      setIndication("COM", "oG", 1);              
-      print "Operation allowed\n";
+      setIndication("COM", "oG", 1);
+      setIndication("COM", "oR", 0);
+      debugPrint("Operation allowed\n");
     break; 
     case "oprReleased":
       $operationAllowed = false;
       setIndication("COM", "oG", 0);  
-      print "operation not allowed\n";
+      setIndication("COM", "oR", 1);
+      debugPrint("operation not allowed\n");
     break;
     case "eStopInd": // state
       switch ($tokens[1]) {
@@ -603,7 +643,7 @@ function processNotificationRBC($data) {
     case "":
     break;
     default:
-      print "Warning: RBC status >$data< not implemented\n";
+      debugPrint("Warning: RBC status >$data< not implemented\n");
   }
 }
 
@@ -623,6 +663,7 @@ function setIndication($element, $useCode, $value) {
 function sendCommandRBC($command) {
 global $RBCfh;
   if ($RBCfh) fwrite($RBCfh,"$command\n");
+  debugPrint("\nCommand: $command  ");
 }
 
 function writePanelOutput() {
@@ -652,7 +693,7 @@ function writePanelOutput() {
 }
 
 function readPanelInput() {
-  global $PM;
+  global $PM, $debug;
   $buttonsPressed = array();
   foreach ($PM as $I2Caddr => $moduleData) {
     if ($moduleData["inputButtons"] != []) {
@@ -662,16 +703,32 @@ function readPanelInput() {
       }
     }
   }
-  foreach ($buttonsPressed as $button) print "$button ";
-  print "\n";
+  if ($debug) {
+    foreach ($buttonsPressed as $button) print "$button ";
+    print ".";
+  }
   handleButtonPress($buttonsPressed);
 }
 
 //----------------------------------------------------------------------------------------- (server)
 
 function initServer() {
-global $RBCfh, $RBC_SERVER_ADDR, $RBC_SERVER_PORT, $version;
-  $RBCfh = @stream_socket_client("tcp://$RBC_SERVER_ADDR:$RBC_SERVER_PORT", $errno,$errstr);
+global $RBCfh, $RBC_SERVER, $cliRBCaddr, $version;
+  if ($cliRBCaddr != "") {
+    $RBCaddr = $cliRBCaddr;
+    $RBCport = $RBC_SERVER["<default>"]["port"];  
+  } else {
+    $ssi = getSSI();
+    if (isset($RBC_SERVER[$ssi])) {
+      $RBCaddr = $RBC_SERVER[$ssi]["addr"];
+      $RBCport = $RBC_SERVER[$ssi]["port"];
+    } else {
+      $RBCaddr = $RBC_SERVER["<default>"]["addr"];
+      $RBCport = $RBC_SERVER["<default>"]["port"];  
+    }
+  }
+//  print "ssi: $ssi, addr $RBC_addr\n";
+  $RBCfh = @stream_socket_client("tcp://$RBCaddr:$RBCport", $errno,$errstr);
   if ($RBCfh) {
     stream_set_blocking($RBCfh,false);
     msgLog("Connected to RBC");
@@ -738,8 +795,8 @@ function toSigned($b1, $b2) {
 }
 
 function CmdLineParam() {
-global $debug, $background, $TMS_CONFIG, $VERSION, $argv, $RBC_SERVER_ADDR, $TT_FILE, $PT2_FILE, $DIRECTORY, $TRAIN_DATA_FILE, $useI2C,
-  $reqOpr;
+global $debug, $background, $TMS_CONFIG, $VERSION, $argv, $cliRBCaddr, $TT_FILE, $PT2_FILE, $DIRECTORY, $TRAIN_DATA_FILE, $useI2C,
+  $reqOpr, $PM_CONF_FILE, $DIRECTORY;
   if (in_array("-h",$argv)) {
     fwrite(STDERR,"Track Panel Master, version $VERSION
 Usage:
@@ -747,6 +804,8 @@ Usage:
 -IP <IP-address>      IP-address of RBC to contact
 -l                    Connect to local host
 -o                    Request operation
+-f <config file>      Use <config file> instead of default
+-D <directory>        Use <directory> instead of default
 -ni                   Don't access I2C
 -d                    Enable debug info, level all
 ");
@@ -758,14 +817,32 @@ Usage:
     case "-IP":
       list(,$p) = each($argv);
       if ($p) {
-        $RBC_SERVER_ADDR = $p;
+        $cliRBCaddr = $p;
       } else {
         fwrite(STDERR,"Error: option -IP: IP-address is missing \n");
         exit(1);
       }
     break;
+    case "-f":
+      list(,$p) = each($argv);
+      if ($p) {
+        $PM_CONF_FILE  = $p;
+      } else {
+        fwrite(STDERR,"Error: option -f: File name is missing \n");
+        exit(1);
+      }
+    break;
+    case "-D":
+      list(,$p) = each($argv);
+      if ($p) {
+        $DIRECTORY  = $p;
+      } else {
+        fwrite(STDERR,"Error: option -D: Directory name is missing \n");
+        exit(1);
+      }
+    break;
     case "-l":
-        $RBC_SERVER_ADDR = "127.0.1.0";
+        $cliRBCaddr = "127.0.1.0";
     break;
     case "-b":
     case "--background" :
@@ -845,6 +922,11 @@ function toggleRunIndicator() {
     $runInd = !$runInd;
     fwrite($gpioFh, $runInd ? "1" : "0");
   }
+}
+
+
+function getSSI() {
+  return exec("iwgetid -r ");
 }
 
 function forkToBackground() {
