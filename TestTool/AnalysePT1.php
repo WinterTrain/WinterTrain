@@ -259,13 +259,12 @@ t                 Calculate total track length
 ";
     exit();
   }
-  next($argv);
-  while (list(,$opt) = each($argv)) {
+  while ($opt = next($argv)) {
     switch ($opt) {
       case "d":
         $command = "d";
-        list(,$element1) = each($argv);
-        list(,$element2) = each($argv);
+        list(,$element1) = next($argv);
+        list(,$element2) = next($argv);
         if (!$element1 or !$element2) {
           print "Error: command d requires two element names.\n";
         exit(1);
@@ -281,7 +280,7 @@ t                 Calculate total track length
         $command = "e";
       break;
       case "-pt2":
-        list(,$p) = each($argv);
+        $p = next($argv);
         if ($p) {
           $PT2_FILE = $p;
           if (!is_readable("$DIRECTORY/$PT2_FILE")) {
@@ -294,7 +293,7 @@ t                 Calculate total track length
         }
         break;
       case "-D":
-        list(,$p) = each($argv);
+      $p = next($argv);
         if ($p) {
           $DIRECTORY = $p;
           if (!is_dir($DIRECTORY)) {

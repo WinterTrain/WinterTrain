@@ -7,7 +7,7 @@ $VERSION = "01P01";  // What does this mean with git?? FIXME
 
 $RBC_SERVER = [
   "<default>"       => [ "addr" => "127.0.0.1", "port" => 9900],
-  "Protokol-Oberst" => [ "addr" => "127.0.0.1", "port" => 9900],
+  "Protokol-Oberst" => [ "addr" => "10.0.0.31", "port" => 9900],
   "CBU"             => [ "addr" => "192.168.8.230", "port" => 9900],
 ];
 
@@ -37,84 +37,113 @@ define("PM_GET_STATUS","8");
 define("MCP_GPIOA",0x12);
 define("MCP_IODIRA",0x00);
 
+// Display module I2C addr is specified in PM data
+
 // ---------------------------------------- Ennumeration
 $outputUseCodes = array("lR","lG","tR","tG","aY","bW","rR","rG", "oG", "oR", "eR", "nR", "nG"); // Possible output useCodes
 $inputUseCodes = array("S","N","B","R","F","E","G","A", "O", "I"); // Possible input useCodes
 define("TR_CLEAR", 0);
 define("TR_CLEAR_LOCKED", 1);
 define("TR_OCCUPIED", 2);
+// DisplayMode
+define ("DM_IDLE", "0");
+define ("DM_TIME", "1");
+define ("DM_IP", "2");
+define ("DM_TRAIN_DATA", "3");
 
 // ---------------------------------------- Timing
-define("RECONNECT_TIMEOUT",3);
-define("SERVER_TIMEOUT", 500000); // [ms]
-define("POLL_TIMEOUT", 0.31); // Poll PanelModule inputs [s]
-define("UPDATE_TIMEOUT", 1); // Update PanelModule outputs [s]
+define("WIFI_RECONNECT_TIMEOUT",3);    	// Waiting timer for WiFi reconnection
+define("RBC_RECONNECT_TIMEOUT", 3);    	// Waiting time for RBC reconnection
+define("SERVER_TIMEOUT", 500000); 	// Max server wait time [ms]
+define("POLL_TIMEOUT", 0.31);		// Poll PanelModule inputs [s]
+define("UPDATE_TIMEOUT", 1);		// Update PanelModule outputs [s]
 
 //--------------------------------------- System variable
 $debug = 0x00; $background = FALSE; $run = true; $useI2C = true;
 $startTime = time();
-$pollTimer = 0; $updateTimer = 0;
+$pollTimer = 0; $updateTimer = 0; $RBCreconectTime = 0;
+$prevDispTime = 0;
 
 //----------------------------------------- Panel Master variable
+$displayI2Caddr = 0;
 $runIndicator = false;
 $runInd = false;
 $buttonsReleased = false;
 $reqOpr = false;
 $operationAllowed = false;
 $occupationTrainID = array();
+$displayMode = DM_TIME;
 
 //---------------------------------------------------------------------------------------------------------- System 
 cmdLineParam();
 prepareMainProgram();
 forkToBackground();
 initMainProgram();
-configurePanelModules();
-
 initPM();
+
 do {
   if (isset($RBC_SERVER[getSSI()])) { // knovn network
     setIndication("COM", "nR", 1);
     setIndication("COM", "nG", 1);
     writePanelOutput();
-    if (initServer()) { // connected to RBC
-      setIndication("COM", "nR", 0);
-      setIndication("COM", "oR", 1);
-      writePanelOutput();
-      if ($reqOpr) sendCommandRBC("Rq");
-      do {
-        $now = microtime(true);
-        if ($now > $pollTimer) {
-          $pollTimer = $now + POLL_TIMEOUT;
-          readPanelInput();
-        }
-        if ($now > $updateTimer) {
-          $updateTimer = $now + UPDATE_TIMEOUT;
+    do {
+      $now = microtime(true);
+      $dispTime = date("His");
+      if ($now > $RBCreconectTime) {
+        $RBCreconectTime = $now + RBC_RECONNECT_TIMEOUT;
+        if (initServer()) { // connected to RBC
+          setIndication("COM", "nR", 0);
+          setIndication("COM", "oR", 1);
+          writePanelOutput();
+          if ($reqOpr) sendCommandRBC("Rq");
+          do {
+            $now = microtime(true);
+            $dispTime = date("His");
+            if ($now > $pollTimer) {
+              $pollTimer = $now + POLL_TIMEOUT;
+              readPanelInput();                          // FIXME check buttons even if not connected to RBC
+            }
+            if ($now > $updateTimer) {
+              $updateTimer = $now + UPDATE_TIMEOUT;
+              writePanelOutput();
+            }
+            if ($displayMode == DM_TIME and $dispTime != $prevDispTime) {
+              $prevDispTime = $dispTime;
+              displayTime($dispTime);
+            }
+          } while (server() and $run);
+          clearPanel();
+          setIndication("COM", "nR", 1);
+          setIndication("COM", "nG", 1);
+          setIndication("COM", "oR", 1);
           writePanelOutput();
         }
-      } while (server() and $run);
-      clearPanel();
-      setIndication("COM", "nR", 1);
-      setIndication("COM", "nG", 1);
-      setIndication("COM", "oR", 1);
-      writePanelOutput();
-    }
-  } else {
-    setIndication("COM", "nR", 1);
-    setIndication("COM", "nG", 0);
-    writePanelOutput();
-  }
-  sleep(RECONNECT_TIMEOUT);
+      }
+      if ($dispTime != $prevDispTime) {
+        $prevDispTime = $dispTime;
+        displayTime($dispTime);
+      }
+      usleep(SERVER_TIMEOUT);
+    } while (isset($RBC_SERVER[getSSI()]) and $run);
+  } // else unknown WiFi
+  setIndication("COM", "nR", 1);
+  setIndication("COM", "nG", 0);
+  writePanelOutput();
+  displayClear();  // Clear display as time may be unrealiable
+  sleep(WIFI_RECONNECT_TIMEOUT);
 } while ($run);
 msgLog("Exitting...");
 
 // ---------------------------------------------------------------------------------------------------------- PM
 
 function processPMconfiguration() {
-  global $PM, $PM_CONF_FILE, $DIRECTORY, $elementIndicator, $outputUseCodes, $inputUseCodes, $elementCT, $ctIndication;
+  global $PM, $PM_CONF_FILE, $DIRECTORY, $elementIndicator, $outputUseCodes, $inputUseCodes, $elementCT, $ctIndication,
+    $displayI2Caddr;
   require("$DIRECTORY/$PM_CONF_FILE");
   if (array_key_exists(0, $PM)) { unset($PM[0]); } // Delete any remaining template entries
   // FIXME add consistency check against PT2; here or in DMT
   foreach ($PM as $I2Caddr => &$pmData) {
+    $pmData["online"] = true; // Assume online and mark off-line if not the case
     switch ($pmData["type"]) {
       case "EVERY":
         $pmData["outputOrder"] = 0;
@@ -187,6 +216,33 @@ function processPMconfiguration() {
           }
         }
       break;
+      case "DISPLAY":
+        if ($displayI2Caddr == 0) {
+          $displayI2Caddr = $I2Caddr;
+          $pmData["inputButtons"] = array();
+          $pmData["outputByteOrder"] = array(0, 0, 0, 0);
+          foreach ($pmData["pins"] as $pinNo => $use) {
+            if ($pinNo >= 1 and $pinNo < 5) {                                              // FIXME add 2 x bit I/O
+              if ($use != "") {
+                if (strpos($use, ".") !== false) { 
+                  list($element, $useCode) = explode(".", $use);
+                  if ($element != "") {
+  // FIXME   store pin nr
+                  } else {
+                    print "Warning: Missing element name (or \"COM\" for common) in  \"$use\" I2C addr $I2Caddr, pin no $pinNo\n";
+                  }
+                }  else {
+                  print "Warning: Incorrect pin use code format \"$use\" I2C addr $I2Caddr, pin no $pinNo\n";
+                }
+              }
+            } else {
+              print "Error: PinNo $pinNo not applicable for PanelModule type DISPLAY\n";
+            }
+          }
+        } else {
+          print "Error: Double I2C address ($I2Caddr and $displayI2Caddr) assigned for element type DISPLAY\n";
+        }
+      break;
       default:
         print "Error: Unsupported PanelModule type {$pmData["type"]}\n";
     }
@@ -210,6 +266,7 @@ function initPM() {
   clearPanel();
   setIndication("COM", "nR", 1);
   setIndication("COM", "oR", 0);
+  displayClear();
 }
 
 function clearPanel() {
@@ -229,16 +286,26 @@ function clearPanel() {
 
 function configurePanelModules() {
   global $PM;
-  foreach ($PM as $I2Caddr => $moduleData) {
+  foreach ($PM as $I2Caddr => &$moduleData) {
     switch ($moduleData["type"]) {
       case "EVERY":
-        writePanelModule($I2Caddr, PM_RESET, array());
-        foreach($moduleData["inputPins"] as $pin) {
-          writePanelModule($I2Caddr, PM_CONFIGURE_INPUT, array($pin));
+        if (writePanelModule($I2Caddr, PM_RESET, array())) {
+          foreach($moduleData["inputPins"] as $pin) {
+            writePanelModule($I2Caddr, PM_CONFIGURE_INPUT, array($pin));
+          }
+        } else {
+          $moduleData["online"] = false;
+          print "Warning: Module (".dechex($I2Caddr).") marked as off-line\n";
         }
       break;
       case "MCP23017": // Input from MCP23017 is not implemented
-        writePanelModule($I2Caddr, MCP_IODIRA, array(0, 0)); // Set GPIOx as output
+        if (writePanelModule($I2Caddr, MCP_IODIRA, array(0, 0))) { // Set GPIOx as output
+        } else {
+          $moduleData["online"] = false;
+          print "Warning: Module (".dechex($I2Caddr).") marked as off-line\n";
+        }
+      break;
+      case "DISPLAY":
       break;
     }
   }
@@ -246,16 +313,17 @@ function configurePanelModules() {
 
 function handleButtonPress($buttonsPressed) {
   global $buttonsReleased, $operationAllowed, $occupationTrainID;
+  //                            FIXME Available commands depends on if connected to WiFi and RBC
   $count = count($buttonsPressed);
   if ($count == 0) {
     $buttonsReleased = true;
   } elseif ($buttonsReleased) {
     if ($count == 1) {
-      if ($buttonsPressed[0] == "E") sendCommandRBC("eStop");
+      if ($buttonsPressed[0] == "COM.E") sendCommandRBC("eStop");
     } elseif ($count == 2) {
       list ($e1, $c1) = explode(".", $buttonsPressed[0]);
       list ($e2, $c2) = explode(".", $buttonsPressed[1]);
-      $buttonsReleased = false;; // --------------------------------------------------------- FIXME Used??
+      $buttonsReleased = false;
 //      print "Buttons: $e1.$c1 $e2.$c2 ";
       if ($c1 == "S" and $c2 == "S") { // Two select buttons => Set route
         debugPrint("Set route $e1 $e2\n");
@@ -270,9 +338,9 @@ function handleButtonPress($buttonsPressed) {
         }
         switch ($common) {
           case "N":  // Point throw
-            // if $element type point
+            // if $element type point ------------------------------------- FIXME
             sendCommandRBC("pt $element");
-            // else other commands
+            // elseif element type LX, Gate, ...
           break;
           case "R":  // Route release
             sendCommandRBC("rr $element");
@@ -586,10 +654,10 @@ function processNotificationRBC($data) {
     break;
     case "eStopInd": // state
       switch ($tokens[1]) {
-        case 0: // eStop inactive
+        case "false": // eStop inactive
           setIndication("COM", "eR", 0);
         break;
-        case 1: // eStop active
+        case "true": // eStop active
           setIndication("COM", "eR", 1);
         break;
       }
@@ -620,7 +688,7 @@ function processNotificationRBC($data) {
     break;    
     case "atoGeneral":
     break;    
-    case "destroyTrainFrame": // RBC notifications not relevant for trackPanel
+    case "destroyTrainFrame": // Various RBC notifications not relevant for trackPanel
     case "set":
     case "dGrid":
     case "resetLabel":
@@ -697,9 +765,10 @@ function readPanelInput() {
   $buttonsPressed = array();
   foreach ($PM as $I2Caddr => $moduleData) {
     if ($moduleData["inputButtons"] != []) {
-      $input = readPanelModule($I2Caddr, PM_READ_INPUT)[0];
-      foreach ($moduleData["inputButtons"] as $index => $button) {
-        if (!($input & (1 << $index))) $buttonsPressed[] = $button;
+      if (($input = readPanelModule($I2Caddr, PM_READ_INPUT)) !== false) {
+        foreach ($moduleData["inputButtons"] as $index => $button) {
+          if (!($input[0] & (1 << $index))) $buttonsPressed[] = $button;
+        }
       }
     }
   }
@@ -708,6 +777,20 @@ function readPanelInput() {
     print ".";
   }
   handleButtonPress($buttonsPressed);
+}
+
+function displayTime($time) {
+  global $displayI2Caddr;
+  if ($displayI2Caddr != 0) {
+    foreach (str_split($time) as $c) {
+      $a[] = (int)$c;
+    }
+    writePanelModule($displayI2Caddr, 0x0C, $a);
+  }
+}
+
+function displayClear() {
+  writePanelModule($displayI2Caddr, 0x0A, []);
 }
 
 //----------------------------------------------------------------------------------------- (server)
@@ -735,23 +818,23 @@ global $RBCfh, $RBC_SERVER, $cliRBCaddr, $version;
     sendCommandRBC("Hello this is Panel Master $version");
     return true;
   } else {
-    fwrite(STDERR,"Cannot create client socket for RBC: $errstr ($errno)\n");
+    fwrite(STDERR,"Cannot create client socket for RBC ($RBCaddr:$RBCport): $errstr ($errno)\n");
     return false;
   }
 }
 
 function server() {
-global $RBCfh, $gpioFh;
+global $RBCfh;
   $except = NULL;
   $write = NULL;
   $read[] = $RBCfh;
-//          fwrite($gpioFh, "0");
 
   if (stream_select($read, $write, $except, 0, SERVER_TIMEOUT)) {
 //          fwrite($gpioFh, "1");
     foreach ($read as $r) {
       if ($r == $RBCfh) {
         if ($data = fgets($r)) {
+//        print "process >$data<";
           processNotificationRBC(trim($data));
         } else { //RBC gone
           msgLog("RBC gone");
@@ -760,31 +843,33 @@ global $RBCfh, $gpioFh;
       }
     }
   }
-//          fwrite($gpioFh, "1");
   return true;
 }
 
 //----------------------------------------------------------------------------------------- Utility
 
 function readPanelModule($I2Caddr, $register) {
-  global $I2CFh, $useI2C;
-  if ($useI2C) {
+  global $I2CFh, $useI2C, $PM;
+  if ($useI2C and $PM[$I2Caddr]["online"]) {
     i2c_select($I2CFh, $I2Caddr);
     i2c_write($I2CFh, $register);
     $t = i2c_read($I2CFh, 1); // Notice i2c_read() returns an array FIXME
     return $t;
+  } else {
+    return false;
   }
 }
 
 function writePanelModule($I2Caddr, $order, $packet) {
-  global $I2CFh, $useI2C;
-  if ($useI2C) {
+  global $I2CFh, $useI2C, $PM;
+  if ($useI2C and $PM[$I2Caddr]["online"]) {
     i2c_select($I2CFh, $I2Caddr);
     $n = 0;
     while (!i2c_write($I2CFh, $order, $packet) and $n < N_I2C_WRITE) {
       debugPrint("I2C write retry, addr $I2Caddr");
       $n +=1;
     }
+    return $n < N_I2C_WRITE; // Return true if i2c write ok
   }
 }
 
@@ -811,11 +896,10 @@ Usage:
 ");
     exit();
   }
-  next($argv);
-  while (list(,$opt) = each($argv)) {
+  while ($opt = next($argv)) {
     switch ($opt) {
     case "-IP":
-      list(,$p) = each($argv);
+      $p = next($argv);
       if ($p) {
         $cliRBCaddr = $p;
       } else {
@@ -824,7 +908,7 @@ Usage:
       }
     break;
     case "-f":
-      list(,$p) = each($argv);
+      $p = next($argv);
       if ($p) {
         $PM_CONF_FILE  = $p;
       } else {
@@ -833,7 +917,7 @@ Usage:
       }
     break;
     case "-D":
-      list(,$p) = each($argv);
+      $p = next($argv);
       if ($p) {
         $DIRECTORY  = $p;
       } else {

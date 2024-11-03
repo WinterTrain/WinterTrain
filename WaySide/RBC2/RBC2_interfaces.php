@@ -6,10 +6,11 @@
 
 
 function interfaceServer() {
-  global $AbusInterface, $listenerRBC, $listenerMCe, $clients, $clientsData, $inChargeHMI, $inChargeMCe, $inChargeTMS, $listenerTMS,
+  global $AbusInterface, $listenerHMI, $listenerOBU, $listenerMCe, $clients, $clientsData, $inChargeHMI, $inChargeMCe, $inChargeTMS, $listenerTMS,
     $radioInterface, $tmsStatus, $toAnusGw, $fromAbusGw, $radioLinkFh, $radioBuf;
   $read = $clients;
-  $read[] = $listenerRBC;
+  $read[] = $listenerHMI;
+  $read[] = $listenerOBU;
   $read[] = $listenerMCe;
   $read[] = $listenerTMS;
   if ($radioInterface == "USB") {
@@ -22,8 +23,8 @@ function interfaceServer() {
   $write = NULL; // FIXME to be used for writing to HMI etc. ???
   if (stream_select($read, $write, $except, 0, 100000 )) {
     foreach ($read as $r) {
-      if ($r == $listenerRBC) { // new HMI client
-        if ($newClient = stream_socket_accept($listenerRBC,0,$clientName)) {
+      if ($r == $listenerHMI) { // new HMI client
+        if ($newClient = stream_socket_accept($listenerHMI,0,$clientName)) {
           msgLog("HMI Client $clientName signed in");
           stream_set_blocking($newClient,false);
           $clients[] = $newClient;
@@ -37,6 +38,22 @@ function interfaceServer() {
           HMIstartup($newClient);
         } else {
           fatalError("HMI: accept failed");
+        }
+     } elseif ($r == $listenerOBU) { // new OBU client
+        if ($newClient = stream_socket_accept($listenerOBU,0,$clientName)) {
+          msgLog("OBU Client $clientName signed in");
+          stream_set_blocking($newClient,false);
+          $clients[] = $newClient;
+          $clientsData[(int)$newClient] = [
+            "addr" => $clientName,
+            "signIn" => date("Ymd H:i:s"),
+            "inChargeSince" => "",
+            "activeAt" => "",
+            "type" => "OBU",
+            "userName" => ""];
+          OBUstartup($newClient);
+        } else {
+          fatalError("OBU: accept failed");
         }
       } elseif ($r == $listenerMCe) { // new MCe Client
         if ($newClient = stream_socket_accept($listenerMCe,0,$clientName)) {
@@ -101,6 +118,13 @@ function interfaceServer() {
             case "HMI":
               processCommandRBC(trim($data),$r);
             break;
+            case "OBU":
+              // case // Packet type Position report ========================== FIXME train ID via packet (yes) or TCP-ID
+              // ================== Check if TCP-ID stemmer med train ID i pakke
+ //             processPositionReport();
+        // function processPositionReport($trainID, $requestedMode, $MAreceived, $driveDir, $pwr, $frontUp, $baliseID, $distance,  $speed, $rtoMode)
+              // case Sign in
+            break;
             case "MCe":
               processCommandMCe(trim($data),$r);
             break;
@@ -129,7 +153,7 @@ function interfaceServer() {
 
 function AbusSendPacket($addr, $packet) { // $packet is indexed as Abus packets, that is: packet type at index 2
 // Data from the slave is returned via call back function  AbusReceivedFrom($addr, $data)
-  global $AbusInterface, $toAbusGw, $AbusI2CFh;
+  global $AbusInterface, $toAbusGw, $AbusI2CFh, $debug;
   if (count($packet) > MAX_ABUS_BUF) {
     fatalLog("AbusSendPacket: Packet too long: ".count($packet));
   }
@@ -175,6 +199,7 @@ function AbusSendPacket($addr, $packet) { // $packet is indexed as Abus packets,
         $n = 0;
         while (!@i2c_write($AbusI2CFh, 101, $packet) and $n < N_I2C_WRITE) {
           debugPrint("I2C write retry");
+          if ($debug) print_r($packet);
           $n +=1;
         }
         usleep(ABUS_WAIT); //  Wait for potentiel Abus timeout. Might be optimized using pending status from AbusMasterGateway FIXME
@@ -218,7 +243,7 @@ function receivedFromRadioLink($data) {  // Distribute radio packet received via
 }
 
 function initInterfaces() {
-  global $HMIport, $MCePort, $TMSport, $HMIaddress, $MCeAddress, $TMSaddress, $listenerRBC, $listenerMCe, $listenerTMS, $RADIO_DEVICE_FILE,
+  global $HMIport, $OBUport, $MCePort, $TMSport, $HMIaddress, $OBUaddress, $MCeAddress, $TMSaddress, $listenerHMI, $listenerOBU, $listenerMCe, $listenerTMS, $RADIO_DEVICE_FILE,
     $ABUS_I2C_FILE, $radioLinkFh, $radioBuf, $AbusI2CFh, $radioInterface, $AbusInterface, $toAbusGw, $fromAbusGw, $clients, $clientsData,
     $inChargeHMI, $inChargeMCe, $inChargeTMS;
 // --------------------------------------------------------------------------------------------------- Abus Gateway interface
@@ -264,14 +289,21 @@ function initInterfaces() {
   $clients = array();
   $clientsData = array();
   $inChargeHMI = false;
+  $inChargeOBU = false;
   $inChargeMCe = false;
   $inChargeTMS = false;
 
-  $listenerRBC = @stream_socket_server("tcp://$HMIaddress:".$HMIport, $errno, $errstr);
-  if (!$listenerRBC) {
+  $listenerHMI = @stream_socket_server("tcp://$HMIaddress:".$HMIport, $errno, $errstr);
+  if (!$listenerHMI) {
     fatalError("Cannot create server socket (port: $HMIport) for HMI connection: $errstr ($errno)");
   }
-  stream_set_blocking($listenerRBC,false);
+  stream_set_blocking($listenerHMI,false);
+  
+  $listenerOBU = @stream_socket_server("tcp://$OBUaddress:".$OBUport, $errno, $errstr);
+  if (!$listenerOBU) {
+    fatalError("Cannot create server socket (port: $OBUport) for OBU connection: $errstr ($errno)");
+  }
+  stream_set_blocking($listenerOBU,false);
   
   $listenerMCe = @stream_socket_server("tcp://$MCeAddress:".$MCePort, $errno, $errstr);
   if (!$listenerMCe) {

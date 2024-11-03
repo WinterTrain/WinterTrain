@@ -3,7 +3,7 @@
 // Utility functions
 
 function CmdLineParam() {
-  global $argv, $debug, $background, $noHWbackend;
+  global $argv, $debug, $background, $noHWbackend, $activeOBUprofileID;
   
   if (in_array("-h",$argv)) {
     print "OBUng - WinterTrain
@@ -11,12 +11,13 @@ function CmdLineParam() {
 Usage:
 
 -b, --background  start as daemon
--nw               No HW backend, disable backend interface
+-nhwb             No HW backend, disable backend interface
 
 -d                enable debug info, level all
 
 -D <directory>    use <directory> as working directory for all files. Must be given before option -td, -pt2, -l, -e and -bl in order to take effect
 -td <file>        read Train Data from <file>
+-p <ID>		  use OBU profile <profile>
 
 -l <file>         use <file> as Message Log File instead of default
 -e <file>         use <file> as Error Log File instead of default
@@ -27,11 +28,10 @@ Usage:
 ";
     exit();
   }
-  next($argv);
-  while (list(,$opt) = each($argv)) {
+  while ($opt = next($argv)) {
     switch ($opt) {
     case "-td":
-      list(,$p) = each($argv);
+      $p = next($argv);
       if ($p) {
         $TRAIN_DATA_FILE = $p;
         if (!is_readable("$DIRECTORY/$TRAIN_DATA_FILE")) {
@@ -43,8 +43,17 @@ Usage:
         exit(1);
       }
       break;
+    case "-p":
+      $p = next($argv);
+      if ($p) {
+	$activeOBUprofileID = $p;
+      } else {
+        print "Error: option -p: OBU ID is missing \n";
+        exit(1);
+      }
+    break;
     case "-D":
-      list(,$p) = each($argv);
+      $p = next($argv);
       if ($p) {
         $DIRECTORY = $p;
         if (!is_dir($DIRECTORY)) {
@@ -57,7 +66,7 @@ Usage:
       }
       break;
     case "-l":
-      list(,$p) = each($argv);
+      $p = next($argv);
       if ($p) {
         $MSGLOG_FILE_FILE = $p;
         if (!is_writeable("$DIRECTORY/$MSGLOG_FILE")) {
@@ -70,7 +79,7 @@ Usage:
       }
       break; 
     case "-e":
-      list(,$p) = each($argv);
+      $p = next($argv);
       if ($p) {
         $ERRLOG_FILE = $p;
         if (!is_writeable("$DIRECTORY/$ERRLOG_FILE")) {
@@ -83,7 +92,7 @@ Usage:
       }
       break;
     case "-DMIport":
-      list(,$p) = each($argv);
+      $p = next($argv);
       if ($p) {
         $HMIport = $p;
         if (!is_numeric($HMIport)) {
@@ -96,7 +105,7 @@ Usage:
       }
     break; 
     case "-MMIport":
-      list(,$p) = each($argv);
+      $p = next($argv);
       if ($p) {
         $MCePort = $p;
         if (!is_numeric($MCePort)) {
@@ -108,7 +117,7 @@ Usage:
         exit(1);
       }
     break; 
-    case "-nW":
+    case "-nhwb":
       $noHWbackend = TRUE;
       break;
     case "-b":
@@ -221,6 +230,7 @@ function errLog($txt) {
   debugPrint (date("Ymd H:i:s")." $txt");
   fwrite($errFh,date("Ymd H:i:s")." $txt\n");
 }
+
 function fatalError($txt) {
   global $logFh, $errFh;
   debugPrint (date("Ymd H:i:s")." Fatal Error: $txt\n");

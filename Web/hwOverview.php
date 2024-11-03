@@ -35,8 +35,8 @@ function PT2overview() {
 global $PT1; // FIXME PT1 vs PT2
 
 $HWtypeText = array(0 => "n/a", 10 => "PM w/o pos.(1P)", 11 => "PM w. pos.(1P)", 21 => "Semaphor (1P)", 40 => "Signal 2/2 (2L)", 41 => "Signal 2/2 (1U)",
-  42 => "Signal 2/3 (2L)", 43 => "Signal 2/3 (2U)", 44 => "Signal 3/3 (3L)", 45 => "Signal 3/3 (3U)");
-$HWdevice = array(0 => "-", 10 => "P", 11 => "P", 21 => "P", 40 => "L", 41 => "U", 42 => "L", 43 => "U", 44 => "L", 45 => "U");
+  42 => "Signal 2/3 (2L)", 43 => "Signal 2/3 (2U)", 44 => "Signal 3/3 (3L)", 45 => "Signal 3/3 (3U)", 50 => "RouteIndicator 2 (2L)", 51 => "RouteIndicator 2 (2U)", 52 => "RouteIndicator 3 (3L)", 53 => "RouteIndicator 3 (3U)");
+$HWdevice = array(0 => "-", 10 => "P", 11 => "P", 21 => "P", 40 => "L", 41 => "U", 42 => "L", 43 => "U", 44 => "L", 45 => "U", 50 => "L", 51 => "U", 52 => "L", 53 => "U");
   
   $EC = array();
   
@@ -63,7 +63,7 @@ $HWdevice = array(0 => "-", 10 => "P", 11 => "P", 21 => "P", 40 => "L", 41 => "U
   <td>$name</td>
   <td>{$element["element"]}</td>
   <td></td>
-  <td>{$HWtypeText[$element["EC"]["type"]]}</td>
+  <td>{$HWtypeText[$element["EC"]["type"]]} #{$element["EC"]["type"]}</td>
   <td>{$element["EC"]["addr"]}</td>
   <td>{$HWdevice[$element["EC"]["type"]]}</td>
   <td>{$element["EC"]["majorDevice"]}</td>
@@ -71,17 +71,31 @@ $HWdevice = array(0 => "-", 10 => "P", 11 => "P", 21 => "P", 40 => "L", 41 => "U
       break;
       case "SU":
       case "SD":
-      $EC[$element["EC"]["addr"]][$HWdevice[$element["EC"]["type"]]][] = ["major" => $element["EC"]["majorDevice"], "ID" => $name];
+        $EC[$element["EC"]["addr"]][$HWdevice[$element["EC"]["type"]]][] = ["major" => $element["EC"]["majorDevice"], "ID" => $name];
         print "
 <tr align=left>
   <td>$name</td>
   <td>{$element["element"]}</td>
   <td>{$element["type"]}</td>
-  <td>{$HWtypeText[$element["EC"]["type"]]}</td>
+  <td>{$HWtypeText[$element["EC"]["type"]]} #{$element["EC"]["type"]}</td>
   <td>{$element["EC"]["addr"]}</td>
   <td>{$HWdevice[$element["EC"]["type"]]}</td>
   <td>{$element["EC"]["majorDevice"]}</td>
 </tr>";
+        if ($element["EC"]["riAddr"] != 0) {
+          $EC[$element["EC"]["riAddr"]][$HWdevice[$element["EC"]["riType"]]][] = ["major" => $element["EC"]["riMajorDevice"], "ID" => "$name-RI"];
+          print "
+<tr align=left>
+  <td>$name</td>
+  <td>{$element["element"]}-RI</td>
+  <td>{$element["riType"]}</td>
+  <td>{$HWtypeText[$element["EC"]["riType"]]} #{$element["EC"]["riType"]}</td>
+  <td>{$element["EC"]["riAddr"]}</td>
+  <td>{$HWdevice[$element["EC"]["riType"]]}</td>
+  <td>{$element["EC"]["riMajorDevice"]}</td>
+</tr>";
+        
+        }
       break;
       default:     
     }

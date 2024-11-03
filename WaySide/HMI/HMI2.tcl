@@ -240,18 +240,18 @@ global nTrainFrame  trainMA entryFontSize rtoMode toMode toDrive toDir trnSetVal
   incr nTrainFrame
 # ----------------- Frame for Train status
   grid [ttk::frame .f.fTrain.t$index -padding "3 3 12 12" -relief solid -borderwidth 2] -column [expr $index + 1] -row 1 -sticky nwes
-  grid [ttk::label .f.fTrain.t$index.nameX -text "Train name:"] -column 0 -columnspan 2 -row 0 -padx 5 -pady 2 -sticky we
+  grid [ttk::label .f.fTrain.t$index.nameX -text "Name:"] -column 0 -columnspan 2 -row 0 -padx 5 -pady 2 -sticky we
   grid [ttk::label .f.fTrain.t$index.name -text "-----" -textvariable trainName($index)] -column 2 -columnspan 2 -row 0 -padx 5 -pady 2 -sticky we
   grid [ttk::label .f.fTrain.t$index.valid -text "VOID" -textvariable trainValid($index)] -column 6 -columnspan 2 -row 0 -padx 5 -pady 2 -sticky we
 
-  grid [ttk::label .f.fTrain.t$index.tnX -text "Running number:"] -column 0 -columnspan 2  -row 1 -padx 5 -pady 2 -sticky we
+  grid [ttk::label .f.fTrain.t$index.tnX -text "TRN:"] -column 0 -columnspan 2  -row 1 -padx 5 -pady 2 -sticky we
   grid [ttk::label .f.fTrain.t$index.trn -textvariable trainTRN($index)] -column 2 -columnspan 2 -row 1 -padx 5 -pady 2 -sticky we
   grid [ttk::entry .f.fTrain.t$index.trnInp -textvariable trnSetValue($index) -width 1] -column 4 -columnspan 2 -row 1 -padx 5 -pady 2 -sticky we
   .f.fTrain.t$index.trnInp state disabled
   grid [ttk::button .f.fTrain.t$index.trnSet -text "Set" -command "trnSet $index"] -column 6 -columnspan 2 -row 1 -padx 5 -pady 2 -sticky we
   .f.fTrain.t$index.trnSet state disabled
 
-  grid [ttk::label .f.fTrain.t$index.etdX -text "Departure:"] -column 0 -columnspan 2  -row 2 -padx 5 -pady 2 -sticky we
+  grid [ttk::label .f.fTrain.t$index.etdX -text "ETD:"] -column 0 -columnspan 2  -row 2 -padx 5 -pady 2 -sticky we
   grid [ttk::label .f.fTrain.t$index.etd -textvariable trainETD($index)] -column 2 -columnspan 5 -row 2 -padx 5 -pady 2 -sticky we
   
   grid [ttk::label .f.fTrain.t$index.modeX -text "Mode:"] -column 0 -columnspan 2 -row 3 -padx 5 -pady 2 -sticky we
@@ -297,9 +297,9 @@ if {$rtoDisplay} {
   grid [ttk::frame .f.fTrain.t$index.rto  -padding "3 3 12 12" -relief solid -borderwidth 2] -column 0  -columnspan 8 -row 9
   grid [ttk::label .f.fTrain.t$index.rto.toX -text "RTO mode:"] -column 0 -row 9 -padx 5 -pady 2 -sticky we
   grid [ttk::label .f.fTrain.t$index.rto.to -text "----" -textvariable rtoMode($index)] -column 1 -columnspan 2 -row 9 -padx 5 -pady 2 -sticky we
-  grid [ttk::button .f.fTrain.t$index.rto.reqRto -text "Request" -command "reqRto $index"] -column 2 -row 10 -padx 5 -pady 2 -sticky we
+  grid [ttk::button .f.fTrain.t$index.rto.reqRto -text "Req" -command "reqRto $index"] -column 2 -row 10 -padx 5 -pady 2 -sticky we
   .f.fTrain.t$index.rto.reqRto state disabled
-   grid [ttk::button .f.fTrain.t$index.rto.relRto -text "Release" -command "relRto $index"] -column 3 -row 10 -padx 5 -pady 2 -sticky we
+   grid [ttk::button .f.fTrain.t$index.rto.relRto -text "Rel" -command "relRto $index"] -column 2 -row 11 -padx 5 -pady 2 -sticky we
   .f.fTrain.t$index.rto.relRto state disabled
    
   grid [ttk::frame .f.fTrain.t$index.rto.oMode -padding "3 3 12 12" ] -column 0 -row 10 -columnspan 2 -sticky nwes
@@ -1529,7 +1529,7 @@ grid [ttk::button .f.buttonEHMI -text "Exit HMI" -command exit] -column 15 -row 
 grid [ttk::button .f.buttonT -text "TEST" -command test] -column 17 -row 8 -sticky we
 
 # Train data
-grid [ttk::frame .f.fTrain -padding "3 3 3 3" -relief solid -borderwidth 2] -column 1 -row 9 -columnspan 16 -sticky nwes
+grid [ttk::frame .f.fTrain -padding "3 3 3 3" -relief solid -borderwidth 2] -column 1 -row 9 -columnspan 18 -sticky nwes
 
 grid [ttk::label .f.versions -textvariable versions] -column 2 -columnspan 6  -row 10 -padx 5 -pady 2 -sticky w
 

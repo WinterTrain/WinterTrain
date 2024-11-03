@@ -213,7 +213,7 @@ function initEC($specificEC = "") { // Initialize all or one specific EC from da
           }
           configureEC($addr, $element["EC"]["type"], $element["EC"]["majorDevice"]);
           // Configure minorDevice for type 11, point with position detector FIXME
-          $element["EC"]["index"] = count($EC[$addr]["index"]);
+          $element["EC"]["index"] = count($EC[$addr]["index"]);	
           $EC[$addr]["index"][] = $name;
         }
         break;
@@ -227,15 +227,15 @@ function initEC($specificEC = "") { // Initialize all or one specific EC from da
           configureEC($addr, $element["EC"]["type"], $element["EC"]["majorDevice"]);
           $element["EC"]["index"] = count($EC[$addr]["index"]);
           $EC[$addr]["index"][] = $name;
-          if($element["riType"] != "NRI" and $element["EC"]["riType"] != 0) { // Configure optional route indicator
-            $addr = $element["EC"]["riAddr"];
-            if (!isset($EC[$addr])) {
-              addEC($addr);
-            }
-            configureEC($addr, $element["EC"]["riType"], $element["EC"]["riMajorDevice"]);
-            $element["EC"]["riIndex"] = count($EC[$addr]["index"]);
-            $EC[$addr]["index"][] = $name; // FIXME OK?
-            }
+        }
+        if($element["riType"] != "NRI" and $element["EC"]["riType"] != 0) { // Configure optional route indicator
+          $addr = $element["EC"]["riAddr"];
+          if (!isset($EC[$addr])) {
+            addEC($addr);
+          }
+          configureEC($addr, $element["EC"]["riType"], $element["EC"]["riMajorDevice"]);
+          $element["EC"]["riIndex"] = count($EC[$addr]["index"]);
+          $EC[$addr]["index"][] = $name; // FIXME OK?
         }
         break;
         case "LX":

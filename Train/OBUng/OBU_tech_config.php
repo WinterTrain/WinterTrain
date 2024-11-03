@@ -1,7 +1,7 @@
 <?php
 // WinterTrain, OBUng
 // Technical configuration
-$OBU_HOSTNAME = "";
+$OBU_HOSTNAME = "TrackPanel";
 
 // Interface configuration
 
@@ -17,17 +17,19 @@ $DMIaddress = "0.0.0.0";
 $DMIport = 9910;
 $MMIaddress = "0.0.0.0";
 $MMIport = 9911;
-$RBCaddress = "192.168.1.230";
+$RBCaddress = "192.168.1.230";  // FIXME List of addresses??
 $RBCport = 9904; // FIXME
 
 // 
-define("SERVER_WAIT", "100000"); // Max waiting time for IP interface
-define("TIMER_DMI_POLL","5");
-
+define("SERVER_WAIT", 100000); // Max waiting time for IP interface
+define("TIMER_DMI_POLL", 5);
+define("TIMER_MMI_POLL", 5); 
+define("TIMER_HWB_POLL", 3);
 
 
 
 // ---------------------------------------------------------- Train HW backend interface
+$TTY_FILE = "/dev/ttyS0";
 $I2C_FILE = "/dev/i2c-1";
 
 ?>

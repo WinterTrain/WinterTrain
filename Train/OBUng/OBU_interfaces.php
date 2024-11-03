@@ -5,6 +5,10 @@
 // This module provides interfaces to: IP network and Train HW
 
 $DMIbuffer = "";
+$motorControl = 0;
+$directionForward = FORWARD;
+$lightOrderA = array("cabin" => OFF, "cab" => OFF, "front" => OFF, "rear" => OFF);
+$lightOrderB = array("cabin" => OFF, "cab" => OFF, "front" => OFF, "rear" => OFF);
 
 function interfaceServer() {
   global $listenerDMI, $listenerMMI, $clients, $clientsData, $inChargeDMI, $inChargeMMI, $DMIbuffer, $dmiState, $triggerMMIupdate,
@@ -20,7 +24,7 @@ function interfaceServer() {
         if ($newClient = stream_socket_accept($listenerDMI,0,$clientName)) {
           msgLog("DMI Client $clientName signed in");
           stream_set_blocking($newClient,false);
-          if (!$inChargeDMI) { // Only one DMI client allowed at a time
+          if (!$inChargeDMI) { // Only one DMI client allowed at a time ----- FIXME allow for read-only DMI
             $inChargeDMI = $newClient;
             $clients[] = $newClient;
             $clientsData[(int)$newClient] = [
@@ -65,7 +69,7 @@ function interfaceServer() {
               }
             break;
             case "MMI":
-              processCommandMMI(trim($data),$r);
+              processCommandMMI(trim($data),$r); // FIXME compile via buffer as for DMI?
             break;
           }
         } else { // Connection closed by client
@@ -87,16 +91,66 @@ function interfaceServer() {
   }
 }
 
-function pollHWbackend() {
-  global $I2CFh, $noHWbackend;
-  if (!$noHWbackend and $I2CFh) {
+function pollHWbackend() { // Dynamic control -- in case of DOUBLE BACKEND polling both backends
+// API
+//	$motorControl		0..255
+//	$directionForward	bool
+//	$lightOrderA and B
 
+  global $I2CFh, $noHWbackend, $activeOBUprofile, $activeLocoProfile,
+  $motorControl, $directionForward, $lightOrderA, $triggerHWbackendPoll, $emergencyStop;
+  if (!$noHWbackend and $I2CFh) {  // FIXME here?
+    switch($activeOBUprofile["HWconfig"]) {
+      case SINGLE_BACKEND:
+      break;
+      case DOUBLE_BACKEND:
+        $order = 0;
+        foreach ($lightOrderA as $value) $order |= $value;
+        writeCmd("l", $order);
+        writeCmd("M", $emergencyStop ? 0 :
+          ($motorControl <= $activeLocoProfile["maxMotorControl"] ? $motorControl : $activeLocoProfile["maxMotorControl"]));
+        writeCmd("r", $directionForward ? FORWARD : REVERSE);
+        
+      break;
+      default:
+        errLog("Unknown type of HWbackend: {$activeOBUprofile["HWconfig"]}");
+    }
   }
+  $triggerHWbackendPoll = false;
+}
+
+function configureHWbackend() {
+  global $I2CFh, $ttyFh, $noHWbackend, $activeOBUprofile, $activeLocoProfile;
+  if (!$noHWbackend and $I2CFh) {  // FIXME here?
+    switch($activeOBUprofile["HWconfig"]) {
+      case SINGLE_BACKEND:
+      break;
+      case DOUBLE_BACKEND:
+// --------------------- motor car / serial IF
+        writeCmd("w", $activeLocoProfile["frontLightNormal"]);        
+        writeCmd("W", $activeLocoProfile["frontLightBright"]);
+        writeCmd("R", $activeLocoProfile["rearLightNormal"]);
+        writeCmd("x", $activeLocoProfile["cabinLightR"]);
+        writeCmd("y", $activeLocoProfile["cabinLightG"]);
+        writeCmd("z", $activeLocoProfile["cabinLightB"]);
+        
+// --------------------- Trailer / I2C IF
+
+      break;
+      default:
+        errLog("Unknown type of HWbackend: {$activeOBUprofile["HWconfig"]}");
+    }
+  }  
+}
+
+function writeCmd($c, $v) { // for serial IF
+  global $ttyFh;
+  fwrite($ttyFh, sprintf("%1s%02x\n", $c, $v));
 }
 
 function initInterfaces() {
-  global $DMIport, $MMIport, $DMIaddress, $MMIaddress, $listenerDMI, $listenerMMI, $I2C_FILE, $I2CFh, $clients, $clientsData,
-    $inChargeDMI, $inChargeMMI, $connectedHWbackend, $OBU_HOSTNAME;
+  global $DMIport, $MMIport, $DMIaddress, $MMIaddress, $listenerDMI, $listenerMMI, $I2C_FILE, $I2CFh, $TTY_FILE, $ttyFh, $clients,
+    $clientsData, $activeOBUprofile, $inChargeDMI, $inChargeMMI, $connectedHWbackend, $OBU_HOSTNAME;
 // ---------------------------------------------------------------------------------------------------- Stream interface for DMI and MMI
   $clients = array();
   $clientsData = array();
@@ -121,7 +175,13 @@ function initInterfaces() {
     if (!$I2CFh) fatalError("Cannot open I2C interface:: $I2C_FILE"); 
   } else {
     $I2CFh = false;
-    print "Warning: No HW backend\n";
+    errLog("Warning: No HW backend");
+  }
+// ---------------------------------------------------------------------------------------------------- TTY interface to HW backend
+  if ($activeOBUprofile["HWconfig"] == DOUBLE_BACKEND) {
+    if (!$ttyFh = fopen($TTY_FILE, "a+")) {
+      msgLog("Warning: cannot open tty for HWbackend");
+    }
   }
 }
 

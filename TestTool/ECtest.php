@@ -197,7 +197,7 @@ o, order          Send element order to EC: PARAM is ELEMENT_INDEX ELEMENT_ORDER
     exit();
   }
   next($argv);
-  while (list(,$opt) = each($argv)) {
+  while ($opt = next($argv)) {
     switch ($opt) {
       case "c";
       case "clear";
@@ -214,14 +214,14 @@ o, order          Send element order to EC: PARAM is ELEMENT_INDEX ELEMENT_ORDER
       case "o":
       case "order":
         $command = "o";
-        list(,$p) = each($argv);
+        $p = next($argv);
         if (is_numeric($p)) {
           $elementIndex = $p;
         } else {
           print "Error: command ORDER requires two parameters: elementIndex elementOrder \n";
           exit(1);
         }
-        list(,$p) = each($argv);
+        $p = next($argv);
         if (is_numeric($p)) {
           $elementOrder = $p;
         } else {
@@ -232,21 +232,20 @@ o, order          Send element order to EC: PARAM is ELEMENT_INDEX ELEMENT_ORDER
       case "a":
       case "add":
         $command = "a";
-        list(,$p) = each($argv);
+        $p = next($argv);
         if (is_numeric($p)) {
           $elementType = $p;
         } else {
           print "Error: command ADD requires three parameters: elementType majorDevice minorDevice \n";
           exit(1);
         }
-        list(,$p) = each($argv);
-        if (is_numeric($p)) {
+          if (is_numeric($p)) {
           $majorDevice = $p;
         } else {
           print "Error: command ADD requires three parameters: elementType majorDevice minorDevice \n";
           exit(1);
         }
-        list(,$p) = each($argv);
+        $p = next($argv);
         if (is_numeric($p)) {
           $minorDevice = $p;
         } else {
@@ -255,7 +254,7 @@ o, order          Send element order to EC: PARAM is ELEMENT_INDEX ELEMENT_ORDER
         }
       break;
       case "-a":
-        list(,$p) = each($argv);
+        $p = next($argv);
         if ($p and is_numeric($p)) {
           $addr = $p;
         } else {
@@ -276,7 +275,7 @@ o, order          Send element order to EC: PARAM is ELEMENT_INDEX ELEMENT_ORDER
         print "No Abus gateway selected\n";
         break;
       case "-D":
-        list(,$p) = each($argv);
+        $p = next($argv);
         if ($p) {
           $DATA_FILE = $p;
           if (!is_readable($DATA_FILE)) {

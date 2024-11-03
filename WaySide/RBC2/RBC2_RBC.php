@@ -50,7 +50,7 @@ function generateModeAuthority($index) { // ------------------------------------
         if ($train["curPositionValid"]) {
           list($SPup,$SPdown) = searchSP($index); // search for possible SP in both directions and inform TMS
           if ($train["assignedRoute"] == "") {
-            // if one of the SPs is set for this train by TMS, prioritize that---------------------------------------------- FIXME
+            // if one of the SPs is set for this train by TMS, prioritize that--------------------------------------- FIXME
             if ($SPup != "" and $trackModel[$SPup]->routeLockingState == R_LOCKED
               and ($trackModel[$SPup]->routeLockingType == RT_START_POINT or
                    $trackModel[$SPup]->routeLockingType == RT_VIA)) { // Locked SP found in direction UP, search for EP and assign.
@@ -314,6 +314,8 @@ function sendMA($index) {
   $speed = $train["maxSpeed"];
   switch ($train["deployment"]) {
     case "R":  // Real train
+    // switch OBU-type
+    // case Arduino
     switch ($radioInterface) {
       case "USB":
         $baliseArray = explode(":",$balise);
@@ -327,6 +329,11 @@ function sendMA($index) {
         fatalError("sendMA via EC/LINK not implemented");
       break;
     }
+    // case Ras-PI
+      // if (TCP-link to train up)
+        // $packer = "";
+        // fwrite(TCP-link, $packet);
+
     break;
     case "S": // Simulated train
     break;
@@ -389,7 +396,7 @@ function processPositionReport( // ------------------ Process Point Position Rep
       $MCeBaliseID = $baliseID;
     }
     
-    if ($baliseID == "01:00:00:00:01") { // ------------------------------------------------------------------- OBU indicates void position
+    if ($baliseID == "01:00:00:00:01") { // -------------------------------------------------------------- OBU indicates void position
 //      $train["posTimeStamp"] = $now; // FIXME
       if ($posRestoreEnabled) {
         if (!$train["posRestored"]) {
@@ -416,7 +423,7 @@ function processPositionReport( // ------------------ Process Point Position Rep
           }
         }
       }
-    } elseif (isset($balisesID[$baliseID])) { // -------------------------------------------------------------- OBU indicates known position
+    } elseif (isset($balisesID[$baliseID])) { // --------------------------------------------------------- OBU indicates known position
       $train["posTimeStamp"] = $now;
       $train["distance"] = (int)($distance * $train["wheelFactor"]);
       $train["baliseID"] = $baliseID;
@@ -429,7 +436,7 @@ function processPositionReport( // ------------------ Process Point Position Rep
       $train["posRestoredLogged"] = false;
       determineOccupation($index);
       $train["curPositionValid"] = $train["curPositionUnambiguous"];
-    } else { // ----------------------------------------------------------------------------------------------- OBU indicates unknown balise
+    } else { // ------------------------------------------------------------------------------------------ OBU indicates unknown balise
       // Unknown balise, track occupation cannot be updated -  position report ignored
       if ($baliseID != "01:00:00:00:01") { // If different from OBU default balise
         msgLog("Warning: Unknown baliseID >$baliseID< provided in position report from train $trainID.".
@@ -759,12 +766,22 @@ function processCommandRBC($command, $from) { // -------------------------------
         errLog("Error: Unknown command from HMI client: >$command<");
     break;
     }
+  } elseif ($param[0] == "eStop") { // Set emergency STOP
+        setEmergencyStop();
   }
 }
 
 function toggleEmergencyStop() {
   global $trainData, $emergencyStop;
   $emergencyStop = !$emergencyStop;
+  foreach ($trainData as $index => $train) {
+    generateModeAuthority($index);
+  }
+}
+
+function setEmergencyStop() {
+  global $trainData, $emergencyStop;
+  $emergencyStop = true;
   foreach ($trainData as $index => $train) {
     generateModeAuthority($index);
   }

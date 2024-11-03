@@ -1,4 +1,5 @@
 // WinterTrain - HW backend for OBU next generation
+// OBU hardware type: Locomotive
 
 #include <Wire.h>
 #include <avr/wdt.h>
@@ -6,7 +7,7 @@
 
 
 #define MODULE_I2C_ADDR 0x3f
-#define MAXBUF 24 // FIXME
+#define MAXBUF 24 // I2C buffer size  FIXME
 
 // Enummeration
 // TAG reader, type 7941E
@@ -22,7 +23,7 @@
 // Timing
 // Note: due to changed PWM freq. 1 sec ~ 64000 counts
 // const unsigned long DMI_POLL = 16000; // 0.25 sec
-#define TIMER_OCU_CONNECTION 32000
+#define TIMER_OBU_CONNECTION 32000
 
 // ----------------------------------------- Variables
 
@@ -56,7 +57,7 @@ void loop() {
 void WireReceiver(int count) {
   byte b;
 //  for (b = 0; b < MAXBUF; b++) i2cRxBuf[b] = 0xFF;
-  timerOBUconnection = TIMER_OCU_CONNECTION;
+  timerOBUconnection = TIMER_OBU_CONNECTION;
   b = 0;
   while (Wire.available()) {
     i2cRxBuf[b] = Wire.read();

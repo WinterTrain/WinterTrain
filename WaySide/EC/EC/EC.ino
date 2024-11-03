@@ -53,6 +53,7 @@ struct elementType {
 #define I_U_LEFT 6
 #define I_U_RIGHT_HOLDING 7
 #define I_U_LEFT_HOLDING 8
+#define I_OFF 0  // Route indicator off
 
 // State machine
 //   Point machine
@@ -419,7 +420,8 @@ boolean AbusRecThis() {
                 } else {
                   Abus.toM[3] = 1; // invalid device number 1
                 }
-              break;              case 41: // Light signal, 2 lantern, 2 aspect   ---------- single U-device
+              break;
+              case 41: // Light signal, 2 lantern, 2 aspect   ---------- 1 U-device
                 if (Abus.fromM[5] > 0 and Abus.fromM[5] <= N_UDEVICE) {
                   element[nextElement].type = Abus.fromM[4];
                   element[nextElement].deviceMajor = Abus.fromM[5];
@@ -454,6 +456,34 @@ boolean AbusRecThis() {
                   pinMode(UdevicePin[Abus.fromM[5] + 1], OUTPUT);
                   digitalWrite(UdevicePin[Abus.fromM[5] + 1], LOW);
                   element[nextElement].cStatus = I_STOP;
+                } else {
+                  Abus.toM[3] = 1; // invalid device number 1
+                }
+                break;
+              case 51: // Route indicator, 2 output  ----------- 2 U-devies
+                if (Abus.fromM[5] > 0 and Abus.fromM[5] + 1 <= N_UDEVICE) {
+                  element[nextElement].type = Abus.fromM[4];
+                  element[nextElement].deviceMajor = Abus.fromM[5];
+                  pinMode(UdevicePin[Abus.fromM[5] - 1], OUTPUT);
+                  digitalWrite(UdevicePin[Abus.fromM[5] - 1], LOW);
+                  pinMode(UdevicePin[Abus.fromM[5]], OUTPUT);
+                  digitalWrite(UdevicePin[Abus.fromM[5]], LOW);
+                  element[nextElement].cStatus = I_OFF;
+                } else {
+                  Abus.toM[3] = 1; // invalid device number 1
+                }
+                break;
+              case 53: // Route indicator, 3 output  --------- 3 U-devices
+                if (Abus.fromM[5] > 0 and Abus.fromM[5] + 2 <= N_UDEVICE) {
+                  element[nextElement].type = Abus.fromM[4];
+                  element[nextElement].deviceMajor = Abus.fromM[5];
+                  pinMode(UdevicePin[Abus.fromM[5] - 1], OUTPUT);
+                  digitalWrite(UdevicePin[Abus.fromM[5] - 1], LOW);
+                  pinMode(UdevicePin[Abus.fromM[5]], OUTPUT);
+                  digitalWrite(UdevicePin[Abus.fromM[5]], LOW);
+                  pinMode(UdevicePin[Abus.fromM[5] + 1], OUTPUT);
+                  digitalWrite(UdevicePin[Abus.fromM[5] + 1], LOW);
+                  element[nextElement].cStatus = I_OFF;
                 } else {
                   Abus.toM[3] = 1; // invalid device number 1
                 }
@@ -520,6 +550,29 @@ boolean AbusRecThis() {
                   Ldevice(element[nextElement].deviceMajor + 1, LOW);
                   Ldevice(element[nextElement].deviceMajor + 2, LOW);
                   element[nextElement].cStatus = I_STOP;
+                } else {
+                  Abus.toM[3] = 1; // invalid device number 1
+                }
+                break;
+              case 50: // Route indicator, 2 output
+                if (Abus.fromM[5] > 0 and Abus.fromM[5] + 1 <= N_LDEVICE) {
+                  element[nextElement].type = Abus.fromM[4];
+                  element[nextElement].deviceMajor = Abus.fromM[5];
+                  Ldevice(element[nextElement].deviceMajor, LOW);
+                  Ldevice(element[nextElement].deviceMajor + 1, LOW);
+                  element[nextElement].cStatus = I_OFF;
+                } else {
+                  Abus.toM[3] = 1; // invalid device number 1
+                }
+                break;
+              case 52: // Route indicator, 3 output
+                if (Abus.fromM[5] > 0 and Abus.fromM[5] + 2 <= N_LDEVICE) {
+                  element[nextElement].type = Abus.fromM[4];
+                  element[nextElement].deviceMajor = Abus.fromM[5];
+                  Ldevice(element[nextElement].deviceMajor, LOW);
+                  Ldevice(element[nextElement].deviceMajor + 1, LOW);
+                  Ldevice(element[nextElement].deviceMajor + 2, LOW);
+                  element[nextElement].cStatus = I_OFF;
                 } else {
                   Abus.toM[3] = 1; // invalid device number 1
                 }

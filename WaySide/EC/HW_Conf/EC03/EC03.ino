@@ -2,6 +2,7 @@
 //
 // Name: EC03
 // HW: 8 U-devices
+// Processor: Uno
 
 
 // Abus
@@ -26,10 +27,8 @@
 #define PDEVICE_ON_MASK {}; // Mask to set device on, per device
 #define PDEVICE_POL_MASK {}; // Mask to set device reversed polarity, per device
 #define PDEVICE_REG {}; // Assignment of device to shift register
-#define LDEVICE_ON_MASK }; // Mask to set device on, per device
+#define LDEVICE_ON_MASK {}; // Mask to set device on, per device
 #define LDEVICE_REG {}; // Assignment of device to shift register
 
 // Capacity
 #define N_TRAIN 0 // Max number of train. Radio Link only, otherwise 0
-
-

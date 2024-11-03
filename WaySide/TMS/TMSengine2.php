@@ -690,10 +690,10 @@ Usage:
     exit();
   }
   next($argv);
-  while (list(,$opt) = each($argv)) {
+  while ($opt = next($argv)) {
     switch ($opt) {
     case "-f":
-      list(,$p) = each($argv);
+      $p = next($argv);
       if ($p) {
         $TMS_CONFIG = $p;
         if (!is_readable("$DIRECTORY/$TMS_CONFIG")) {
@@ -706,7 +706,7 @@ Usage:
       }
       break;
     case "-pt2":
-      list(,$p) = each($argv);
+      $p = next($argv);
       if ($p) {
         $PT2_FILE = $p;
         if (!is_readable("$DIRECTORY/$PT2_FILE")) {
@@ -719,7 +719,7 @@ Usage:
       }
     break;
     case "-td":
-      list(,$p) = each($argv);
+      $p = next($argv);
       if ($p) {
         $TRAIN_DATA_FILE = $p;
         if (!is_readable("$DIRECTORY/$TRAIN_DATA_FILE")) {
@@ -732,7 +732,7 @@ Usage:
       }
     break;
     case "-tt":
-      list(,$p) = each($argv);
+      $p = next($argv);
       if ($p) {
         $TT_FILE = $p;
         if (!is_readable("$DIRECTORY/$TT_FILE")) {
@@ -745,7 +745,7 @@ Usage:
       }
     break;
     case "-D":
-      list(,$p) = each($argv);
+      $p = next($argv);
       if ($p) {
         $DIRECTORY = $p;
         if (!is_dir($DIRECTORY)) {
@@ -758,7 +758,7 @@ Usage:
       }
     break;
     case "-IP":
-      list(,$p) = each($argv);
+      $p = next($argv);
       if ($p) {
         $RBC_SERVER_ADDR = $p;
       } else {

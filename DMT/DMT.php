@@ -10,7 +10,8 @@ $BALISE_DUMP_FILE = "baliseDump.php";
 $PT2_FILE = "PT2.php";
 $DIRECTORY = ".";
 
-$GNETLIST_CMD = "/usr/bin/gnetlist";
+$GNETLIST_CMD = "/usr/bin/lepton-netlist";
+// $GNETLIST_CMD = "/usr/bin/gnetlist"; // Old gEDA netlister
 
 $PT1_PROJECT_NAME = "(n/a)";
 $PT1_DATE = "(n/a)";
